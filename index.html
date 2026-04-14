@@ -6065,23 +6065,54 @@ async function garantirUsuarioPadrao() {
 function renderUsuariosTable(usuarios) {
   const tbody = document.getElementById('usuarios-tbody');
   if (!tbody) return;
-  if (!usuarios.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum usuário cadastrado</td></tr>'; return; }
+  if (!usuarios.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum usuário cadastrado</td></tr>';
+    return;
+  }
+
+  // Cache para o modal de permissões
+  window._rbacUsuariosCache = window._rbacUsuariosCache || {};
+  usuarios.forEach(u => { if (u.id) window._rbacUsuariosCache[u.id] = u; });
+
   tbody.innerHTML = usuarios.map(u => {
-    const tipoColor = u.tipo === 'admin' ? 'var(--cyan)' : 'var(--text-l)';
-    const statusBadge = u.status === 'ativo' ? '<span class="badge b-ok">✅ Ativo</span>' : '<span class="badge b-err">❌ Inativo</span>';
+    const isAdminPrincipal  = u.email === ADMIN_EMAIL;
+    const isAdminSecundario = !isAdminPrincipal && u.tipo === 'admin';
+    const isComum           = !isAdminPrincipal && u.tipo !== 'admin';
+
+    const tipoColor = isAdminPrincipal ? 'var(--cyan)' : (isAdminSecundario ? 'var(--purple)' : 'var(--text-l)');
+    const tipoLabel = isAdminPrincipal ? '👑 Admin Principal' : (isAdminSecundario ? '🔐 Admin' : '👤 Comum');
+    const statusBadge = u.status === 'ativo'
+      ? '<span class="badge b-ok">✅ Ativo</span>'
+      : '<span class="badge b-err">❌ Inativo</span>';
     const data = u.criadoEm ? new Date(u.criadoEm).toLocaleDateString('pt-BR') : '—';
+    const perms = Array.isArray(u.permissoes) ? u.permissoes : null;
+    const nPerms = perms !== null ? perms.length : (typeof RBAC_MODULOS !== 'undefined' ? RBAC_MODULOS.length : 15);
+    const total  = typeof RBAC_MODULOS !== 'undefined' ? RBAC_MODULOS.length : 15;
+    const permLabel = isAdminPrincipal
+      ? '<span style="color:var(--cyan);font-size:0.75rem">✅ Acesso total</span>'
+      : `<span style="font-size:0.75rem;color:var(--text-l)">${nPerms}/${total} módulos</span>`;
+
+    // Botão Permissões — aparece para TODOS
+    const btnPermissoes = `<button class="btn btn-sm"
+        style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit"
+        onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>`;
+    const btnReset   = `<button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>`;
+    const btnToggle  = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
+        onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>`;
+    const btnExcluir = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem"
+        onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>`;
+
+    const acoes = isComum
+      ? `${btnPermissoes} ${btnReset}`
+      : `${btnPermissoes} ${btnReset} ${btnToggle} ${btnExcluir}`;
+
     return `<tr>
       <td style="font-size:0.84rem"><strong>${escapeHTML(u.email || '—')}</strong></td>
-      <td><span style="color:${tipoColor};font-weight:700;font-size:0.78rem">${u.tipo === 'admin' ? '🔐 Admin' : '👤 Comum'}</span></td>
+      <td><span style="color:${tipoColor};font-weight:700;font-size:0.78rem">${tipoLabel}</span></td>
       <td style="font-size:0.78rem;color:var(--text-l)">${data}</td>
       <td>${statusBadge}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px">
-        <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email || '')}')">🔑 Reset senha</button>
-        ${u.email !== ADMIN_EMAIL ? `
-          <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="alterarStatusUsuario('${escapeHTML(u.id || '')}','${u.status === 'ativo' ? 'inativo' : 'ativo'}')">${u.status === 'ativo' ? '🚫 Desativar' : '✅ Ativar'}</button>
-          <button class="btn btn-sm btn-danger" style="font-size:0.7rem" onclick="excluirUsuario('${escapeHTML(u.id || '')}','${escapeHTML(u.email || '')}')">🗑️ Excluir</button>
-        ` : '<span style="font-size:0.7rem;color:var(--text-l)">🔒 Admin principal</span>'}
-      </td>
+      <td>${permLabel}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px;align-items:center">${acoes}</td>
     </tr>`;
   }).join('');
 }
@@ -6383,79 +6414,9 @@ goSubTab = function(sub) {
   _goSubTabOriginal(sub);
 };
 
-// Atualiza renderUsuariosTable para incluir coluna Permissões e botão Editar permissões
-const _renderUsuariosTableOriginal = renderUsuariosTable;
-
-// Armazena dados dos usuários para o modal (evita JSON no onclick)
-window._rbacUsuariosCache = {};
-
-renderUsuariosTable = function(usuarios) {
-  const tbody = document.getElementById('usuarios-tbody');
-  if (!tbody) return;
-  if (!usuarios.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum usuário cadastrado</td></tr>';
-    return;
-  }
-  // Atualiza cache
-  window._rbacUsuariosCache = {};
-  usuarios.forEach(u => { if (u.id) window._rbacUsuariosCache[u.id] = u; });
-
-  tbody.innerHTML = usuarios.map(u => {
-    const isAdminPrincipal = u.email === ADMIN_EMAIL;
-    const isAdminSecundario = !isAdminPrincipal && u.tipo === 'admin';
-    const isComum = !isAdminPrincipal && u.tipo !== 'admin';
-
-    const tipoColor = isAdminPrincipal ? 'var(--cyan)' : (isAdminSecundario ? 'var(--purple)' : 'var(--text-l)');
-    const tipoLabel = isAdminPrincipal ? '👑 Admin Principal' : (isAdminSecundario ? '🔐 Admin' : '👤 Comum');
-    const statusBadge = u.status === 'ativo'
-      ? '<span class="badge b-ok">✅ Ativo</span>'
-      : '<span class="badge b-err">❌ Inativo</span>';
-    const data = u.criadoEm ? new Date(u.criadoEm).toLocaleDateString('pt-BR') : '—';
-    const perms = Array.isArray(u.permissoes) ? u.permissoes : null;
-    const nPerms = perms !== null ? perms.length : RBAC_MODULOS.length;
-    const permLabel = isAdminPrincipal
-      ? '<span style="color:var(--cyan);font-size:0.75rem">✅ Acesso total</span>'
-      : `<span style="font-size:0.75rem;color:var(--text-l)">${nPerms}/${RBAC_MODULOS.length} módulos</span>`;
-
-    // ── Regras de botões ──────────────────────────────────────────
-    // Admin principal  → todos os botões (🔐 Permissões + 🔑 Reset + 🚫 Desativar + 🗑️ Excluir)
-    // Admin secundário → todos os botões
-    // Usuário comum    → 🔐 Permissões (bloqueado, só visual) + 🔑 Reset senha
-    let acoes = '';
-    // Botão Permissões — aparece para TODOS, clicável para todos
-    const btnPermissoes = `<button class="btn btn-sm" style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer"
-        onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>`;
-
-    // Botões extras por tipo
-    const btnReset = `<button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>`;
-    const btnToggle = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
-        onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>`;
-    const btnExcluir = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem"
-        onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>`;
-
-    let acoes = '';
-    if (isComum) {
-      // Comum: Permissões + Reset senha
-      acoes = `${btnPermissoes} ${btnReset}`;
-    } else {
-      // Admin principal ou secundário: todos os botões
-      acoes = `${btnPermissoes} ${btnReset} ${btnToggle} ${btnExcluir}`;
-    }
-
-    return `<tr>
-      <td style="font-size:0.84rem"><strong>${escapeHTML(u.email || '—')}</strong></td>
-      <td><span style="color:${tipoColor};font-weight:700;font-size:0.78rem">${tipoLabel}</span></td>
-      <td style="font-size:0.78rem;color:var(--text-l)">${data}</td>
-      <td>${statusBadge}</td>
-      <td>${permLabel}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px;align-items:center">${acoes}</td>
-    </tr>`;
-  }).join('');
-};
-
 // Abre modal de permissões buscando dados do cache (sem JSON no onclick)
 function abrirPermissoesById(docId) {
-  const u = window._rbacUsuariosCache[docId];
+  const u = window._rbacUsuariosCache && window._rbacUsuariosCache[docId];
   if (!u) { toast('⚠️ Usuário não encontrado'); return; }
   abrirModalPermissoes(docId, u.email, u.permissoes || null);
 }
