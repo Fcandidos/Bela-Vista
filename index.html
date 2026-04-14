@@ -813,6 +813,63 @@ body::before{
   color:#ff6680;border-color:rgba(255,68,102,0.3);
 }
 
+/* ============================================================ USER AVATAR MENU */
+.user-avatar-widget { position: relative; }
+.user-avatar-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 100px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer;
+  transition: all 0.2s; color: var(--text); font-family: inherit;
+}
+.user-avatar-btn:hover { border-color: var(--border2); background: rgba(0,212,255,0.06); }
+.user-avatar-circle {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: #020609; font-weight: 800; font-size: 0.78rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(0,212,255,0.3);
+}
+.user-avatar-email {
+  font-size: 0.72rem; color: var(--text-l); max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+[data-theme="light"] .user-avatar-btn { background: rgba(255,255,255,0.9); border-color: rgba(0,0,0,0.1); color: #2d3748; }
+[data-theme="light"] .user-avatar-btn:hover { border-color: rgba(0,153,204,0.4); background: rgba(0,153,204,0.05); }
+.user-menu-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; width: 240px;
+  background: rgba(6,13,20,0.98); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 20px rgba(0,212,255,0.08);
+  padding: 6px; z-index: 9999;
+  opacity: 0; transform: translateY(-8px) scale(0.97);
+  pointer-events: none; transition: all 0.18s ease; backdrop-filter: blur(20px);
+}
+.user-menu-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+[data-theme="light"] .user-menu-dropdown { background: rgba(255,255,255,0.98); border-color: rgba(0,0,0,0.1); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
+.user-menu-header { display: flex; align-items: center; gap: 12px; padding: 12px 14px 10px; }
+.user-menu-avatar-lg {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: #020609; font-weight: 800; font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase;
+}
+.user-menu-sep { height: 1px; background: var(--border); margin: 4px 6px; }
+.user-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 14px; border: none; background: none;
+  font-size: 0.82rem; font-weight: 500; color: var(--text);
+  cursor: pointer; border-radius: 10px; transition: all 0.15s;
+  text-align: left; font-family: inherit;
+}
+.user-menu-item:hover { background: rgba(0,212,255,0.08); color: var(--cyan); }
+.user-menu-logout { color: var(--err) !important; }
+.user-menu-logout:hover { background: rgba(255,68,102,0.08) !important; color: var(--err) !important; }
+[data-theme="light"] .user-menu-item { color: #2d3748; }
+[data-theme="light"] .user-menu-item:hover { background: rgba(0,153,204,0.06); color: #0099cc; }
+[data-theme="light"] .user-menu-logout { color: #b91c3c !important; }
+
 /* ============================================================ ADMIN CONTENT */
 .admin-body{max-width:1200px;margin:0 auto;padding:28px 20px 80px;}
 .admin-tab-content{display:none;}
@@ -1658,9 +1715,10 @@ select option{background:#060d14;color:#e8f4ff;}
       <button class="admin-nav-btn" data-tab="administracao" onclick="goAdminTab('administracao')">⚙️ Administração</button>
     </nav>
     <div class="admin-right">
-      <span class="admin-user" style="display:flex;align-items:center;gap:6px">
-        <span id="fb-status-dot" style="width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;transition:background 0.3s" title="Status Firebase"></span>
-        <span id="fb-status-txt" style="font-size:0.68rem;color:var(--text-l)">conectando…</span>
+      <!-- Status Firebase oculto visualmente mas mantido funcional -->
+      <span style="display:none">
+        <span id="fb-status-dot" style="width:7px;height:7px;border-radius:50%;background:#888;flex-shrink:0;transition:background 0.3s"></span>
+        <span id="fb-status-txt">conectando…</span>
       </span>
 
       <!-- THEME TOGGLE -->
@@ -1680,7 +1738,35 @@ select option{background:#060d14;color:#e8f4ff;}
       </div>
 
       <button class="mobile-menu-btn" id="mob-menu-btn" onclick="toggleMobileMenu()">☰</button>
-      <button class="logout-btn" onclick="doLogout()">Sair</button>
+
+      <!-- Avatar menu do usuário -->
+      <div class="user-avatar-widget" id="user-avatar-widget">
+        <button class="user-avatar-btn" id="user-avatar-btn" onclick="toggleUserMenu(event)" title="Minha conta">
+          <span class="user-avatar-circle" id="user-avatar-circle">?</span>
+          <span class="user-avatar-email" id="user-avatar-email">…</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" style="opacity:0.5;flex-shrink:0"><path d="M2 3.5L5 6.5L8 3.5"/></svg>
+        </button>
+        <div class="user-menu-dropdown" id="user-menu-dropdown">
+          <div class="user-menu-header">
+            <div class="user-menu-avatar-lg" id="user-menu-avatar-lg">?</div>
+            <div>
+              <div id="user-menu-name" style="font-weight:700;font-size:0.85rem;color:var(--text)">—</div>
+              <div id="user-menu-role" style="font-size:0.7rem;color:var(--text-l);margin-top:2px">—</div>
+            </div>
+          </div>
+          <div class="user-menu-sep"></div>
+          <button class="user-menu-item" onclick="closeUserMenu();goAdminTab('administracao');goSubTab('seguranca')">
+            <span>🔒</span> Segurança
+          </button>
+          <button class="user-menu-item" onclick="closeUserMenu();goAdminTab('administracao');goSubTab('sessoes')">
+            <span>🔗</span> Minhas sessões
+          </button>
+          <div class="user-menu-sep"></div>
+          <button class="user-menu-item user-menu-logout" onclick="closeUserMenu();doLogout()">
+            <span>🚪</span> Sair
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -2120,6 +2206,7 @@ select option{background:#060d14;color:#e8f4ff;}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-out btn-sm" onclick="carregarLogs()">🔄 Atualizar</button>
           <button class="btn btn-out btn-sm" onclick="exportarLogs()">📥 Exportar</button>
+          <button class="btn btn-danger btn-sm" onclick="limparTodosLogs()" style="background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Limpar todos</button>
         </div>
       </div>
       <div class="search-row" style="flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -2145,7 +2232,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th>Data/Hora</th><th>Evento</th><th>E-mail</th><th>Localização</th><th>Dispositivo</th><th>IP</th>
+            <th>Data/Hora</th><th>Evento</th><th>E-mail</th><th>Localização</th><th>Dispositivo</th><th>IP</th><th>Ação</th>
           </tr></thead>
           <tbody id="logs-tbody"></tbody>
         </table>
@@ -2180,7 +2267,13 @@ select option{background:#060d14;color:#e8f4ff;}
         <div id="mapa-leaflet" style="height:500px;border-radius:12px;overflow:hidden;"></div>
       </div>
       <div class="card">
-        <div class="card-h"><div class="card-icon">📍</div><div><h4>Últimos Acessos no Mapa</h4></div></div>
+        <div class="card-h">
+          <div class="card-icon">📍</div>
+          <div><h4>Últimos Acessos no Mapa</h4></div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-sm btn-danger" onclick="limparTodosAcessosMapa()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Limpar todos</button>
+          </div>
+        </div>
         <div class="card-b" id="mapa-lista"></div>
       </div>
       </div>
@@ -2915,6 +3008,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (lerSessao()) {
     showScreen('admin');
     _currentUserEmail = ADMIN_EMAIL;
+    atualizarAvatarMenu(ADMIN_EMAIL);
     // Reativar sessão Firebase ao restaurar
     setTimeout(async function() {
       try {
@@ -5515,6 +5609,8 @@ function filtrarLogs() {
       <td style="font-size:0.75rem;color:var(--text-l)">${escapeHTML(locStr)}</td>
       <td style="font-size:0.76rem">${devIcon} ${escapeHTML(l.tipo_dispositivo || '—')}</td>
       <td style="font-size:0.72rem;color:var(--text-l);font-family:monospace">${escapeHTML(l.ip_usuario || '—')}</td>
+      <td><button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)"
+        onclick="excluirLog('${escapeHTML(l.id||'')}')">🗑️</button></td>
     </tr>`;
   }).join('');
 }
@@ -5549,6 +5645,46 @@ function exportarLogs() {
   toast('📥 Logs exportados!');
 }
 
+async function excluirLog(docId) {
+  if (!docId || !_db) return;
+  if (!confirm('Excluir este log de acesso?')) return;
+  try {
+    await _db.collection('logs_acesso').doc(docId).delete();
+    _todosLogs = _todosLogs.filter(l => l.id !== docId);
+    filtrarLogs();
+    renderLogsMetrics();
+    toast('🗑️ Log excluído');
+  } catch(e) {
+    toast('❌ Erro ao excluir: ' + (e.message || 'Tente novamente'));
+  }
+}
+
+async function limparTodosLogs() {
+  if (!_db) return;
+  const total = _todosLogs.length;
+  if (!total) { toast('⚠️ Nenhum log para limpar'); return; }
+  if (!confirm(`Excluir TODOS os ${total} logs de acesso?\n\nEsta ação é irreversível.`)) return;
+  try {
+    toast('⏳ Limpando logs...');
+    // Exclui em lotes de 500 (limite do Firestore batch)
+    const snap = await _db.collection('logs_acesso').limit(500).get();
+    let batch = _db.batch();
+    let count = 0;
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+      count++;
+      if (count % 499 === 0) { await batch.commit(); batch = _db.batch(); }
+    }
+    if (count % 499 !== 0) await batch.commit();
+    _todosLogs = [];
+    filtrarLogs();
+    renderLogsMetrics();
+    toast(`✅ ${total} logs excluídos com sucesso`);
+  } catch(e) {
+    toast('❌ Erro ao limpar: ' + (e.message || 'Tente novamente'));
+  }
+}
+
 // ================================================================
 // MAPA GEOREFERENCIADO (LEAFLET)
 // ================================================================
@@ -5559,7 +5695,7 @@ async function carregarMapa() {
   try {
     let q = _db.collection('logs_acesso').orderBy('data_hora', 'desc').limit(100);
     const snap = await q.get();
-    let logs = snap.docs.map(d => d.data()).filter(l => l.latitude && l.longitude && (l.latitude !== 0 || l.longitude !== 0));
+    let logs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.latitude && l.longitude && (l.latitude !== 0 || l.longitude !== 0));
     if (filtroEvento) logs = logs.filter(l => l.tipo_evento === filtroEvento);
     _logsMapaAtual = logs;
     renderMapaLeaflet(logs);
@@ -5739,13 +5875,57 @@ function renderMapaLista(logs) {
     const locStr = [l.cidade, l.regiao, l.pais].filter(Boolean).join(', ') || '—';
     const cor = { LOGIN_OK: 'var(--green)', LOGIN_ERRO: 'var(--err)', LOGOUT: 'var(--text-l)', INATIVIDADE: 'var(--amber)' };
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
-      <div>
+      <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:0.84rem">${escapeHTML(l.usuario_email || '—')}</div>
         <div style="font-size:0.74rem;color:var(--text-l)">📍 ${escapeHTML(locStr)} · ${ts}</div>
       </div>
       <span style="color:${cor[l.tipo_evento]||'var(--cyan)'};font-weight:700;font-size:0.76rem">${escapeHTML(l.tipo_evento || '—')}</span>
+      <button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3);flex-shrink:0"
+        onclick="excluirAcessoMapa('${escapeHTML(l.id||'')}')">🗑️</button>
     </div>`;
   }).join('');
+}
+
+async function excluirAcessoMapa(docId) {
+  if (!docId || !_db) return;
+  if (!confirm('Excluir este registro de acesso do mapa?')) return;
+  try {
+    await _db.collection('logs_acesso').doc(docId).delete();
+    _logsMapaAtual = _logsMapaAtual.filter(l => l.id !== docId);
+    // Também remove dos logs gerais
+    _todosLogs = _todosLogs.filter(l => l.id !== docId);
+    renderMapaLeaflet(_logsMapaAtual);
+    renderMapaLista(_logsMapaAtual);
+    toast('🗑️ Acesso excluído do mapa');
+  } catch(e) {
+    toast('❌ Erro ao excluir: ' + (e.message || 'Tente novamente'));
+  }
+}
+
+async function limparTodosAcessosMapa() {
+  if (!_db) return;
+  const total = _logsMapaAtual.length;
+  if (!total) { toast('⚠️ Nenhum acesso para limpar'); return; }
+  if (!confirm(`Excluir TODOS os ${total} registros de acesso do mapa?\n\nEsta ação é irreversível.`)) return;
+  try {
+    toast('⏳ Limpando acessos...');
+    const snap = await _db.collection('logs_acesso').limit(500).get();
+    let batch = _db.batch();
+    let count = 0;
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+      count++;
+      if (count % 499 === 0) { await batch.commit(); batch = _db.batch(); }
+    }
+    if (count % 499 !== 0) await batch.commit();
+    _logsMapaAtual = [];
+    _todosLogs = [];
+    if (_mapaInstance) { _mapaInstance.remove(); _mapaInstance = null; }
+    renderMapaLista([]);
+    toast(`✅ ${total} acessos excluídos`);
+  } catch(e) {
+    toast('❌ Erro ao limpar: ' + (e.message || 'Tente novamente'));
+  }
 }
 
 // Centraliza mapa no acesso mais recente com zoom alto
@@ -6237,11 +6417,53 @@ async function alterarStatusUsuario(docId, novoStatus) {
 }
 
 // ================================================================
-// RESTAURAR SESSÃO — pingar ao restaurar
+// AVATAR MENU DO USUÁRIO
 // ================================================================
-(function() {
-  const origShowScreen = window.showScreen;
-})();
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('user-menu-dropdown');
+  if (dd) dd.classList.toggle('open');
+  // Fecha theme dropdown se aberto
+  const td = document.getElementById('theme-dropdown');
+  if (td) td.classList.remove('open');
+}
+
+function closeUserMenu() {
+  const dd = document.getElementById('user-menu-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+// Fecha ao clicar fora
+document.addEventListener('click', function(e) {
+  const widget = document.getElementById('user-avatar-widget');
+  if (widget && !widget.contains(e.target)) closeUserMenu();
+});
+
+function atualizarAvatarMenu(email) {
+  if (!email) return;
+  const inicial = email.charAt(0).toUpperCase();
+  const nome = email.split('@')[0];
+  // Bolinha no header
+  const circle = document.getElementById('user-avatar-circle');
+  const emailEl = document.getElementById('user-avatar-email');
+  if (circle) circle.textContent = inicial;
+  if (emailEl) emailEl.textContent = email;
+  // Dentro do dropdown
+  const avatarLg = document.getElementById('user-menu-avatar-lg');
+  const nameEl   = document.getElementById('user-menu-name');
+  const roleEl   = document.getElementById('user-menu-role');
+  if (avatarLg) avatarLg.textContent = inicial;
+  if (nameEl)   nameEl.textContent = nome;
+  if (roleEl)   roleEl.textContent = email === ADMIN_EMAIL ? '👑 Admin Principal' : '👤 Usuário';
+}
+
+// Atualiza ao restaurar sessão
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    if (_currentUserEmail) atualizarAvatarMenu(_currentUserEmail);
+  }, 1000);
+});
+
 </script>
 <script>
 // ================================================================
@@ -6342,29 +6564,41 @@ function abrirModalPermissoes(docId, email, permissoesAtuais) {
   _permModalDocId = docId;
   _permModalEmail = email;
 
-  // Info do usuário
   document.getElementById('perm-user-info').innerHTML =
     `👤 <strong>${email}</strong> — editando permissões de acesso`;
 
-  // Renderiza checkboxes
   const cont = document.getElementById('perm-checkboxes');
   const perms = Array.isArray(permissoesAtuais) ? permissoesAtuais : RBAC_PERFIS.total;
 
-  cont.innerHTML = RBAC_MODULOS.map(m => {
+  // Separa módulos principais dos sub-tabs de administração
+  const principais = RBAC_MODULOS.filter(m => m.sub === null);
+  const subAdm     = RBAC_MODULOS.filter(m => m.sub !== null);
+
+  const mkCheck = (m, indent) => {
     const checked = perms.includes(m.id) ? 'checked' : '';
-    const isSubTab = m.sub !== null;
     return `<label style="
-      display:flex;align-items:center;gap:10px;padding:10px 12px;
-      border-radius:10px;border:1px solid var(--border);
-      background:var(--surface);cursor:pointer;transition:all 0.15s;
-      ${isSubTab ? 'margin-left:12px;opacity:0.9;' : 'font-weight:600;'}
+      display:flex;align-items:center;gap:10px;padding:9px 12px;
+      border-radius:10px;border:1px solid var(--border);background:var(--surface);
+      cursor:pointer;transition:border-color 0.15s;font-size:0.82rem;
+      ${indent ? 'margin-left:16px;font-size:0.78rem;opacity:0.92;' : 'font-weight:600;'}
     " onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
       <input type="checkbox" id="perm_${m.id}" value="${m.id}" ${checked}
         style="width:16px;height:16px;accent-color:var(--cyan);cursor:pointer;flex-shrink:0">
-      <span style="font-size:0.83rem">${m.label}</span>
+      ${m.label}
     </label>`;
-  }).join('');
+  };
 
+  // Renderiza: módulos principais em grid 2 colunas, sub-tabs de Adm agrupados abaixo
+  const mainGrid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+    ${principais.map(m => mkCheck(m, false)).join('')}
+  </div>`;
+
+  const subTitle = `<div style="font-size:0.7rem;font-weight:700;color:var(--text-l);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">📂 Sub-módulos de Administração</div>`;
+  const subGrid  = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+    ${subAdm.map(m => mkCheck(m, true)).join('')}
+  </div>`;
+
+  cont.innerHTML = mainGrid + subTitle + subGrid;
   openM('m-permissoes');
 }
 
@@ -6426,6 +6660,7 @@ const _doLoginRBACHook = async function(email) {
   _rbacPerms = null;
   await carregarPermissoesUsuario(email);
   aplicarRBACInterface();
+  atualizarAvatarMenu(email);
 };
 
 // Também atualizar ADMIN_EMAIL para fabiocds@yahoo.com como principal
