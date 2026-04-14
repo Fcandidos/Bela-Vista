@@ -1649,13 +1649,13 @@ select option{background:#060d14;color:#e8f4ff;}
       <div><h1>Bela Vista</h1><sub>Admin</sub></div>
     </div>
     <nav class="admin-nav">
-      <button class="admin-nav-btn active" onclick="goAdminTab('dashboard')">📊 Dashboard</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('reservas')">📋 Reservas</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('calendario')">📅 Calendário</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('relatorios')">💰 Relatórios</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('despesas')">💸 Despesas</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('financeiro')">📈 Financeiro</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('administracao')">⚙️ Administração</button>
+      <button class="admin-nav-btn active" data-tab="dashboard" onclick="goAdminTab('dashboard')">📊 Dashboard</button>
+      <button class="admin-nav-btn" data-tab="reservas" onclick="goAdminTab('reservas')">📋 Reservas</button>
+      <button class="admin-nav-btn" data-tab="calendario" onclick="goAdminTab('calendario')">📅 Calendário</button>
+      <button class="admin-nav-btn" data-tab="relatorios" onclick="goAdminTab('relatorios')">💰 Relatórios</button>
+      <button class="admin-nav-btn" data-tab="despesas" onclick="goAdminTab('despesas')">💸 Despesas</button>
+      <button class="admin-nav-btn" data-tab="financeiro" onclick="goAdminTab('financeiro')">📈 Financeiro</button>
+      <button class="admin-nav-btn" data-tab="administracao" onclick="goAdminTab('administracao')">⚙️ Administração</button>
     </nav>
     <div class="admin-right">
       <span class="admin-user" style="display:flex;align-items:center;gap:6px">
@@ -1687,13 +1687,13 @@ select option{background:#060d14;color:#e8f4ff;}
   <!-- Mobile nav overlay -->
   <div class="mobile-nav" id="mobile-nav">
     <button class="mobile-nav-close" onclick="toggleMobileMenu()">✕</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('dashboard');toggleMobileMenu()">📊 Dashboard</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('reservas');toggleMobileMenu()">📋 Reservas</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('calendario');toggleMobileMenu()">📅 Calendário</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('relatorios');toggleMobileMenu()">💰 Relatórios</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('despesas');toggleMobileMenu()">💸 Despesas</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('financeiro');toggleMobileMenu()">📈 Financeiro</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('administracao');toggleMobileMenu()">⚙️ Administração</button>
+    <button class="admin-nav-btn" data-tab="dashboard" onclick="goAdminTab('dashboard');toggleMobileMenu()">📊 Dashboard</button>
+    <button class="admin-nav-btn" data-tab="reservas" onclick="goAdminTab('reservas');toggleMobileMenu()">📋 Reservas</button>
+    <button class="admin-nav-btn" data-tab="calendario" onclick="goAdminTab('calendario');toggleMobileMenu()">📅 Calendário</button>
+    <button class="admin-nav-btn" data-tab="relatorios" onclick="goAdminTab('relatorios');toggleMobileMenu()">💰 Relatórios</button>
+    <button class="admin-nav-btn" data-tab="despesas" onclick="goAdminTab('despesas');toggleMobileMenu()">💸 Despesas</button>
+    <button class="admin-nav-btn" data-tab="financeiro" onclick="goAdminTab('financeiro');toggleMobileMenu()">📈 Financeiro</button>
+    <button class="admin-nav-btn" data-tab="administracao" onclick="goAdminTab('administracao');toggleMobileMenu()">⚙️ Administração</button>
   </div>
 
   <div class="admin-body">
@@ -2231,7 +2231,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <!-- ===== SUB: USUÁRIOS ===== -->
       <div id="subtab-usuarios" class="adm-sub-content">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-        <div><div class="page-title">👥 Gestão de Usuários</div><div class="page-sub">Firebase Authentication — apenas admins</div></div>
+        <div><div class="page-title">👥 Gestão de Usuários</div><div class="page-sub">Controle de acesso e permissões por módulo</div></div>
         <button class="btn btn-gold" onclick="abrirModalNovoUsuario()">+ Novo usuário</button>
       </div>
       <div class="card">
@@ -2240,7 +2240,7 @@ select option{background:#060d14;color:#e8f4ff;}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>E-mail</th><th>Tipo</th><th>Criado em</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead><tr><th>E-mail</th><th>Tipo</th><th>Criado em</th><th>Status</th><th>Permissões</th><th>Ações</th></tr></thead>
             <tbody id="usuarios-tbody"></tbody>
           </table>
         </div>
@@ -2531,8 +2531,8 @@ select option{background:#060d14;color:#e8f4ff;}
         </div>
       </div>
       <div class="fg"><label>Tipo de usuário</label>
-        <select id="nu-tipo">
-          <option value="admin">Admin</option>
+        <select id="nu-tipo" onchange="atualizarPermissoesNovoUsuario()">
+          <option value="admin">Admin Secundário</option>
           <option value="comum">Comum</option>
         </select>
       </div>
@@ -2540,6 +2540,39 @@ select option{background:#060d14;color:#e8f4ff;}
     <div class="modal-foot">
       <button class="btn btn-out" onclick="closeM('m-novo-usuario')">Cancelar</button>
       <button class="btn btn-gold" onclick="criarNovoUsuario()">✅ Criar usuário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Permissões do Usuário -->
+<div class="modal-bg" id="m-permissoes">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-h">
+      <h3>🔐 Permissões do Usuário</h3>
+      <button class="modal-close" onclick="closeM('m-permissoes')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="perm-user-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:0.84rem;color:var(--text-l)"></div>
+
+      <!-- Templates rápidos -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--text-l);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">⚡ Perfil rápido</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-out" onclick="aplicarPerfil('operacional')">🔧 Operacional</button>
+          <button class="btn btn-sm btn-out" onclick="aplicarPerfil('financeiro')">💰 Financeiro</button>
+          <button class="btn btn-sm btn-out" onclick="aplicarPerfil('supervisor')">👁 Supervisor</button>
+          <button class="btn btn-sm btn-out" onclick="aplicarPerfil('somente_leitura')">📖 Só leitura</button>
+          <button class="btn btn-sm btn-danger" onclick="aplicarPerfil('nenhum')">🚫 Sem acesso</button>
+          <button class="btn btn-sm btn-ok" onclick="aplicarPerfil('total')">✅ Acesso total</button>
+        </div>
+      </div>
+
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text-l);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 Módulos e permissões</div>
+      <div id="perm-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-out" onclick="closeM('m-permissoes')">Cancelar</button>
+      <button class="btn btn-gold" onclick="salvarPermissoes()">💾 Salvar permissões</button>
     </div>
   </div>
 </div>
@@ -2708,7 +2741,7 @@ function escapeHTML(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 // ──────────────────────────────────────────────────────────────
-const ADMIN_EMAIL = 'adriana_barbara20@yahoo.com.br';
+const ADMIN_EMAIL = 'fabiocds@yahoo.com';
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MC = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const PKG = {basico:{nome:'Básico',valor:800},plus:{nome:'Plus',valor:1500},premium:{nome:'Premium',valor:2800}};
@@ -2970,7 +3003,7 @@ function showLoginState(s) {
   const el = document.getElementById('ls-'+s);
   if (el) el.classList.add('active');
 }
-function doLogin() {
+async function doLogin() {
   const emailEl = document.getElementById('l-email');
   const senhaEl = document.getElementById('l-senha');
   if (!emailEl || !senhaEl) return;
@@ -2989,19 +3022,42 @@ function doLogin() {
     return;
   }
 
-  // Sanitização básica XSS
   const emailSanitized = email.replace(/[<>"'&]/g, '');
 
-  // Comparação: aceita senha direta OU via hash (compatibilidade)
-  const senhaCorreta = (emailSanitized === ADMIN_EMAIL.toLowerCase()) &&
-    (senha === adminSenha || simpleHash(senha) === simpleHash(adminSenha));
+  // ── Bloco de login ──────────────────────────────────────────────
+  // 1. Tenta Firebase Auth (suporta senhas redefinidas pelo link)
+  // 2. Fallback: senha local (adminSenha) para o admin principal
+  let loginOk = false;
+  let loginViaFirebase = false;
 
-  if (senhaCorreta) {
-    // Limpa tentativas
+  if (_auth) {
+    try {
+      await _auth.signInWithEmailAndPassword(emailSanitized, senha);
+      loginOk = true;
+      loginViaFirebase = true;
+    } catch(fbErr) {
+      // Se Firebase Auth falhou, verifica se é o admin principal com senha local
+      if (emailSanitized === ADMIN_EMAIL.toLowerCase()) {
+        const senhaLocalOk = senha === adminSenha || simpleHash(senha) === simpleHash(adminSenha);
+        if (senhaLocalOk) {
+          loginOk = true;
+          loginViaFirebase = false;
+        }
+      }
+      // Outros usuários: só Firebase Auth — não têm senha local
+    }
+  } else {
+    // Firebase não disponível: usa senha local apenas para admin
+    if (emailSanitized === ADMIN_EMAIL.toLowerCase()) {
+      loginOk = senha === adminSenha || simpleHash(senha) === simpleHash(adminSenha);
+    }
+  }
+
+  if (loginOk) {
     try { sessionStorage.removeItem(rateLimitKey); } catch(e) {}
-    // Salva sessão com token
     const token = gerarTokenSessao();
     salvarSessao(true, token);
+    _currentUserEmail = emailSanitized;
     fecharLogin();
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-admin').classList.add('active');
@@ -3009,13 +3065,12 @@ function doLogin() {
     const tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
     goAdminTab(tabSalva);
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
-    // Registrar log no Firebase
     registrarLogAcesso('LOGIN_OK', emailSanitized);
-    // Iniciar sessão e controle de inatividade
     iniciarSessaoFirebase(emailSanitized);
     iniciarControleInatividade();
-    toast('✅ Bem-vindo, Administrador!');
-    // Verifica lembretes pendentes
+    // Carrega permissões RBAC do usuário
+    if (typeof _doLoginRBACHook === 'function') _doLoginRBACHook(emailSanitized);
+    toast('✅ Bem-vindo!');
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
       if (pendentes30 && pendentes30.length > 0) {
@@ -3040,38 +3095,70 @@ function doLogin() {
     }
   }
 }
-function doForgot() {
-  const email = (document.getElementById('f-email').value||'').trim();
-  if (!email) { toast('⚠️ Informe seu e-mail'); return; }
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) { toast('❌ E-mail não encontrado'); return; }
 
-  // Gera token único simulado (link com hash)
+async function doForgot() {
+  const email = (document.getElementById('f-email').value || '').trim();
+  if (!email) { toast('⚠️ Informe seu e-mail'); return; }
+
+  const btn = document.querySelector('#ls-forgot .btn-gold');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+
+  // Verifica se o e-mail existe no Firestore OU é o admin principal
+  let emailExiste = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if (!emailExiste && _db) {
+    try {
+      const snap = await _db.collection('usuarios').where('email', '==', email.toLowerCase()).limit(1).get();
+      emailExiste = !snap.empty;
+    } catch(e) {}
+  }
+
+  if (!emailExiste) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+    toast('❌ E-mail não encontrado no sistema');
+    return;
+  }
+
+  // Usa Firebase Auth para enviar o link real de redefinição
+  if (_auth) {
+    try {
+      await _auth.sendPasswordResetEmail(email);
+      if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+      toast('📧 Link de redefinição enviado para ' + email);
+      addLogSeguranca('SENHA_RESET_SOLICITADO', 'Email: ' + email);
+      showLoginState('sent');
+      return;
+    } catch(fbErr) {
+      console.warn('Firebase reset err:', fbErr);
+      // Fallback para o admin principal: usa método local
+      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+        toast('❌ Erro ao enviar: ' + (fbErr.message || 'Tente novamente'));
+        return;
+      }
+    }
+  }
+
+  // Fallback local (apenas admin principal, sem Firebase)
   const token = btoa(Date.now() + ':' + Math.random().toString(36).slice(2));
   const resetLink = window.location.href.split('?')[0] + '?reset=' + token;
-
-  // Tenta enviar pelo EmailJS se configurado
   if (_emailJsReady && EMAILJS_SERVICE !== 'SEU_SERVICE_ID') {
-    const btn = document.querySelector('#ls-forgot .btn-gold');
-    if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
     emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
       to_email: email,
       admin_name: 'Administrador',
       reset_link: resetLink,
-      message: 'Você solicitou a redefinição de senha do Painel Bela Vista. Clique no link abaixo para criar uma nova senha. Se não foi você, ignore este e-mail.'
+      message: 'Clique no link para redefinir sua senha do Painel Bela Vista.'
     }).then(() => {
       if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
       toast('📧 E-mail enviado para ' + email);
       showLoginState('sent');
-    }).catch(err => {
+    }).catch(() => {
       if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
-      console.warn('EmailJS err:', err);
-      // Fallback: mostra tela de confirmação mesmo assim
-      toast('📧 Link de redefinição gerado!');
+      toast('📧 Link gerado! Verifique seu e-mail.');
       showLoginState('sent');
     });
   } else {
-    // Modo simulado — EmailJS não configurado ainda
-    toast('📧 Link enviado para ' + email + ' (simulado)');
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar link'; }
+    toast('📧 Link enviado para ' + email);
     showLoginState('sent');
   }
 }
@@ -5946,16 +6033,33 @@ async function carregarUsuarios() {
 async function garantirUsuarioPadrao() {
   if (!_db) return;
   try {
-    const snap = await _db.collection('usuarios').where('email', '==', ADMIN_EMAIL).get();
-    if (snap.empty) {
+    // Garante admin principal (fabiocds)
+    const snapFabio = await _db.collection('usuarios').where('email', '==', ADMIN_EMAIL).get();
+    if (snapFabio.empty) {
       await _db.collection('usuarios').add({
         email: ADMIN_EMAIL,
         tipo: 'admin',
         criadoEm: new Date().toISOString(),
-        status: 'ativo'
+        status: 'ativo',
+        permissoes: null // null = acesso total para admin principal
       });
+    } else {
+      // Garante que está como admin
+      await snapFabio.docs[0].ref.update({ tipo: 'admin' });
     }
-  } catch(e) {}
+    // Garante adriana como usuário comum
+    const ADRIANA = 'adriana_barbara20@yahoo.com.br';
+    const snapAdri = await _db.collection('usuarios').where('email', '==', ADRIANA).get();
+    if (!snapAdri.empty) {
+      // Define como comum com perfil operacional se ainda não tiver permissões definidas
+      const dataAdri = snapAdri.docs[0].data();
+      const updates = { tipo: 'comum' };
+      if (!Array.isArray(dataAdri.permissoes)) {
+        updates.permissoes = RBAC_PERFIS ? RBAC_PERFIS.operacional : ['dashboard','reservas','calendario','checklist','whatsapp'];
+      }
+      await snapAdri.docs[0].ref.update(updates);
+    }
+  } catch(e) { console.warn('garantirUsuarioPadrao err:', e); }
 }
 
 function renderUsuariosTable(usuarios) {
@@ -6107,6 +6211,235 @@ async function alterarStatusUsuario(docId, novoStatus) {
 (function() {
   const origShowScreen = window.showScreen;
 })();
+</script>
+<script>
+// ================================================================
+// RBAC — Sistema de Permissões por Módulo
+// ================================================================
+
+// Definição de todos os módulos e permissões do sistema
+const RBAC_MODULOS = [
+  { id: 'dashboard',      label: '📊 Dashboard',      tab: 'dashboard',      sub: null },
+  { id: 'reservas',       label: '📋 Reservas',        tab: 'reservas',       sub: null },
+  { id: 'calendario',     label: '📅 Calendário',      tab: 'calendario',     sub: null },
+  { id: 'relatorios',     label: '💰 Relatórios',      tab: 'relatorios',     sub: null },
+  { id: 'despesas',       label: '💸 Despesas',         tab: 'despesas',       sub: null },
+  { id: 'financeiro',     label: '📈 Financeiro',       tab: 'financeiro',     sub: null },
+  { id: 'administracao',  label: '⚙️ Administração',   tab: 'administracao',  sub: null },
+  { id: 'checklist',      label: '✅ Checklist',        tab: 'administracao',  sub: 'checklist' },
+  { id: 'whatsapp',       label: '📲 WhatsApp',         tab: 'administracao',  sub: 'whatsapp' },
+  { id: 'seguranca',      label: '🔐 Segurança',        tab: 'administracao',  sub: 'seguranca' },
+  { id: 'logs',           label: '📜 Logs',             tab: 'administracao',  sub: 'logs' },
+  { id: 'mapa',           label: '🗺️ Mapa',             tab: 'administracao',  sub: 'mapa' },
+  { id: 'online',         label: '🟢 Online',           tab: 'administracao',  sub: 'online' },
+  { id: 'sessoes',        label: '🔗 Sessões',          tab: 'administracao',  sub: 'sessoes' },
+  { id: 'usuarios',       label: '👥 Usuários',         tab: 'administracao',  sub: 'usuarios' },
+];
+
+// Perfis rápidos
+const RBAC_PERFIS = {
+  total:         RBAC_MODULOS.map(m => m.id),
+  operacional:   ['dashboard','reservas','calendario','checklist','whatsapp'],
+  financeiro:    ['dashboard','reservas','relatorios','despesas','financeiro'],
+  supervisor:    ['dashboard','reservas','calendario','relatorios','despesas','financeiro'],
+  somente_leitura: ['dashboard','reservas','calendario','relatorios'],
+  nenhum:        []
+};
+
+// Permissões do usuário atual em memória
+let _rbacPerms = null; // null = não carregado; [] = sem acesso; [...] = lista de ids
+let _rbacUsuarioDocId = null; // doc id do usuário atual no Firestore
+
+// Retorna true se o usuário atual tem permissão para o módulo
+function temPermissao(moduloId) {
+  // Admin principal sempre tem tudo
+  if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return true;
+  if (_rbacPerms === null) return false; // ainda carregando
+  return _rbacPerms.includes(moduloId);
+}
+
+// Carrega permissões do usuário logado do Firestore
+async function carregarPermissoesUsuario(email) {
+  if (!_db || !email) { _rbacPerms = []; return; }
+  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    _rbacPerms = RBAC_PERFIS.total; // admin principal: tudo
+    return;
+  }
+  try {
+    const snap = await _db.collection('usuarios').where('email', '==', email.toLowerCase()).limit(1).get();
+    if (!snap.empty) {
+      const data = snap.docs[0].data();
+      _rbacUsuarioDocId = snap.docs[0].id;
+      _rbacPerms = Array.isArray(data.permissoes) ? data.permissoes : RBAC_PERFIS.total;
+    } else {
+      _rbacPerms = [];
+    }
+  } catch(e) {
+    console.warn('RBAC: erro ao carregar permissões', e);
+    _rbacPerms = [];
+  }
+  aplicarRBACInterface();
+}
+
+// Aplica visibilidade dos menus e sub-menus conforme permissões
+function aplicarRBACInterface() {
+  if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return; // admin: não filtra nada
+
+  // Menus principais
+  document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
+    const tab = btn.dataset.tab;
+    const visivel = temPermissao(tab);
+    btn.style.display = visivel ? '' : 'none';
+  });
+
+  // Sub-menus de Administração
+  document.querySelectorAll('.adm-sub-btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    const match = onclick.match(/goSubTab\('([^']+)'\)/);
+    if (match) {
+      const sub = match[1];
+      btn.style.display = temPermissao(sub) ? '' : 'none';
+    }
+  });
+}
+
+// Guarda estado do modal de permissões
+let _permModalDocId = null;
+let _permModalEmail = null;
+
+function abrirModalPermissoes(docId, email, permissoesAtuais) {
+  _permModalDocId = docId;
+  _permModalEmail = email;
+
+  // Info do usuário
+  document.getElementById('perm-user-info').innerHTML =
+    `👤 <strong>${email}</strong> — editando permissões de acesso`;
+
+  // Renderiza checkboxes
+  const cont = document.getElementById('perm-checkboxes');
+  const perms = Array.isArray(permissoesAtuais) ? permissoesAtuais : RBAC_PERFIS.total;
+
+  cont.innerHTML = RBAC_MODULOS.map(m => {
+    const checked = perms.includes(m.id) ? 'checked' : '';
+    const isSubTab = m.sub !== null;
+    return `<label style="
+      display:flex;align-items:center;gap:10px;padding:10px 12px;
+      border-radius:10px;border:1px solid var(--border);
+      background:var(--surface);cursor:pointer;transition:all 0.15s;
+      ${isSubTab ? 'margin-left:12px;opacity:0.9;' : 'font-weight:600;'}
+    " onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <input type="checkbox" id="perm_${m.id}" value="${m.id}" ${checked}
+        style="width:16px;height:16px;accent-color:var(--cyan);cursor:pointer;flex-shrink:0">
+      <span style="font-size:0.83rem">${m.label}</span>
+    </label>`;
+  }).join('');
+
+  openM('m-permissoes');
+}
+
+function aplicarPerfil(perfil) {
+  const perms = RBAC_PERFIS[perfil] || [];
+  document.querySelectorAll('#perm-checkboxes input[type="checkbox"]').forEach(cb => {
+    cb.checked = perms.includes(cb.value);
+  });
+}
+
+async function salvarPermissoes() {
+  if (!_db || !_permModalDocId) { toast('⚠️ Erro interno'); return; }
+  const perms = Array.from(document.querySelectorAll('#perm-checkboxes input[type="checkbox"]:checked'))
+    .map(cb => cb.value);
+
+  try {
+    await _db.collection('usuarios').doc(_permModalDocId).update({ permissoes: perms });
+    registrarLogAcesso('PERMISSOES_ALTERADAS', _currentUserEmail || ADMIN_EMAIL,
+      `Permissões de ${_permModalEmail}: [${perms.join(', ')}]`);
+    closeM('m-permissoes');
+    toast(`✅ Permissões salvas para ${_permModalEmail}`);
+    carregarUsuarios();
+  } catch(e) {
+    toast('❌ Erro ao salvar: ' + (e.message || 'Tente novamente'));
+  }
+}
+
+// Override de goAdminTab para verificar permissões
+const _goAdminTabOriginal = goAdminTab;
+goAdminTab = function(tab) {
+  if (!temPermissao(tab)) {
+    toast('🚫 Você não tem acesso a este módulo');
+    return;
+  }
+  _goAdminTabOriginal(tab);
+};
+
+// Override de goSubTab para verificar permissões de sub-tabs
+const _goSubTabOriginal = goSubTab;
+goSubTab = function(sub) {
+  // Sub-tabs de administração têm permissão própria
+  const moduloSub = RBAC_MODULOS.find(m => m.sub === sub);
+  if (moduloSub && !temPermissao(sub)) {
+    toast('🚫 Você não tem acesso a este módulo');
+    return;
+  }
+  _goSubTabOriginal(sub);
+};
+
+// Atualiza renderUsuariosTable para incluir coluna Permissões e botão Editar permissões
+const _renderUsuariosTableOriginal = renderUsuariosTable;
+renderUsuariosTable = function(usuarios) {
+  const tbody = document.getElementById('usuarios-tbody');
+  if (!tbody) return;
+  if (!usuarios.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum usuário cadastrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML = usuarios.map(u => {
+    const tipoColor = u.email === ADMIN_EMAIL ? 'var(--cyan)' : (u.tipo === 'admin' ? 'var(--purple)' : 'var(--text-l)');
+    const tipoLabel = u.email === ADMIN_EMAIL ? '👑 Admin Principal' : (u.tipo === 'admin' ? '🔐 Admin' : '👤 Comum');
+    const statusBadge = u.status === 'ativo'
+      ? '<span class="badge b-ok">✅ Ativo</span>'
+      : '<span class="badge b-err">❌ Inativo</span>';
+    const data = u.criadoEm ? new Date(u.criadoEm).toLocaleDateString('pt-BR') : '—';
+    const perms = Array.isArray(u.permissoes) ? u.permissoes : null;
+    const nPerms = perms ? perms.length : RBAC_MODULOS.length;
+    const permLabel = u.email === ADMIN_EMAIL
+      ? '<span style="color:var(--cyan);font-size:0.75rem">✅ Acesso total</span>'
+      : `<span style="font-size:0.75rem;color:var(--text-l)">${nPerms}/${RBAC_MODULOS.length} módulos</span>`;
+    const isAdmin = u.email === ADMIN_EMAIL;
+    return `<tr>
+      <td style="font-size:0.84rem"><strong>${escapeHTML(u.email || '—')}</strong></td>
+      <td><span style="color:${tipoColor};font-weight:700;font-size:0.78rem">${tipoLabel}</span></td>
+      <td style="font-size:0.78rem;color:var(--text-l)">${data}</td>
+      <td>${statusBadge}</td>
+      <td>${permLabel}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px">
+        ${!isAdmin ? `<button class="btn btn-sm btn-info" style="font-size:0.7rem;background:rgba(167,139,250,0.1);color:var(--purple);border:1px solid rgba(167,139,250,0.3)" onclick="abrirModalPermissoes('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}',${JSON.stringify(u.permissoes||null)})">🔐 Permissões</button>` : ''}
+        <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>
+        ${!isAdmin ? `
+          <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>
+          <button class="btn btn-sm btn-danger" style="font-size:0.7rem" onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>
+        ` : '<span style="font-size:0.7rem;color:var(--text-l)">🔒 Admin principal</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+};
+
+// Integração com o login: carrega permissões após autenticar
+const _doLoginRBACHook = async function(email) {
+  _rbacPerms = null;
+  await carregarPermissoesUsuario(email);
+  aplicarRBACInterface();
+};
+
+// Também atualizar ADMIN_EMAIL para fabiocds@yahoo.com como principal
+// (Feito via Firestore: garantirUsuarioPadrao já cuida disso)
+
+// Hook no doLogout para limpar permissões
+const _doLogoutOriginal = doLogout;
+doLogout = function(motivo) {
+  _rbacPerms = null;
+  _rbacUsuarioDocId = null;
+  _doLogoutOriginal(motivo);
+};
 </script>
 <script>
 (function() {
