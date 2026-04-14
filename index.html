@@ -6418,26 +6418,31 @@ renderUsuariosTable = function(usuarios) {
       : `<span style="font-size:0.75rem;color:var(--text-l)">${nPerms}/${RBAC_MODULOS.length} módulos</span>`;
 
     // ── Regras de botões ──────────────────────────────────────────
-    // Admin principal  → apenas Reset senha (não pode excluir/alterar a si mesmo)
-    // Admin secundário → 🔐 Permissões + 🔑 Reset + 🚫 Desativar/Ativar + 🗑️ Excluir
-    // Usuário comum    → apenas 🔑 Reset senha
+    // Admin principal  → todos os botões (🔐 Permissões + 🔑 Reset + 🚫 Desativar + 🗑️ Excluir)
+    // Admin secundário → todos os botões
+    // Usuário comum    → 🔐 Permissões (bloqueado, só visual) + 🔑 Reset senha
     let acoes = '';
+    const btnPermissoes = isComum
+      ? `<button class="btn btn-sm" disabled title="Apenas administradores podem editar permissões"
+          style="font-size:0.7rem;background:rgba(255,255,255,0.03);color:var(--text-l);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:not-allowed;opacity:0.45">🔒 Permissões</button>`
+      : `<button class="btn btn-sm" style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer"
+          onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>`;
+
     if (isAdminPrincipal) {
-      acoes = `
-        <button class="btn btn-sm" style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer"
-          onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>
+      acoes = `${btnPermissoes}
         <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>
         <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
           onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>
         <button class="btn btn-sm btn-danger" style="font-size:0.7rem"
           onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>`;
     } else if (isComum) {
+      acoes = `${btnPermissoes}
+        <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>`;
+    } else {
       acoes = `<button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>`;
     } else {
       // Admin secundário
-      acoes = `
-        <button class="btn btn-sm" style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer"
-          onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>
+      acoes = `${btnPermissoes}
         <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>
         <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
           onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>
