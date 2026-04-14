@@ -196,12 +196,12 @@
 [data-theme="light"] .btn-danger { background:rgba(220,30,60,0.08); color:#b91c3c; border-color:rgba(220,30,60,0.2); }
 
 /* Forms */
-[data-theme="light"] .fg label { color:#4a5568; }
+[data-theme="light"] .fg label { color:#2d3748; font-weight:700; }
 [data-theme="light"] .fg input,
 [data-theme="light"] .fg select,
 [data-theme="light"] .fg textarea {
   background:#ffffff;
-  border-color:rgba(0,0,0,0.13);
+  border-color:rgba(0,0,0,0.15);
   color:#1a2332;
 }
 [data-theme="light"] .fg input:focus,
@@ -212,16 +212,17 @@
   background:#fff;
 }
 [data-theme="light"] .fg input::placeholder,
-[data-theme="light"] .fg textarea::placeholder { color:#a0aec0; }
+[data-theme="light"] .fg textarea::placeholder { color:#9aabb8; }
+[data-theme="light"] input[type="date"] { color:#1a2332; color-scheme:light; }
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.4); }
 [data-theme="light"] select {
   background:#ffffff;
   color:#1a2332;
-  border-color:rgba(0,0,0,0.12);
-
+  border-color:rgba(0,0,0,0.15);
 }
 [data-theme="light"] select option { background:#fff; color:#1a2332; }
-[data-theme="light"] .search-inp { background:#fff; color:#1a2332; border-color:rgba(0,0,0,0.11); }
-[data-theme="light"] .search-inp::placeholder { color:#a0aec0; }
+[data-theme="light"] .search-inp { background:#fff; color:#1a2332; border-color:rgba(0,0,0,0.13); }
+[data-theme="light"] .search-inp::placeholder { color:#9aabb8; }
 [data-theme="light"] .search-inp:focus { border-color:rgba(0,153,204,0.5); }
 
 /* Modal */
@@ -422,6 +423,67 @@ body{
 }
 h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:700;}
 input,select,textarea,button{font-family:inherit;}
+
+/* ============================================================ ADM SUB-NAV */
+.adm-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 22px;
+}
+.adm-sub-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-l);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.adm-sub-btn:hover:not(.active) {
+  background: rgba(0,212,255,0.07);
+  color: var(--cyan);
+  border-color: rgba(0,212,255,0.2);
+}
+.adm-sub-btn.active {
+  background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(167,139,250,0.12));
+  color: var(--cyan);
+  border-color: rgba(0,212,255,0.35);
+  box-shadow: 0 0 12px rgba(0,212,255,0.1);
+}
+[data-theme="light"] .adm-subnav {
+  background: rgba(255,255,255,0.9);
+  border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .adm-sub-btn { color: #4a5568; }
+[data-theme="light"] .adm-sub-btn:hover:not(.active) { background: rgba(0,140,200,0.07); color: #0099cc; }
+[data-theme="light"] .adm-sub-btn.active { background: rgba(0,153,204,0.1); color: #0077aa; border-color: rgba(0,153,204,0.3); }
+
+.adm-sub-content { display: none; }
+.adm-sub-content.active { display: block; }
+
+/* ============================================================ LEAFLET MAP FIX */
+.leaflet-container { z-index: 1; }
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+.leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+.leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { z-index: auto; }
+.leaflet-top, .leaflet-bottom { z-index: 2; }
+.leaflet-popup { z-index: 3; }
+
+/* Online pulse dot */
+@keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,0.7);}70%{box-shadow:0 0 0 6px rgba(0,255,136,0);} }
+.online-pulse { animation: pulse-green 1.4s infinite; }
 
 /* ============================================================ NOISE TEXTURE */
 body::before{
@@ -790,18 +852,19 @@ body::before{
 /* ============================================================ METRICS */
 .metrics{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
   gap:14px;margin-bottom:24px;
 }
 .metric{
   background:rgba(6,13,20,0.7);
   border-radius:var(--r2);
-  padding:20px;
+  padding:18px 16px 16px;
   border:1px solid var(--border);
   box-shadow:var(--sh);
   position:relative;overflow:hidden;
   transition:all 0.25s;
   backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;min-width:0;
 }
 .metric::after{
   content:'';position:absolute;
@@ -821,9 +884,10 @@ body::before{
 }
 .metric-val{
   font-family:'Syne',sans-serif;
-  font-size:clamp(1.25rem,2.8vw,1.7rem);font-weight:800;
-  color:#e8f4ff;line-height:1.1;margin-bottom:6px;
-  word-break:break-word;overflow-wrap:break-word;
+  font-size:clamp(0.9rem,1.7vw,1.3rem);font-weight:800;
+  color:#e8f4ff;line-height:1.25;margin-bottom:6px;
+  white-space:normal;overflow:visible;text-overflow:unset;
+  word-break:break-word;
 }
 .metric-sub{font-size:0.73rem;color:var(--green);font-weight:500;}
 .metric-sub.warn{color:var(--err);}
@@ -1299,6 +1363,82 @@ select{
 }
 select:focus{border-color:var(--border2);box-shadow:0 0 0 3px rgba(0,212,255,0.08);}
 select option{background:#060d14;color:#e8f4ff;}
+
+/* ============================================================
+   LIGHT MODE — Extended legibility overrides
+   ============================================================ */
+/* General inline selects/inputs outside .fg */
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  color: #1a2332 !important;
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.14);
+}
+[data-theme="light"] input[type="date"] {
+  color-scheme: light;
+  color: #1a2332 !important;
+}
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.3); }
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder { color: #9aabb8 !important; }
+[data-theme="light"] select option { background: #fff; color: #1a2332; }
+
+/* Metric cards in light mode */
+[data-theme="light"] .metric-val { color: #1a2332; }
+[data-theme="light"] .metric-lbl { color: #4a5568; font-weight: 700; }
+[data-theme="light"] .metric-sub { color: #276749; }
+[data-theme="light"] .metric-sub.warn { color: #c0392b; }
+
+/* Tables */
+[data-theme="light"] th { color: #1a2332; font-weight: 700; }
+[data-theme="light"] td { color: #2d3748; }
+[data-theme="light"] td strong { color: #1a2332; }
+
+/* Card headers */
+[data-theme="light"] .card-h h4 { color: #1a2332 !important; font-weight: 700; }
+[data-theme="light"] .card-h p   { color: #4a5568 !important; }
+[data-theme="light"] .empty      { color: #4a5568; }
+[data-theme="light"] .empty p    { color: #4a5568; }
+
+/* Bar/chart labels */
+[data-theme="light"] .bar-lbl         { color: #4a5568 !important; }
+[data-theme="light"] .fin-margem-lbl  { color: #2d3748; font-weight: 600; }
+
+/* Calendar */
+[data-theme="light"] .cal-month-lbl { color: #1a2332; }
+[data-theme="light"] .cal-day       { color: #2d3748; }
+[data-theme="light"] .cal-dn        { color: #4a5568; font-weight: 700; }
+
+/* Action menu */
+[data-theme="light"] .act-item         { color: #2d3748; }
+[data-theme="light"] .act-item:hover   { background: rgba(0,153,204,0.07); color: #0077aa; }
+[data-theme="light"] .act-item.red     { color: #b91c3c; }
+[data-theme="light"] .act-item.green   { color: #0a7c3e; }
+[data-theme="light"] .act-item.amber   { color: #92600a; }
+
+/* Despesas */
+[data-theme="light"] .desp-stat-lbl { color: #4a5568; font-weight: 600; }
+[data-theme="light"] .desp-stat-val { color: #1a2332; font-weight: 800; }
+[data-theme="light"] .desp-stat-sub { color: #4a5568; }
+
+/* Page titles and subs */
+[data-theme="light"] .page-title { color: #1a2332; font-weight: 800; }
+[data-theme="light"] .page-sub   { color: #4a5568; }
+
+/* Modal */
+[data-theme="light"] .modal-body { color: #2d3748; }
+[data-theme="light"] .o-row      { color: #2d3748; border-bottom-color: rgba(0,0,0,0.07); }
+
+/* Fin legend */
+[data-theme="light"] .fin-legend span { color: #4a5568 !important; }
+
+/* Search row inline selects */
+[data-theme="light"] .search-row select {
+  background: #ffffff;
+  color: #1a2332;
+  border-color: rgba(0,0,0,0.13);
+}
 </style>
 </head>
 <body>
@@ -1515,9 +1655,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <button class="admin-nav-btn" onclick="goAdminTab('relatorios')">💰 Relatórios</button>
       <button class="admin-nav-btn" onclick="goAdminTab('despesas')">💸 Despesas</button>
       <button class="admin-nav-btn" onclick="goAdminTab('financeiro')">📈 Financeiro</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('checklist')">✅ Checklist</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('whatsapp')">📲 WhatsApp</button>
-      <button class="admin-nav-btn" onclick="goAdminTab('seguranca')">🔐 Segurança</button>
+      <button class="admin-nav-btn" onclick="goAdminTab('administracao')">⚙️ Administração</button>
     </nav>
     <div class="admin-right">
       <span class="admin-user" style="display:flex;align-items:center;gap:6px">
@@ -1555,9 +1693,7 @@ select option{background:#060d14;color:#e8f4ff;}
     <button class="admin-nav-btn" onclick="goAdminTab('relatorios');toggleMobileMenu()">💰 Relatórios</button>
     <button class="admin-nav-btn" onclick="goAdminTab('despesas');toggleMobileMenu()">💸 Despesas</button>
     <button class="admin-nav-btn" onclick="goAdminTab('financeiro');toggleMobileMenu()">📈 Financeiro</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('checklist');toggleMobileMenu()">✅ Checklist</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('whatsapp');toggleMobileMenu()">📲 WhatsApp</button>
-    <button class="admin-nav-btn" onclick="goAdminTab('seguranca');toggleMobileMenu()">🔐 Segurança</button>
+    <button class="admin-nav-btn" onclick="goAdminTab('administracao');toggleMobileMenu()">⚙️ Administração</button>
   </div>
 
   <div class="admin-body">
@@ -1617,6 +1753,7 @@ select option{background:#060d14;color:#e8f4ff;}
             <th style="cursor:pointer;user-select:none;" onclick="sortReservas('nome')" id="th-nome">Cliente <span id="sort-nome-icon"></span></th>
             <th class="col-hide-mobile" style="cursor:pointer;user-select:none;" onclick="sortReservas('data')" id="th-data">Datas <span id="sort-data-icon"></span></th>
             <th style="cursor:pointer;user-select:none;" onclick="sortReservas('total')" id="th-total">Total <span id="sort-total-icon"></span></th>
+            <th class="col-hide-mobile">Sinal</th>
             <th>Pagto</th>
             <th style="cursor:pointer;user-select:none;" onclick="sortReservas('status')" id="th-status">Status <span id="sort-status-icon"></span></th>
             <th style="width:46px"></th>
@@ -1786,8 +1923,23 @@ select option{background:#060d14;color:#e8f4ff;}
       </div>
     </div>
 
-    <!-- ===== CHECKLIST ===== -->
-    <div id="tab-checklist" class="admin-tab-content">
+    <!-- ===== ADMINISTRAÇÃO (container com sub-abas) ===== -->
+    <div id="tab-administracao" class="admin-tab-content">
+
+      <!-- Sub-nav de Administração -->
+      <div class="adm-subnav" id="adm-subnav">
+        <button class="adm-sub-btn active" onclick="goSubTab('checklist')">✅ Checklist</button>
+        <button class="adm-sub-btn" onclick="goSubTab('whatsapp')">📲 WhatsApp</button>
+        <button class="adm-sub-btn" onclick="goSubTab('seguranca')">🔐 Segurança</button>
+        <button class="adm-sub-btn" onclick="goSubTab('logs')">📜 Logs</button>
+        <button class="adm-sub-btn" onclick="goSubTab('mapa')">🗺️ Mapa</button>
+        <button class="adm-sub-btn" onclick="goSubTab('online')">🟢 Online</button>
+        <button class="adm-sub-btn" onclick="goSubTab('sessoes')">🔗 Sessões</button>
+        <button class="adm-sub-btn" onclick="goSubTab('usuarios')">👥 Usuários</button>
+      </div>
+
+      <!-- ===== SUB: CHECKLIST ===== -->
+      <div id="subtab-checklist" class="adm-sub-content active">
       <div class="page-title">Checklist</div>
       <div class="page-sub">Tarefas operacionais recorrentes</div>
       <div class="grid-1-1">
@@ -1809,16 +1961,12 @@ select option{background:#060d14;color:#e8f4ff;}
           <div class="card-b" id="cl-stats"></div>
         </div>
       </div>
-    </div>
-
-    <!-- ===== WHATSAPP ===== -->
-    <div id="tab-whatsapp" class="admin-tab-content">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-        <div><div class="page-title">📲 WhatsApp</div><div class="page-sub">Central de mensagens e automações</div></div>
-        <button class="btn" style="background:#25D366;color:#fff;border:none" onclick="verificarLembretes30Dias()">🔁 Verificar Lembretes de Retorno</button>
       </div>
 
-      <!-- STATUS CARDS -->
+      <!-- ===== SUB: WHATSAPP ===== -->
+      <div id="subtab-whatsapp" class="adm-sub-content">
+      <div class="page-title">📲 WhatsApp</div>
+      <div class="page-sub">Comunicação com clientes</div>
       <div class="metrics" style="margin-bottom:20px" id="wa-metrics"></div>
 
       <!-- LEMBRETES AUTOMÁTICOS -->
@@ -1877,10 +2025,10 @@ select option{background:#060d14;color:#e8f4ff;}
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- ===== SEGURANÇA ===== -->
-    <div id="tab-seguranca" class="admin-tab-content">
+      <!-- ===== SUB: SEGURANÇA ===== -->
+      <div id="subtab-seguranca" class="adm-sub-content">
       <div class="page-title">🔐 Segurança</div>
       <div class="page-sub">Auditoria · Autenticação · Proteções ativas</div>
 
@@ -1952,7 +2100,7 @@ select option{background:#060d14;color:#e8f4ff;}
         </div>
       </div>
 
-      <!-- LOGS DE ACESSO -->
+      <!-- LOGS DE ACESSO (segurança legacy) -->
       <div class="card">
         <div class="card-h"><div class="card-icon">📋</div><div><h4>Log de Acessos e Eventos</h4><p>Últimas 50 entradas</p></div>
           <button class="btn btn-sm btn-out" style="margin-left:auto" onclick="renderLogSeguranca()">🔄</button>
@@ -1963,7 +2111,134 @@ select option{background:#060d14;color:#e8f4ff;}
           </table>
         </div>
       </div>
-    </div>
+      </div>
+
+      <!-- ===== SUB: LOGS ===== -->
+      <div id="subtab-logs" class="adm-sub-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+        <div><div class="page-title">📜 Logs de Acesso</div><div class="page-sub">Todos os eventos persistidos no Firebase</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-out btn-sm" onclick="carregarLogs()">🔄 Atualizar</button>
+          <button class="btn btn-out btn-sm" onclick="exportarLogs()">📥 Exportar</button>
+        </div>
+      </div>
+      <div class="search-row" style="flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <input class="search-inp" id="log-filter-email" placeholder="🔍 Filtrar por e-mail..." oninput="filtrarLogs()" style="min-width:180px">
+        <select id="log-filter-evento" onchange="filtrarLogs()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:0.84rem">
+          <option value="">Todos os eventos</option>
+          <option value="LOGIN_OK">LOGIN_OK</option>
+          <option value="LOGIN_ERRO">LOGIN_ERRO</option>
+          <option value="LOGOUT">LOGOUT</option>
+          <option value="INATIVIDADE">INATIVIDADE</option>
+          <option value="NOVA_SESSAO">NOVA_SESSAO</option>
+          <option value="SESSAO_ENCERRADA">SESSAO_ENCERRADA</option>
+        </select>
+        <input type="date" id="log-filter-data" onchange="filtrarLogs()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:0.84rem">
+        <select id="log-filter-dispositivo" onchange="filtrarLogs()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:0.84rem">
+          <option value="">Todos os dispositivos</option>
+          <option value="Desktop">Desktop</option>
+          <option value="Mobile">Mobile</option>
+          <option value="Tablet">Tablet</option>
+        </select>
+      </div>
+      <div class="metrics" id="logs-metrics" style="margin-bottom:18px"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Data/Hora</th><th>Evento</th><th>E-mail</th><th>Localização</th><th>Dispositivo</th><th>IP</th>
+          </tr></thead>
+          <tbody id="logs-tbody"></tbody>
+        </table>
+      </div>
+      <div id="logs-loading" style="text-align:center;padding:24px;color:var(--text-l);display:none">⏳ Carregando logs...</div>
+      </div>
+
+      <!-- ===== SUB: MAPA ===== -->
+      <div id="subtab-mapa" class="adm-sub-content">
+      <div class="page-title">🗺️ Mapa de Acessos</div>
+      <div class="page-sub">Visualização geográfica dos últimos acessos</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-out btn-sm" onclick="carregarMapa()">🔄 Atualizar mapa</button>
+        <select id="mapa-filter-evento" onchange="carregarMapa()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:0.84rem">
+          <option value="">Todos os eventos</option>
+          <option value="LOGIN_OK">LOGIN_OK</option>
+          <option value="LOGOUT">LOGOUT</option>
+          <option value="INATIVIDADE">INATIVIDADE</option>
+        </select>
+      </div>
+      <div class="card" style="margin-bottom:18px">
+        <div id="mapa-leaflet" style="height:420px;border-radius:12px;overflow:hidden;"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-icon">📍</div><div><h4>Últimos Acessos no Mapa</h4></div></div>
+        <div class="card-b" id="mapa-lista"></div>
+      </div>
+      </div>
+
+      <!-- ===== SUB: ONLINE ===== -->
+      <div id="subtab-online" class="adm-sub-content">
+      <div class="page-title">🟢 Usuários Online</div>
+      <div class="page-sub">Monitoramento em tempo real de usuários ativos</div>
+      <div class="metrics" style="margin-bottom:18px">
+        <div class="metric"><div class="metric-icon">🟢</div><div class="metric-lbl">Online agora</div><div class="metric-val" id="online-count" style="color:var(--green)">—</div><div class="metric-sub">últimos 2 min</div></div>
+        <div class="metric"><div class="metric-icon">📊</div><div class="metric-lbl">Acessos hoje</div><div class="metric-val" id="online-hoje">—</div><div class="metric-sub">logins registrados</div></div>
+        <div class="metric"><div class="metric-icon">⏱️</div><div class="metric-lbl">Sessões ativas</div><div class="metric-val" id="online-sessoes">—</div><div class="metric-sub">em andamento</div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-icon">👁️</div><div><h4>Usuários Ativos</h4><p>Atividade nos últimos 2 minutos</p></div>
+          <button class="btn btn-sm btn-out" style="margin-left:auto" onclick="renderOnlineUsers()">🔄</button>
+        </div>
+        <div class="card-b" id="online-lista">
+          <div class="empty"><div class="empty-icon">🟢</div><p>Nenhum usuário online no momento</p></div>
+        </div>
+      </div>
+      </div>
+
+      <!-- ===== SUB: SESSÕES ===== -->
+      <div id="subtab-sessoes" class="adm-sub-content">
+      <div class="page-title">🔗 Controle de Sessões</div>
+      <div class="page-sub">Sessões simultâneas por usuário</div>
+      <div class="metrics" style="margin-bottom:18px">
+        <div class="metric"><div class="metric-icon">🔗</div><div class="metric-lbl">Sessões ativas</div><div class="metric-val" id="sessoes-count" style="color:var(--cyan)">—</div><div class="metric-sub">total geral</div></div>
+        <div class="metric"><div class="metric-icon">⚠️</div><div class="metric-lbl">Multi-sessão</div><div class="metric-val" id="sessoes-multi" style="color:var(--amber)">—</div><div class="metric-sub">usuários c/ 2+ sessões</div></div>
+        <div class="metric"><div class="metric-icon">🌍</div><div class="metric-lbl">Países distintos</div><div class="metric-val" id="sessoes-paises">—</div><div class="metric-sub">nesta sessão</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-out btn-sm" onclick="carregarSessoes()">🔄 Atualizar</button>
+        <button class="btn btn-danger btn-sm" onclick="encerrarTodasSessoes()" style="background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)">⚠️ Encerrar todas</button>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-icon">🔗</div><div><h4>Sessões Ativas</h4></div></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Usuário</th><th>Dispositivo</th><th>Localização</th><th>Último ping</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="sessoes-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      </div>
+
+      <!-- ===== SUB: USUÁRIOS ===== -->
+      <div id="subtab-usuarios" class="adm-sub-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+        <div><div class="page-title">👥 Gestão de Usuários</div><div class="page-sub">Firebase Authentication — apenas admins</div></div>
+        <button class="btn btn-gold" onclick="abrirModalNovoUsuario()">+ Novo usuário</button>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-icon">👥</div><div><h4>Usuários Cadastrados</h4></div>
+          <button class="btn btn-sm btn-out" style="margin-left:auto" onclick="carregarUsuarios()">🔄</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>E-mail</th><th>Tipo</th><th>Criado em</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="usuarios-tbody"></tbody>
+          </table>
+        </div>
+        <div id="usuarios-loading" style="text-align:center;padding:24px;color:var(--text-l);display:none">⏳ Carregando usuários...</div>
+      </div>
+      </div>
+
+    </div><!-- /tab-administracao -->
 
   </div><!-- /admin-body -->
 </div>
@@ -2233,6 +2508,32 @@ select option{background:#060d14;color:#e8f4ff;}
   </div>
 </div>
 
+<!-- Modal: Novo Usuário -->
+<div class="modal-bg" id="m-novo-usuario">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-h"><h3>👤 Novo Usuário</h3><button class="modal-close" onclick="closeM('m-novo-usuario')">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label>E-mail *</label><input type="email" id="nu-email" placeholder="usuario@email.com"></div>
+      <div class="fg"><label>Senha *</label>
+        <div style="position:relative">
+          <input type="password" id="nu-senha" placeholder="Mínimo 6 caracteres" style="padding-right:40px">
+          <button type="button" onclick="toggleSenha('nu-senha',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-l);font-size:1rem;padding:4px;">👁</button>
+        </div>
+      </div>
+      <div class="fg"><label>Tipo de usuário</label>
+        <select id="nu-tipo">
+          <option value="admin">Admin</option>
+          <option value="comum">Comum</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-out" onclick="closeM('m-novo-usuario')">Cancelar</button>
+      <button class="btn btn-gold" onclick="criarNovoUsuario()">✅ Criar usuário</button>
+    </div>
+  </div>
+</div>
+
 <!-- WhatsApp FAB -->
 <button class="wa-fab" onclick="abrirWhatsApp()">
   <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -2261,6 +2562,10 @@ try { emailjs.init(EMAILJS_KEY); _emailJsReady = true; } catch(e){}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 // ================================================================
 // FIREBASE CONFIG — Projeto Bela Vista
@@ -2272,11 +2577,16 @@ const FIREBASE_CONFIG = {
   storageBucket: "bela-vista-35500.firebasestorage.app",
   messagingSenderId: "294407564952",
   appId: "1:294407564952:web:32f4c0050ab041b37baaed",
-  measurementId: "G-RJ07QFV9G6"
+  measurementId: "G-RJ07QFV9G6",
+  databaseURL: "https://bela-vista-35500-default-rtdb.firebaseio.com"
 };
 
 let _db = null;
+let _auth = null;
+let _rtdb = null;
 let _unsubscribe = null;
+let _currentUserEmail = null;
+let _currentSessionId = null;
 
 function setFbStatus(status) {
   const dot = document.getElementById('fb-status-dot');
@@ -2295,12 +2605,16 @@ function setFbStatus(status) {
 try {
   firebase.initializeApp(FIREBASE_CONFIG);
   _db = firebase.firestore();
+  _auth = firebase.auth();
+  try { _rtdb = firebase.database(); } catch(e) { _rtdb = null; }
   try { firebase.analytics(); } catch(e) {}
   setFbStatus('connecting');
   console.log('✅ Firebase Bela Vista conectado!');
 } catch(e) {
   console.warn('Firebase erro:', e);
   _db = null;
+  _auth = null;
+  _rtdb = null;
   setFbStatus('offline');
 }
 
@@ -2367,6 +2681,12 @@ function addLogSeguranca(tipo, detalhe) {
     logs.unshift({ ts: new Date().toISOString(), tipo: tipo, detalhe: detalhe });
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
+  } catch(e) {}
+  // Também persiste no Firebase quando disponível
+  try {
+    if (window.registrarLogAcesso) {
+      window.registrarLogAcesso(tipo, ADMIN_EMAIL, detalhe);
+    }
   } catch(e) {}
 }
 function verificarLembretes30Dias(mostrarToast) { return []; }
@@ -2538,6 +2858,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDashboard(); renderReservas();
         if (tabAtiva === 'financeiro') renderFinanceiro();
         if (tabAtiva === 'despesas') renderDespesas();
+        const subAtiva = sessionStorage.getItem('vf_subtab') || '';
+        if (tabAtiva === 'administracao' && subAtiva) { try { goSubTab(subAtiva); } catch(e){} }
       }
     });
     // Listener de despesas no Firebase
@@ -2549,8 +2871,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restaura sessão se já estava logado
   if (lerSessao()) {
     showScreen('admin');
-    // Verifica lembretes pendentes ao restaurar sessão
-    setTimeout(function() {
+    _currentUserEmail = ADMIN_EMAIL;
+    // Reativar sessão Firebase ao restaurar
+    setTimeout(async function() {
+      try {
+        await iniciarSessaoFirebase(ADMIN_EMAIL);
+        iniciarControleInatividade();
+      } catch(e) {}
       try {
         var pendentes30 = verificarLembretes30Dias(false);
         if (pendentes30 && pendentes30.length > 0) {
@@ -2578,6 +2905,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDashboard(); renderReservas();
         if (tabAtiva === 'financeiro') renderFinanceiro();
         if (tabAtiva === 'despesas') renderDespesas();
+        const subAtiva = sessionStorage.getItem('vf_subtab') || '';
+        if (tabAtiva === 'administracao' && subAtiva) { try { goSubTab(subAtiva); } catch(e){} }
       }
     }
   }, 5000);
@@ -2594,7 +2923,13 @@ function showScreen(id) {
   document.getElementById('screen-'+id).classList.add('active');
   window.scrollTo({top: 0, behavior: 'instant'});
   if (id === 'admin') {
-    const tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
+    let tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
+    // Retrocompat: se tab salvo era um sub-tab de Administração, redireciona
+    const subTabs = ['checklist','whatsapp','seguranca','logs','mapa','online','sessoes','usuarios'];
+    if (subTabs.includes(tabSalva)) {
+      sessionStorage.setItem('vf_subtab', tabSalva);
+      tabSalva = 'administracao';
+    }
     goAdminTab(tabSalva);
   }
   if (id === 'public') renderPubCal();
@@ -2664,6 +2999,11 @@ function doLogin() {
     const tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
     goAdminTab(tabSalva);
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
+    // Registrar log no Firebase
+    registrarLogAcesso('LOGIN_OK', emailSanitized);
+    // Iniciar sessão e controle de inatividade
+    iniciarSessaoFirebase(emailSanitized);
+    iniciarControleInatividade();
     toast('✅ Bem-vindo, Administrador!');
     // Verifica lembretes pendentes
     setTimeout(function() {
@@ -2685,6 +3025,7 @@ function doLogin() {
     } else {
       try { sessionStorage.setItem(rateLimitKey, JSON.stringify(attempts)); } catch(e) {}
       addLogSeguranca('LOGIN_FALHOU', 'Email: ' + email + ' — tentativa ' + attempts.count + '/5');
+      registrarLogAcesso('LOGIN_ERRO', email, 'Tentativa ' + attempts.count + '/5');
       toast('❌ E-mail ou senha incorretos (' + attempts.count + '/5)');
     }
   }
@@ -2735,15 +3076,25 @@ function doReset() {
   toast('✅ Senha redefinida! Faça login.');
   showLoginState('login');
 }
-function doLogout() {
-  try { addLogSeguranca('LOGOUT', 'Sessão encerrada pelo usuário'); } catch(e) {}
+function doLogout(motivo) {
+  const reason = motivo || 'LOGOUT';
+  try { addLogSeguranca(reason, 'Sessão encerrada'); } catch(e) {}
+  registrarLogAcesso(reason, _currentUserEmail || ADMIN_EMAIL);
+  encerrarSessaoFirebase(_currentSessionId);
+  pararControleInatividade();
   salvarSessao(false);
+  _currentUserEmail = null;
+  _currentSessionId = null;
   fecharLogin();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-public').classList.add('active');
   window.scrollTo({top: 0, behavior: 'instant'});
   renderPubCal();
-  toast('👋 Sessão encerrada');
+  if (reason === 'INATIVIDADE') {
+    toast('⏰ Sessão expirada por inatividade');
+  } else {
+    toast('👋 Sessão encerrada');
+  }
 }
 function toggleSenha(id, btn) {
   const el = document.getElementById(id);
@@ -2765,10 +3116,52 @@ function goAdminTab(tab) {
   if (tab === 'calendario') renderAdmCal();
   if (tab === 'relatorios') renderRelatorios();
   if (tab === 'despesas') renderDespesas();
-  if (tab === 'checklist') { carregarChecklistFB(); renderChecklist(); }
   if (tab === 'financeiro') renderFinanceiro();
-  if (tab === 'whatsapp') renderWhatsAppTab();
-  if (tab === 'seguranca') { renderSecurityMetrics(); renderLogSeguranca(); }
+  if (tab === 'administracao') {
+    // Restaura última sub-aba visitada
+    const lastSub = sessionStorage.getItem('vf_subtab') || 'checklist';
+    goSubTab(lastSub);
+  }
+}
+
+// ================================================================
+// SUB-TABS (dentro de Administração)
+// ================================================================
+// Mapeamento retroativo: tabs antigos → sub-tabs de Administração
+const _subTabsDeAdmin = ['checklist','whatsapp','seguranca','logs','mapa','online','sessoes','usuarios'];
+
+function goSubTab(sub) {
+  // Se tab-administracao não está ativo, ativar primeiro sem recursão
+  const parentTab = document.getElementById('tab-administracao');
+  if (parentTab && !parentTab.classList.contains('active')) {
+    // Ativa o tab principal sem chamar goSubTab de novo
+    document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-nav-btn').forEach(b => b.classList.remove('active'));
+    parentTab.classList.add('active');
+    document.querySelectorAll('.admin-nav-btn').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'administracao'")) b.classList.add('active');
+    });
+    try { sessionStorage.setItem('vf_tab', 'administracao'); } catch(e) {}
+  }
+  // Esconde todos os sub-tabs
+  document.querySelectorAll('.adm-sub-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.adm-sub-btn').forEach(b => b.classList.remove('active'));
+  // Ativa o sub-tab alvo
+  const subEl = document.getElementById('subtab-' + sub);
+  if (subEl) subEl.classList.add('active');
+  document.querySelectorAll('.adm-sub-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + sub + "'")) b.classList.add('active');
+  });
+  try { sessionStorage.setItem('vf_subtab', sub); } catch(e) {}
+  // Disparar render de cada sub-tab
+  if (sub === 'checklist') { try { carregarChecklistFB(); renderChecklist(); } catch(e){} }
+  if (sub === 'whatsapp')  { try { renderWhatsAppTab(); } catch(e){} }
+  if (sub === 'seguranca') { try { renderSecurityMetrics(); renderLogSeguranca(); } catch(e){} }
+  if (sub === 'logs')      { try { carregarLogs(); } catch(e){} }
+  if (sub === 'mapa')      { try { carregarMapa(); } catch(e){} }
+  if (sub === 'online')    { try { renderOnlineUsers(); } catch(e){} }
+  if (sub === 'sessoes')   { try { carregarSessoes(); } catch(e){} }
+  if (sub === 'usuarios')  { try { carregarUsuarios(); } catch(e){} }
 }
 function toggleMobileMenu() {
   document.getElementById('mobile-nav').classList.toggle('open');
@@ -2863,7 +3256,7 @@ function renderReservas(filterTxt='', filterStatus='') {
     const matchS = !filterStatus || r.status===filterStatus;
     return matchT && matchS;
   });
-  if (!list.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-l)">Nenhuma reserva encontrada</td></tr>'; return; }
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-l)">Nenhuma reserva encontrada</td></tr>'; return; }
   if (_resSortCol) {
     list.sort((a, b) => {
       let va, vb;
@@ -2880,16 +3273,20 @@ function renderReservas(filterTxt='', filterStatus='') {
   }
   list.forEach(r => {
     const datas = allDatasReserva(r);
-    // Each date on its own line when there are multiple dates
     const datasStr = datas.length > 1
       ? datas.map(d => fmtDate(d)).join('<br>')
       : (datas.length === 1 ? fmtDate(datas[0]) : '—');
+    const sinalVal = Number(r.sinal) || 0;
+    const sinalColor = sinalVal > 0
+      ? (r.pagamento === 'pago' ? 'color:var(--ok)' : 'color:var(--amber)')
+      : 'color:var(--text-l)';
     const tr = document.createElement('tr');
     tr.innerHTML=`
       <td><strong>${r.codigo}</strong></td>
       <td><strong>${r.nome}</strong></td>
       <td class="col-hide-mobile" style="font-size:0.78rem;max-width:130px;line-height:1.7">${datasStr}</td>
-      <td><strong>R$ ${formatBRL(r.total)}</strong></td>
+      <td style="white-space:nowrap"><strong>R$ ${formatBRL(r.total)}</strong></td>
+      <td class="col-hide-mobile" style="white-space:nowrap;${sinalColor};font-weight:600">${sinalVal > 0 ? 'R$ '+formatBRL(sinalVal) : '—'}</td>
       <td>${pBadge(r.pagamento)}</td>
       <td>${sBadge(r.status)}</td>
       <td style="text-align:center;padding:8px;">
@@ -2910,21 +3307,26 @@ function renderReservas(filterTxt='', filterStatus='') {
   });
   // ── Total footer row ──
   const ativas = list.filter(r => r.status !== 'cancelada');
-  const totalGeral = ativas.reduce((s, r) => s + (Number(r.total) || 0), 0);
-  const totalPago  = ativas.filter(r => r.pagamento === 'pago').reduce((s, r) => s + (Number(r.total) || 0), 0);
-  const totalPend  = ativas.filter(r => r.pagamento === 'pendente').reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const totalGeral  = ativas.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const totalSinal  = ativas.reduce((s, r) => s + (Number(r.sinal) || 0), 0);
+  // "Já recebido": soma dos totais das reservas pagas
+  const jaRecebido  = ativas.filter(r => r.pagamento === 'pago').reduce((s, r) => s + (Number(r.total) || 0), 0)
+                    + ativas.filter(r => r.pagamento === 'pendente').reduce((s, r) => s + (Number(r.sinal) || 0), 0);
+  // "A receber": para pendentes, é total − sinal (o saldo ainda não pago)
+  const aReceber    = ativas.filter(r => r.pagamento === 'pendente').reduce((s, r) => s + Math.max(0, (Number(r.total)||0) - (Number(r.sinal)||0)), 0);
   const trTot = document.createElement('tr');
   trTot.style.cssText = 'background:rgba(0,212,255,0.05);border-top:2px solid rgba(0,212,255,0.2);';
   trTot.innerHTML = `
     <td colspan="3" style="padding:12px 14px;font-weight:700;font-size:0.8rem;color:var(--dark)">TOTAL (${ativas.length} reserva${ativas.length !== 1 ? 's' : ''} ativa${ativas.length !== 1 ? 's' : ''})</td>
-    <td style="padding:12px 14px;font-weight:800;font-size:0.92rem;color:var(--cyan)">R$ ${formatBRL(totalGeral)}</td>
-    <td style="padding:12px 14px;font-size:0.78rem;color:var(--text-l)">
-      <div style="display:flex;flex-wrap:wrap;gap:4px 10px;">
-        <span>✅ <strong style="color:var(--ok)">R$ ${formatBRL(totalPago)}</strong></span>
-        <span>⏳ <strong style="color:var(--amber)">R$ ${formatBRL(totalPend)}</strong></span>
+    <td style="padding:12px 14px;font-weight:800;font-size:0.92rem;color:var(--cyan);white-space:nowrap">R$ ${formatBRL(totalGeral)}</td>
+    <td class="col-hide-mobile" style="padding:12px 14px;font-weight:700;font-size:0.82rem;color:var(--amber);white-space:nowrap">R$ ${formatBRL(totalSinal)}</td>
+    <td colspan="2" style="padding:12px 14px;font-size:0.78rem;">
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+        <span style="white-space:nowrap">✅ <strong style="color:var(--ok)">R$ ${formatBRL(jaRecebido)}</strong></span>
+        <span style="white-space:nowrap">⏳ <strong style="color:var(--amber)">R$ ${formatBRL(aReceber)}</strong></span>
       </div>
     </td>
-    <td colspan="2"></td>`;
+    <td></td>`;
   tbody.appendChild(trTot);
 }
 function filtrarReservas(v){renderReservas(v, document.getElementById('res-filter')?.value||'');}
@@ -3188,28 +3590,71 @@ function abrirDetalhe(codigo) {
 // ================================================================
 function renderDashboard() {
   const ativas = reservas.filter(r=>r.status!=='cancelada');
-  const faturado = ativas.reduce((s,r)=>s+(r.pagamento==='pago'?r.sinal:0),0);
-  const previsto = ativas.reduce((s,r)=>s+r.total,0);
+  // "Já recebido" = total das pagas + sinal das pendentes
+  const recebido = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0)
+                 + ativas.filter(r=>r.pagamento==='pendente').reduce((s,r)=>s+(Number(r.sinal)||0),0);
+  // "A receber" = saldo pendente (total − sinal) das reservas não pagas
+  const aReceber = ativas.filter(r=>r.pagamento==='pendente').reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0);
+  const previsto = ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
   const pendentes = ativas.filter(r=>r.pagamento==='pendente').length;
-  const canceladas = reservas.filter(r=>r.status==='cancelada').length;
-  const recebido = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
+  const despAno = despesas.filter(d=>d.data&&d.data.startsWith(String(new Date().getFullYear()))).reduce((s,d)=>s+(Number(d.valor)||0),0);
+  const nDespAno = despesas.filter(d=>d.data&&d.data.startsWith(String(new Date().getFullYear()))).length;
   var waLembretesPend = reservas.filter(function(r){
     if(r.status==='cancelada'||r.lembrete_1_mes_enviado||r.optin_wa===false||(!r.whatsapp&&!r.tel)) return false;
     var d=r.data_reserva||r.criadoEm; if(!d) return false;
     return Math.floor((Date.now()-new Date(d+'T00:00:00'))/(864e5))>=30;
   }).length;
+  const fmtM = v => '<span style="font-size:clamp(0.95rem,1.8vw,1.3rem);font-family:\'Syne\',sans-serif;font-weight:800;word-break:break-word">R$ '+formatBRL(v)+'</span>';
   document.getElementById('dash-metrics').innerHTML =
-    '<div class="metric"><div class="metric-icon">📋</div><div class="metric-lbl">Total de reservas</div><div class="metric-val">'+reservas.length+'</div><div class="metric-sub">'+ativas.length+' ativas</div></div>' +
-    '<div class="metric"><div class="metric-icon">✅</div><div class="metric-lbl">Já recebido</div><div class="metric-val" style="color:var(--ok)">R$ '+fmtK(recebido)+'</div><div class="metric-sub" style="color:var(--ok)">'+ativas.filter(function(r){return r.pagamento==='pago';}).length+' paga(s)</div></div>' +
-    '<div class="metric"><div class="metric-icon">📈</div><div class="metric-lbl">Receita prevista</div><div class="metric-val">R$ '+fmtK(previsto)+'</div><div class="metric-sub">Total confirmado</div></div>' +
-    '<div class="metric"><div class="metric-icon">💸</div><div class="metric-lbl">Despesas anuais</div><div class="metric-val" style="color:var(--err)">R$ '+fmtK(despesas.filter(function(d){return d.data&&d.data.startsWith(String(new Date().getFullYear()));}).reduce(function(s,d){return s+(Number(d.valor)||0);},0))+'</div><div class="metric-sub warn">'+despesas.filter(function(d){return d.data&&d.data.startsWith(String(new Date().getFullYear()));}).length+' lançamento(s)</div></div>' +
-    '<div class="metric" style="cursor:pointer" onclick="goAdminTab(\'whatsapp\')"><div class="metric-icon">📲</div><div class="metric-lbl">Lembretes Pendentes</div><div class="metric-val" style="color:var(--purple)">'+waLembretesPend+'</div><div class="metric-sub">retorno 30 dias</div></div>' +
-    '<div class="metric"><div class="metric-icon">⏳</div><div class="metric-lbl">Pagtos pendentes</div><div class="metric-val">'+pendentes+'</div><div class="metric-sub '+(pendentes>0?'warn':'')+'">'+( pendentes>0?'⚠️ Requer atenção':'✅ Em dia')+'</div></div>' +
-    '<div class="metric"><div class="metric-icon">❌</div><div class="metric-lbl">Cancelamentos</div><div class="metric-val">'+canceladas+'</div><div class="metric-sub">Este período</div></div>';
+    `<div class="metric" style="--metric-accent:var(--cyan)">
+       <div class="metric-icon">📋</div>
+       <div class="metric-lbl">Total de reservas</div>
+       <div class="metric-val">${reservas.length}</div>
+       <div class="metric-sub">${ativas.length} ativas</div>
+     </div>` +
+    `<div class="metric" style="--metric-accent:var(--green)">
+       <div class="metric-icon">✅</div>
+       <div class="metric-lbl">Já recebido</div>
+       <div class="metric-val" style="color:var(--ok)">${fmtM(recebido)}</div>
+       <div class="metric-sub" style="color:var(--ok)">${ativas.filter(r=>r.pagamento==='pago').length} paga(s)</div>
+     </div>` +
+    `<div class="metric" style="--metric-accent:var(--amber)">
+       <div class="metric-icon">⏳</div>
+       <div class="metric-lbl">A receber (saldo)</div>
+       <div class="metric-val" style="color:var(--warn)">${fmtM(aReceber)}</div>
+       <div class="metric-sub" style="color:var(--warn)">${pendentes} pendente(s)</div>
+     </div>` +
+    `<div class="metric" style="--metric-accent:var(--cyan)">
+       <div class="metric-icon">📈</div>
+       <div class="metric-lbl">Receita prevista</div>
+       <div class="metric-val">${fmtM(previsto)}</div>
+       <div class="metric-sub">total confirmado</div>
+     </div>` +
+    `<div class="metric" style="--metric-accent:var(--err)">
+       <div class="metric-icon">💸</div>
+       <div class="metric-lbl">Despesas anuais</div>
+       <div class="metric-val" style="color:var(--err)">${fmtM(despAno)}</div>
+       <div class="metric-sub warn">${nDespAno} lançamento(s)</div>
+     </div>` +
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--purple)" onclick="goAdminTab('administracao')">
+       <div class="metric-icon">📲</div>
+       <div class="metric-lbl">Lembretes Pendentes</div>
+       <div class="metric-val" style="color:var(--purple)">${waLembretesPend}</div>
+       <div class="metric-sub">retorno 30 dias</div>
+     </div>` +
+    `<div class="metric" style="--metric-accent:${pendentes>0?'var(--amber)':'var(--green)'}">
+       <div class="metric-icon">💳</div>
+       <div class="metric-lbl">Pagtos pendentes</div>
+       <div class="metric-val" style="${pendentes>0?'color:var(--warn)':''}">${pendentes}</div>
+       <div class="metric-sub ${pendentes>0?'warn':''}">${pendentes>0?'⚠️ Requer atenção':'✅ Em dia'}</div>
+     </div>`;
   // Chart
   const ano = new Date().getFullYear();
   const rec = new Array(12).fill(0);
-  reservas.filter(r=>r.status!=='cancelada'&&r.data.startsWith(String(ano))).forEach(r=>{rec[parseInt(r.data.split('-')[1])-1]+=r.total;});
+  reservas.filter(r=>r.status!=='cancelada').forEach(r=>{
+    const ref = r.criadoEm || (allDatasReserva(r)[0]) || '';
+    if(ref.startsWith(String(ano))) rec[parseInt(ref.split('-')[1]||1)-1]+=(Number(r.total)||0);
+  });
   renderBarChartMoney('dash-bars','dash-bar-labels',rec,MC,150);
   // Próximos — compara apenas as datas (sem hora) para evitar bug de fuso
   const hoje = new Date();
@@ -3523,15 +3968,16 @@ function gerarCodigo() {
 function dateStr(y,m,d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 function fmtDate(str) { if(!str)return'—'; const[y,m,d]=str.split('-'); return`${d}/${m}/${y}`; }
 function formatBRL(v) {
-  const n = Number(v);
-  if (isNaN(n) || v == null) return '0,00';
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const n = Math.round(Number(v) || 0);
+  if (isNaN(n)) return '0';
+  // Manual pt-BR: separador de milhar = ponto
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
-// fmtK — sem casas decimais, para cards/métricas (igual ao dashboard)
+// fmtK — formato BRL completo para métricas e cards
 function fmtK(v) {
-  const n = Number(v);
-  if (isNaN(n) || v == null) return '0';
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const n = Math.round(Number(v) || 0);
+  if (isNaN(n)) return '0';
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 function mkEl(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
 function sBadge(s){const m={confirmada:'b-ok',pendente:'b-warn',cancelada:'b-err'};const l={confirmada:'✅ Confirmada',pendente:'⏳ Pendente',cancelada:'❌ Cancelada'};return`<span class="badge ${m[s]||''}">${l[s]||s}</span>`;}
@@ -4004,8 +4450,19 @@ function renderFinanceiro() {
     return ref.startsWith(prefixo) && r.status !== 'cancelada';
   });
   const receitaTotal = reservasPeriodo.reduce((s,r) => s + (Number(r.total)||0), 0);
-  const receitaPaga  = reservasPeriodo.filter(r => r.pagamento === 'pago').reduce((s,r) => s + (Number(r.total)||0), 0);
-  const receitaPend  = receitaTotal - receitaPaga;
+
+  // "Já recebido" = totais das pagas + sinais das pendentes
+  const receitaPaga = reservasPeriodo
+    .filter(r => r.pagamento === 'pago')
+    .reduce((s,r) => s + (Number(r.total)||0), 0)
+    + reservasPeriodo
+    .filter(r => r.pagamento === 'pendente')
+    .reduce((s,r) => s + (Number(r.sinal)||0), 0);
+
+  // "A receber" = para pendentes: total − sinal (saldo ainda não quitado)
+  const receitaPend = reservasPeriodo
+    .filter(r => r.pagamento === 'pendente')
+    .reduce((s,r) => s + Math.max(0, (Number(r.total)||0) - (Number(r.sinal)||0)), 0);
 
   // Despesas no período
   const despPeriodo = despesas.filter(d => (d.data||'').startsWith(prefixo));
@@ -4017,26 +4474,46 @@ function renderFinanceiro() {
   const margem      = receitaPaga > 0 ? Math.round((lucroReal / receitaPaga) * 100) : 0;
 
   // ── KPIs ──
+  const nPagas   = reservasPeriodo.filter(r=>r.pagamento==='pago').length;
+  const nPend    = reservasPeriodo.filter(r=>r.pagamento!=='pago').length;
+  const fmtFull  = v => '<span style="word-break:break-word;font-size:clamp(0.9rem,1.6vw,1.25rem);font-family:\'Syne\',sans-serif;font-weight:800">R$ ' + formatBRL(Math.abs(v)) + '</span>';
   document.getElementById('fin-kpis').innerHTML = `
-    <div class="metric"><div class="metric-icon">💰</div><div class="metric-lbl">Receita confirmada</div>
-      <div class="metric-val">${fmtR(receitaTotal)}</div>
-      <div class="metric-sub">${reservasPeriodo.length} reserva(s)</div></div>
-    <div class="metric"><div class="metric-icon">✅</div><div class="metric-lbl">Já recebido</div>
-      <div class="metric-val" style="color:var(--ok)">${fmtR(receitaPaga)}</div>
-      <div class="metric-sub">${reservasPeriodo.filter(r=>r.pagamento==='pago').length} paga(s)</div></div>
-    <div class="metric"><div class="metric-icon">⏳</div><div class="metric-lbl">A receber</div>
-      <div class="metric-val" style="color:var(--warn)">${fmtR(receitaPend)}</div>
-      <div class="metric-sub">${reservasPeriodo.filter(r=>r.pagamento!=='pago').length} pendente(s)</div></div>
-    <div class="metric"><div class="metric-icon">💸</div><div class="metric-lbl">Total despesas</div>
-      <div class="metric-val" style="color:var(--err)">${fmtR(totalDesp)}</div>
-      <div class="metric-sub">${despPeriodo.length} lançamento(s)</div></div>
-    <div class="metric">
-      <div class="metric-icon">${lucroReal>=0?'📈':'📉'}</div><div class="metric-lbl">Lucro líquido</div>
-      <div class="metric-val" style="color:${lucroReal>=0?'var(--ok)':'var(--err)'}">${lucroReal<0?'−':''}${fmtR(lucroReal)}</div>
-      <div class="metric-sub">Margem ${margem}%</div></div>
-    <div class="metric"><div class="metric-icon">🔮</div><div class="metric-lbl">Lucro projetado</div>
-      <div class="metric-val" style="color:${lucroProj>=0?'var(--ok)':'var(--err)'}">${lucroProj<0?'−':''}${fmtR(lucroProj)}</div>
-      <div class="metric-sub">Se tudo for pago</div></div>`;
+    <div class="metric" style="--metric-accent:var(--cyan)">
+      <div class="metric-icon">💰</div>
+      <div class="metric-lbl">Receita confirmada</div>
+      <div class="metric-val">${fmtFull(receitaTotal)}</div>
+      <div class="metric-sub">${reservasPeriodo.length} reserva(s)</div>
+    </div>
+    <div class="metric" style="--metric-accent:var(--green)">
+      <div class="metric-icon">✅</div>
+      <div class="metric-lbl">Já recebido</div>
+      <div class="metric-val" style="color:var(--ok)">${fmtFull(receitaPaga)}</div>
+      <div class="metric-sub" style="color:var(--ok)">${nPagas} paga(s) + sinais pendentes</div>
+    </div>
+    <div class="metric" style="--metric-accent:var(--amber)">
+      <div class="metric-icon">⏳</div>
+      <div class="metric-lbl">A receber (saldo)</div>
+      <div class="metric-val" style="color:var(--warn)">${fmtFull(receitaPend)}</div>
+      <div class="metric-sub" style="color:var(--warn)">${nPend} reserva(s) pendente(s)</div>
+    </div>
+    <div class="metric" style="--metric-accent:var(--err)">
+      <div class="metric-icon">💸</div>
+      <div class="metric-lbl">Total despesas</div>
+      <div class="metric-val" style="color:var(--err)">${fmtFull(totalDesp)}</div>
+      <div class="metric-sub warn">${despPeriodo.length} lançamento(s)</div>
+    </div>
+    <div class="metric" style="--metric-accent:${lucroReal>=0?'var(--green)':'var(--err)'}">
+      <div class="metric-icon">${lucroReal>=0?'📈':'📉'}</div>
+      <div class="metric-lbl">Lucro líquido</div>
+      <div class="metric-val" style="color:${lucroReal>=0?'var(--ok)':'var(--err)'}">${lucroReal<0?'<span style="word-break:break-word;font-size:clamp(0.9rem,1.6vw,1.25rem);font-family:\'Syne\',sans-serif;font-weight:800">− R$ '+formatBRL(Math.abs(lucroReal))+'</span>':fmtFull(lucroReal)}</div>
+      <div class="metric-sub" style="color:${lucroReal>=0?'var(--ok)':'var(--err)'}">Margem ${margem}%</div>
+    </div>
+    <div class="metric" style="--metric-accent:var(--purple)">
+      <div class="metric-icon">🔮</div>
+      <div class="metric-lbl">Lucro projetado</div>
+      <div class="metric-val" style="color:${lucroProj>=0?'var(--ok)':'var(--err)'}">${lucroProj<0?'<span style="word-break:break-word;font-size:clamp(0.9rem,1.6vw,1.25rem);font-family:\'Syne\',sans-serif;font-weight:800">− R$ '+formatBRL(Math.abs(lucroProj))+'</span>':fmtFull(lucroProj)}</div>
+      <div class="metric-sub">Se tudo for pago</div>
+    </div>`;
 
   // ── Gráfico 12 meses ──
   const mesesRec  = new Array(12).fill(0);
@@ -4564,6 +5041,12 @@ function addLogSeguranca(tipo, detalhe) {
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
   } catch(e){}
+  // Persiste no Firebase (assíncrono, não bloqueia)
+  try {
+    if (typeof registrarLogAcesso === 'function') {
+      registrarLogAcesso(tipo, _currentUserEmail || ADMIN_EMAIL, detalhe);
+    }
+  } catch(e) {}
 }
 
 function renderLogSeguranca() {
@@ -4707,8 +5190,591 @@ function escapeHTML(str) {
 }
 
 // ================================================================
-// ARCHERY BULLSEYE GAME
+// DETECÇÃO DE DISPOSITIVO
 // ================================================================
+function detectarDispositivo() {
+  const ua = navigator.userAgent;
+  if (/tablet|ipad|playbook|silk|(android(?!.*mobile))/i.test(ua)) return 'Tablet';
+  if (/mobile|android|iphone|ipod|blackberry|windows phone/i.test(ua)) return 'Mobile';
+  return 'Desktop';
+}
+
+// ================================================================
+// GEOLOCALIZAÇÃO POR IP
+// ================================================================
+let _geoCache = null;
+async function obterGeolocalizacao() {
+  if (_geoCache) return _geoCache;
+  const apis = [
+    async () => {
+      const r = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      return { ip: d.ip, cidade: d.city || '', regiao: d.region || '', pais: d.country_name || d.country || '', latitude: d.latitude || 0, longitude: d.longitude || 0 };
+    },
+    async () => {
+      const r = await fetch('https://ipinfo.io/json?token=', { signal: AbortSignal.timeout(4000) });
+      const d = await r.json();
+      const [lat, lon] = (d.loc || '0,0').split(',');
+      return { ip: d.ip, cidade: d.city || '', regiao: d.region || '', pais: d.country || '', latitude: parseFloat(lat) || 0, longitude: parseFloat(lon) || 0 };
+    }
+  ];
+  for (const api of apis) {
+    try {
+      const geo = await api();
+      _geoCache = geo;
+      return geo;
+    } catch(e) {}
+  }
+  return { ip: 'desconhecido', cidade: '', regiao: '', pais: '', latitude: 0, longitude: 0 };
+}
+
+// ================================================================
+// REGISTRAR LOG NO FIRESTORE
+// ================================================================
+async function registrarLogAcesso(tipoEvento, usuarioEmail, detalhes) {
+  if (!_db) return;
+  try {
+    const geo = await obterGeolocalizacao();
+    const log = {
+      data_hora: firebase.firestore.FieldValue.serverTimestamp(),
+      data_hora_iso: new Date().toISOString(),
+      tipo_evento: tipoEvento,
+      usuario_email: usuarioEmail || '',
+      ip_usuario: geo.ip,
+      cidade: geo.cidade,
+      regiao: geo.regiao,
+      pais: geo.pais,
+      latitude: geo.latitude,
+      longitude: geo.longitude,
+      tipo_dispositivo: detectarDispositivo(),
+      user_agent: navigator.userAgent.slice(0, 300),
+      detalhes: detalhes || ''
+    };
+    await _db.collection('logs_acesso').add(log);
+  } catch(e) { console.warn('Erro ao registrar log:', e); }
+}
+
+// ================================================================
+// CARREGAR E EXIBIR LOGS
+// ================================================================
+let _todosLogs = [];
+async function carregarLogs() {
+  if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  const el = document.getElementById('logs-loading');
+  if (el) el.style.display = 'block';
+  try {
+    const snap = await _db.collection('logs_acesso').orderBy('data_hora', 'desc').limit(200).get();
+    _todosLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    filtrarLogs();
+    renderLogsMetrics();
+  } catch(e) {
+    console.warn('Erro ao carregar logs:', e);
+    toast('❌ Erro ao carregar logs');
+  } finally {
+    if (el) el.style.display = 'none';
+  }
+}
+
+function filtrarLogs() {
+  const email = (document.getElementById('log-filter-email')?.value || '').toLowerCase();
+  const evento = document.getElementById('log-filter-evento')?.value || '';
+  const data = document.getElementById('log-filter-data')?.value || '';
+  const dispositivo = document.getElementById('log-filter-dispositivo')?.value || '';
+
+  let lista = _todosLogs.filter(l => {
+    if (email && !(l.usuario_email || '').toLowerCase().includes(email)) return false;
+    if (evento && l.tipo_evento !== evento) return false;
+    if (dispositivo && l.tipo_dispositivo !== dispositivo) return false;
+    if (data) {
+      const ts = l.data_hora_iso || '';
+      if (!ts.startsWith(data)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('logs-tbody');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum log encontrado</td></tr>';
+    return;
+  }
+  const corEvento = { LOGIN_OK: 'var(--green)', LOGIN_ERRO: 'var(--err)', LOGOUT: 'var(--text-l)', INATIVIDADE: 'var(--amber)', NOVA_SESSAO: 'var(--cyan)', SESSAO_ENCERRADA: 'var(--purple)' };
+  tbody.innerHTML = lista.slice(0, 100).map(l => {
+    const ts = l.data_hora_iso ? new Date(l.data_hora_iso) : null;
+    const tsStr = ts ? ts.toLocaleDateString('pt-BR') + ' ' + ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const cor = corEvento[l.tipo_evento] || 'var(--text-l)';
+    const locStr = [l.cidade, l.regiao, l.pais].filter(Boolean).join(', ') || '—';
+    const devIcon = l.tipo_dispositivo === 'Mobile' ? '📱' : l.tipo_dispositivo === 'Tablet' ? '📟' : '🖥️';
+    return `<tr>
+      <td style="font-size:0.75rem;white-space:nowrap;color:var(--text-l)">${tsStr}</td>
+      <td><span style="color:${cor};font-weight:700;font-size:0.76rem">${escapeHTML(l.tipo_evento || '')}</span></td>
+      <td style="font-size:0.78rem">${escapeHTML(l.usuario_email || '—')}</td>
+      <td style="font-size:0.75rem;color:var(--text-l)">${escapeHTML(locStr)}</td>
+      <td style="font-size:0.76rem">${devIcon} ${escapeHTML(l.tipo_dispositivo || '—')}</td>
+      <td style="font-size:0.72rem;color:var(--text-l);font-family:monospace">${escapeHTML(l.ip_usuario || '—')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderLogsMetrics() {
+  const el = document.getElementById('logs-metrics');
+  if (!el) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const logins = _todosLogs.filter(l => l.tipo_evento === 'LOGIN_OK').length;
+  const erros = _todosLogs.filter(l => l.tipo_evento === 'LOGIN_ERRO').length;
+  const hoje = _todosLogs.filter(l => (l.data_hora_iso || '').startsWith(today)).length;
+  const paises = new Set(_todosLogs.map(l => l.pais).filter(Boolean)).size;
+  el.innerHTML = `
+    <div class="metric"><div class="metric-icon">✅</div><div class="metric-lbl">Logins OK</div><div class="metric-val" style="color:var(--green)">${logins}</div></div>
+    <div class="metric"><div class="metric-icon">❌</div><div class="metric-lbl">Erros login</div><div class="metric-val" style="color:var(--err)">${erros}</div></div>
+    <div class="metric"><div class="metric-icon">📅</div><div class="metric-lbl">Eventos hoje</div><div class="metric-val">${hoje}</div></div>
+    <div class="metric"><div class="metric-icon">🌍</div><div class="metric-lbl">Países</div><div class="metric-val">${paises}</div></div>`;
+}
+
+function exportarLogs() {
+  if (!_todosLogs.length) { toast('⚠️ Nenhum log para exportar'); return; }
+  const header = 'Data/Hora,Evento,Email,IP,Cidade,Região,País,Dispositivo';
+  const rows = _todosLogs.map(l => [
+    l.data_hora_iso || '', l.tipo_evento || '', l.usuario_email || '',
+    l.ip_usuario || '', l.cidade || '', l.regiao || '', l.pais || '', l.tipo_dispositivo || ''
+  ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'logs_acesso.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('📥 Logs exportados!');
+}
+
+// ================================================================
+// MAPA GEOREFERENCIADO (LEAFLET)
+// ================================================================
+let _mapaInstance = null;
+async function carregarMapa() {
+  if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  const filtroEvento = document.getElementById('mapa-filter-evento')?.value || '';
+  try {
+    let q = _db.collection('logs_acesso').orderBy('data_hora', 'desc').limit(100);
+    const snap = await q.get();
+    let logs = snap.docs.map(d => d.data()).filter(l => l.latitude && l.longitude && (l.latitude !== 0 || l.longitude !== 0));
+    if (filtroEvento) logs = logs.filter(l => l.tipo_evento === filtroEvento);
+    renderMapaLeaflet(logs);
+    renderMapaLista(logs);
+  } catch(e) { console.warn('Erro mapa:', e); toast('❌ Erro ao carregar mapa'); }
+}
+
+function renderMapaLeaflet(logs) {
+  const container = document.getElementById('mapa-leaflet');
+  if (!container) return;
+  if (!window.L) { container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-l)">⚠️ Leaflet não carregado</div>'; return; }
+  if (_mapaInstance) { _mapaInstance.remove(); _mapaInstance = null; }
+  _mapaInstance = L.map('mapa-leaflet').setView([-15, -50], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 18
+  }).addTo(_mapaInstance);
+  const corEvento = { LOGIN_OK: '#00ff88', LOGIN_ERRO: '#ff4466', LOGOUT: '#a78bfa', INATIVIDADE: '#ffb040' };
+  logs.forEach(l => {
+    if (!l.latitude || !l.longitude) return;
+    const cor = corEvento[l.tipo_evento] || '#00d4ff';
+    const ts = l.data_hora_iso ? new Date(l.data_hora_iso).toLocaleString('pt-BR') : '—';
+    const circle = L.circleMarker([l.latitude, l.longitude], {
+      radius: 8, fillColor: cor, color: cor, weight: 2, opacity: 0.9, fillOpacity: 0.5
+    }).addTo(_mapaInstance);
+    circle.bindPopup(`<div style="font-size:13px;min-width:180px">
+      <strong>${l.usuario_email || '—'}</strong><br>
+      🕐 ${ts}<br>
+      📍 ${[l.cidade, l.pais].filter(Boolean).join(', ') || '—'}<br>
+      🏷️ ${l.tipo_evento || '—'}<br>
+      ${l.tipo_dispositivo ? '📱 ' + l.tipo_dispositivo : ''}
+    </div>`);
+  });
+}
+
+function renderMapaLista(logs) {
+  const el = document.getElementById('mapa-lista');
+  if (!el) return;
+  if (!logs.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🗺️</div><p>Nenhum acesso com localização</p></div>'; return; }
+  el.innerHTML = logs.slice(0, 20).map(l => {
+    const ts = l.data_hora_iso ? new Date(l.data_hora_iso).toLocaleString('pt-BR') : '—';
+    const locStr = [l.cidade, l.regiao, l.pais].filter(Boolean).join(', ') || '—';
+    const cor = { LOGIN_OK: 'var(--green)', LOGIN_ERRO: 'var(--err)', LOGOUT: 'var(--text-l)', INATIVIDADE: 'var(--amber)' };
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:600;font-size:0.84rem">${escapeHTML(l.usuario_email || '—')}</div>
+        <div style="font-size:0.74rem;color:var(--text-l)">📍 ${escapeHTML(locStr)} · ${ts}</div>
+      </div>
+      <span style="color:${cor[l.tipo_evento]||'var(--cyan)'};font-weight:700;font-size:0.76rem">${escapeHTML(l.tipo_evento || '—')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// CONTROLE DE INATIVIDADE (10 minutos)
+// ================================================================
+let _inactivityTimer = null;
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos
+
+function iniciarControleInatividade() {
+  pararControleInatividade();
+  const resetar = () => { clearTimeout(_inactivityTimer); _inactivityTimer = setTimeout(expirarPorInatividade, INACTIVITY_TIMEOUT); };
+  ['click', 'mousemove', 'keydown', 'scroll', 'touchstart', 'touchmove'].forEach(ev => document.addEventListener(ev, resetar, { passive: true }));
+  window._inactivityReset = resetar;
+  resetar();
+}
+
+function pararControleInatividade() {
+  if (_inactivityTimer) { clearTimeout(_inactivityTimer); _inactivityTimer = null; }
+  if (window._inactivityReset) {
+    ['click', 'mousemove', 'keydown', 'scroll', 'touchstart', 'touchmove'].forEach(ev => document.removeEventListener(ev, window._inactivityReset));
+    window._inactivityReset = null;
+  }
+}
+
+function expirarPorInatividade() {
+  if (!lerSessao()) return;
+  doLogout('INATIVIDADE');
+}
+
+// ================================================================
+// SESSÕES ATIVAS — FIRESTORE (coleção: sessoes_ativas)
+// ================================================================
+let _pingInterval = null;
+
+async function iniciarSessaoFirebase(email) {
+  if (!_db) return;
+  try {
+    const geo = await obterGeolocalizacao();
+    _currentUserEmail = email;
+    _currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const sessao = {
+      session_id: _currentSessionId,
+      usuario_email: email,
+      data_login: firebase.firestore.FieldValue.serverTimestamp(),
+      data_login_iso: new Date().toISOString(),
+      ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
+      ultimo_ping_iso: new Date().toISOString(),
+      ip_usuario: geo.ip,
+      cidade: geo.cidade,
+      regiao: geo.regiao,
+      pais: geo.pais,
+      latitude: geo.latitude,
+      longitude: geo.longitude,
+      tipo_dispositivo: detectarDispositivo(),
+      user_agent: navigator.userAgent.slice(0, 300),
+      status: 'online'
+    };
+    await _db.collection('sessoes_ativas').doc(_currentSessionId).set(sessao);
+    // Atualiza status online no RTDB se disponível
+    atualizarStatusOnline(email, true);
+    // Ping a cada 30s
+    if (_pingInterval) clearInterval(_pingInterval);
+    _pingInterval = setInterval(pingSessionAtiva, 30000);
+  } catch(e) { console.warn('Erro ao iniciar sessão Firebase:', e); }
+}
+
+async function pingSessionAtiva() {
+  if (!_db || !_currentSessionId) return;
+  try {
+    await _db.collection('sessoes_ativas').doc(_currentSessionId).update({
+      ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
+      ultimo_ping_iso: new Date().toISOString(),
+      status: 'online'
+    });
+    atualizarStatusOnline(_currentUserEmail, true);
+  } catch(e) {}
+}
+
+async function encerrarSessaoFirebase(sessionId) {
+  if (_pingInterval) { clearInterval(_pingInterval); _pingInterval = null; }
+  if (!_db) return;
+  try {
+    const id = sessionId || _currentSessionId;
+    if (id) {
+      await _db.collection('sessoes_ativas').doc(id).update({ status: 'offline', ultimo_ping_iso: new Date().toISOString() });
+    }
+    atualizarStatusOnline(_currentUserEmail, false);
+  } catch(e) {}
+}
+
+// ================================================================
+// STATUS ONLINE — REALTIME DATABASE
+// ================================================================
+function atualizarStatusOnline(email, online) {
+  if (!_rtdb || !email) return;
+  try {
+    const key = email.replace(/[.@]/g, '_');
+    _rtdb.ref('usuarios_online/' + key).set({
+      email: email,
+      online: online,
+      ultimo_acesso: firebase.database.ServerValue.TIMESTAMP,
+      tipo_dispositivo: detectarDispositivo()
+    });
+    if (online) {
+      _rtdb.ref('usuarios_online/' + key).onDisconnect().update({ online: false, ultimo_acesso: firebase.database.ServerValue.TIMESTAMP });
+    }
+  } catch(e) {}
+}
+
+// ================================================================
+// CARREGAR SESSÕES ATIVAS
+// ================================================================
+async function carregarSessoes() {
+  if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  try {
+    const snap = await _db.collection('sessoes_ativas').orderBy('data_login_iso', 'desc').limit(50).get();
+    const sessoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSessoesTable(sessoes);
+    // Métricas
+    const agora = Date.now();
+    const ativas = sessoes.filter(s => {
+      if (s.status !== 'online') return false;
+      const ping = s.ultimo_ping_iso ? new Date(s.ultimo_ping_iso).getTime() : 0;
+      return (agora - ping) < 2 * 60 * 1000;
+    });
+    const emails = new Set(ativas.map(s => s.usuario_email));
+    const multi = [...emails].filter(e => ativas.filter(s => s.usuario_email === e).length > 1).length;
+    const paises = new Set(ativas.map(s => s.pais).filter(Boolean)).size;
+    const el = id => document.getElementById(id);
+    if (el('sessoes-count')) el('sessoes-count').textContent = ativas.length;
+    if (el('sessoes-multi')) el('sessoes-multi').textContent = multi;
+    if (el('sessoes-paises')) el('sessoes-paises').textContent = paises;
+  } catch(e) { console.warn('Erro sessões:', e); toast('❌ Erro ao carregar sessões'); }
+}
+
+function renderSessoesTable(sessoes) {
+  const tbody = document.getElementById('sessoes-tbody');
+  if (!tbody) return;
+  if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-l)">Nenhuma sessão encontrada</td></tr>'; return; }
+  const agora = Date.now();
+  tbody.innerHTML = sessoes.map(s => {
+    const ping = s.ultimo_ping_iso ? new Date(s.ultimo_ping_iso).getTime() : 0;
+    const isOnline = s.status === 'online' && (agora - ping) < 2 * 60 * 1000;
+    const pingStr = s.ultimo_ping_iso ? new Date(s.ultimo_ping_iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const locStr = [s.cidade, s.pais].filter(Boolean).join(', ') || '—';
+    const devIcon = s.tipo_dispositivo === 'Mobile' ? '📱' : s.tipo_dispositivo === 'Tablet' ? '📟' : '🖥️';
+    return `<tr>
+      <td style="font-size:0.8rem">${escapeHTML(s.usuario_email || '—')}</td>
+      <td style="font-size:0.78rem">${devIcon} ${escapeHTML(s.tipo_dispositivo || '—')}</td>
+      <td style="font-size:0.75rem;color:var(--text-l)">${escapeHTML(locStr)}</td>
+      <td style="font-size:0.75rem;color:var(--text-l)">${pingStr}</td>
+      <td><span class="badge ${isOnline ? 'b-ok' : 'b-err'}">${isOnline ? '🟢 Online' : '⚫ Offline'}</span></td>
+      <td>
+        <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="encerrarSessaoEspecifica('${escapeHTML(s.id)}','${escapeHTML(s.usuario_email||'')}')">✕ Encerrar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function encerrarSessaoEspecifica(sessionId, email) {
+  if (!_db) return;
+  if (!confirm('Encerrar esta sessão?')) return;
+  try {
+    await _db.collection('sessoes_ativas').doc(sessionId).update({ status: 'offline' });
+    registrarLogAcesso('SESSAO_ENCERRADA', email, 'Encerrada pelo administrador');
+    toast('✅ Sessão encerrada');
+    carregarSessoes();
+  } catch(e) { toast('❌ Erro ao encerrar sessão'); }
+}
+
+async function encerrarTodasSessoes() {
+  if (!_db) return;
+  if (!confirm('⚠️ Encerrar TODAS as sessões ativas?')) return;
+  try {
+    const snap = await _db.collection('sessoes_ativas').where('status', '==', 'online').get();
+    const batch = _db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, { status: 'offline' }));
+    await batch.commit();
+    toast('✅ Todas as sessões encerradas');
+    carregarSessoes();
+  } catch(e) { toast('❌ Erro ao encerrar sessões'); }
+}
+
+// ================================================================
+// USUÁRIOS ONLINE (RTDB listener)
+// ================================================================
+async function renderOnlineUsers() {
+  const lista = document.getElementById('online-lista');
+  const countEl = document.getElementById('online-count');
+  const sessoesEl = document.getElementById('online-sessoes');
+  const hojeEl = document.getElementById('online-hoje');
+
+  // Contar acessos de hoje nos logs
+  if (_db) {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const snapLogs = await _db.collection('logs_acesso')
+        .where('tipo_evento', '==', 'LOGIN_OK').get();
+      const logsHoje = snapLogs.docs.filter(d => (d.data().data_hora_iso || '').startsWith(today)).length;
+      if (hojeEl) hojeEl.textContent = logsHoje;
+    } catch(e) {}
+
+    // Sessões ativas
+    try {
+      const agora = Date.now();
+      const snapSess = await _db.collection('sessoes_ativas').where('status', '==', 'online').get();
+      const ativas = snapSess.docs.filter(d => {
+        const ping = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0;
+        return (agora - ping) < 2 * 60 * 1000;
+      });
+      if (sessoesEl) sessoesEl.textContent = ativas.length;
+      if (countEl) countEl.textContent = ativas.length;
+
+      if (!lista) return;
+      if (!ativas.length) {
+        lista.innerHTML = '<div class="empty"><div class="empty-icon">🟢</div><p>Nenhum usuário online no momento</p></div>';
+        return;
+      }
+      lista.innerHTML = ativas.map(d => {
+        const s = d.data();
+        const ping = new Date(s.ultimo_ping_iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const locStr = [s.cidade, s.pais].filter(Boolean).join(', ') || '—';
+        const devIcon = s.tipo_dispositivo === 'Mobile' ? '📱' : s.tipo_dispositivo === 'Tablet' ? '📟' : '🖥️';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:9px;height:9px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;flex-shrink:0;display:inline-block"></span>
+            <div>
+              <div style="font-weight:600;font-size:0.86rem">${escapeHTML(s.usuario_email || '—')}</div>
+              <div style="font-size:0.74rem;color:var(--text-l)">${devIcon} ${escapeHTML(s.tipo_dispositivo || '—')} · 📍 ${escapeHTML(locStr)}</div>
+            </div>
+          </div>
+          <div style="font-size:0.74rem;color:var(--text-l)">Último ping: ${ping}</div>
+        </div>`;
+      }).join('');
+    } catch(e) { console.warn('Erro online:', e); }
+  }
+}
+
+// ================================================================
+// GESTÃO DE USUÁRIOS (Firebase Auth via Admin — client-side limitado)
+// ================================================================
+// Nota: Firebase Auth client-side não permite listar usuários.
+// A gestão é feita via coleção "usuarios" no Firestore.
+// Criação de usuário usa createUserWithEmailAndPassword.
+
+async function carregarUsuarios() {
+  if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  const el = document.getElementById('usuarios-loading');
+  if (el) el.style.display = 'block';
+  try {
+    // Garantir que usuário padrão existe
+    await garantirUsuarioPadrao();
+    const snap = await _db.collection('usuarios').orderBy('criadoEm', 'desc').get();
+    const usuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderUsuariosTable(usuarios);
+  } catch(e) {
+    console.warn('Erro usuários:', e);
+    toast('❌ Erro ao carregar usuários');
+  } finally {
+    if (el) el.style.display = 'none';
+  }
+}
+
+async function garantirUsuarioPadrao() {
+  if (!_db) return;
+  try {
+    const snap = await _db.collection('usuarios').where('email', '==', ADMIN_EMAIL).get();
+    if (snap.empty) {
+      await _db.collection('usuarios').add({
+        email: ADMIN_EMAIL,
+        tipo: 'admin',
+        criadoEm: new Date().toISOString(),
+        status: 'ativo'
+      });
+    }
+  } catch(e) {}
+}
+
+function renderUsuariosTable(usuarios) {
+  const tbody = document.getElementById('usuarios-tbody');
+  if (!tbody) return;
+  if (!usuarios.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-l)">Nenhum usuário cadastrado</td></tr>'; return; }
+  tbody.innerHTML = usuarios.map(u => {
+    const tipoColor = u.tipo === 'admin' ? 'var(--cyan)' : 'var(--text-l)';
+    const statusBadge = u.status === 'ativo' ? '<span class="badge b-ok">✅ Ativo</span>' : '<span class="badge b-err">❌ Inativo</span>';
+    const data = u.criadoEm ? new Date(u.criadoEm).toLocaleDateString('pt-BR') : '—';
+    return `<tr>
+      <td style="font-size:0.84rem"><strong>${escapeHTML(u.email || '—')}</strong></td>
+      <td><span style="color:${tipoColor};font-weight:700;font-size:0.78rem">${u.tipo === 'admin' ? '🔐 Admin' : '👤 Comum'}</span></td>
+      <td style="font-size:0.78rem;color:var(--text-l)">${data}</td>
+      <td>${statusBadge}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px">
+        <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email || '')}')">🔑 Reset senha</button>
+        ${u.email !== ADMIN_EMAIL ? `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="alterarStatusUsuario('${escapeHTML(u.id || '')}','${u.status === 'ativo' ? 'inativo' : 'ativo'}')">${u.status === 'ativo' ? '🚫 Desativar' : '✅ Ativar'}</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalNovoUsuario() {
+  document.getElementById('nu-email').value = '';
+  document.getElementById('nu-senha').value = '';
+  document.getElementById('nu-tipo').value = 'admin';
+  openM('m-novo-usuario');
+}
+
+async function criarNovoUsuario() {
+  if (!_auth || !_db) { toast('⚠️ Firebase não conectado'); return; }
+  const email = (document.getElementById('nu-email').value || '').trim();
+  const senha = document.getElementById('nu-senha').value;
+  const tipo = document.getElementById('nu-tipo').value;
+  if (!email || !senha) { toast('⚠️ Preencha e-mail e senha'); return; }
+  if (senha.length < 6) { toast('❌ Senha mínima: 6 caracteres'); return; }
+  try {
+    // Salva usuário atual para re-autenticar depois
+    const userAtual = _auth.currentUser;
+    // Cria no Firebase Auth
+    await _auth.createUserWithEmailAndPassword(email, senha);
+    // Salva no Firestore
+    await _db.collection('usuarios').add({
+      email: email,
+      tipo: tipo,
+      criadoEm: new Date().toISOString(),
+      status: 'ativo'
+    });
+    registrarLogAcesso('USUARIO_CRIADO', _currentUserEmail || ADMIN_EMAIL, 'Novo usuário: ' + email);
+    closeM('m-novo-usuario');
+    toast('✅ Usuário criado: ' + email);
+    carregarUsuarios();
+  } catch(e) {
+    const msgs = {
+      'auth/email-already-in-use': 'E-mail já cadastrado',
+      'auth/invalid-email': 'E-mail inválido',
+      'auth/weak-password': 'Senha fraca (mínimo 6 caracteres)'
+    };
+    toast('❌ ' + (msgs[e.code] || e.message || 'Erro ao criar usuário'));
+  }
+}
+
+async function redefinirSenhaUsuario(email) {
+  if (!_auth || !email) return;
+  if (!confirm('Enviar e-mail de redefinição de senha para: ' + email + '?')) return;
+  try {
+    await _auth.sendPasswordResetEmail(email);
+    registrarLogAcesso('SENHA_RESET_ENVIADO', _currentUserEmail || ADMIN_EMAIL, 'Reset para: ' + email);
+    toast('📧 E-mail de redefinição enviado para ' + email);
+  } catch(e) {
+    toast('❌ Erro: ' + (e.message || 'Não foi possível enviar'));
+  }
+}
+
+async function alterarStatusUsuario(docId, novoStatus) {
+  if (!_db || !docId) return;
+  try {
+    await _db.collection('usuarios').doc(docId).update({ status: novoStatus });
+    toast(novoStatus === 'ativo' ? '✅ Usuário ativado' : '🚫 Usuário desativado');
+    carregarUsuarios();
+  } catch(e) { toast('❌ Erro ao alterar status'); }
+}
+
+// ================================================================
+// RESTAURAR SESSÃO — pingar ao restaurar
+// ================================================================
+(function() {
+  const origShowScreen = window.showScreen;
+})();
+</script>
+<script>
 (function() {
   var _gameB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KCjxoZWFkPgoJPG1ldGEgY2hhcnNldD0iVVRGLTgiPgoJPHRpdGxlPkFyY2hlcnkgQnVsbHNleWUgR2FtZTwvdGl0bGU+Cgk8c3R5bGU+Ym9keSB7CgltYXJnaW46IDA7CgliYWNrZ3JvdW5kOiAjMjIyOwoKCW1hcmdpbjogMjBweDsKfQoKc3ZnIHsKCXdpZHRoOiAxMDAlOwoJaGVpZ2h0OiAxMDAlOwoJcG9zaXRpb246IGZpeGVkOwoJdG9wOiAwOwoJbGVmdDogMDsKfQoKc3BhbiB7Cgljb2xvcjogd2hpdGU7Cglmb250LWZhbWlseTogc2Fucy1zZXJpZjsKCW9wYWNpdHk6IC4zOwp9PC9zdHlsZT4KPC9oZWFkPgoKPGJvZHk+Cgk8c3ZnIGlkPSJnYW1lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAwIDQwMCIgb3ZlcmZsb3c9InZpc2libGUiPgoJCTxsaW5lYXJHcmFkaWVudCBpZD0iQXJjR3JhZGllbnQiPgoJCQk8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmYiIHN0b3Atb3BhY2l0eT0iLjIiIC8+CgkJCTxzdG9wIG9mZnNldD0iNTAlIiBzdG9wLWNvbG9yPSIjZmZmIiBzdG9wLW9wYWNpdHk9IjAiIC8+CgkJPC9saW5lYXJHcmFkaWVudD4KCQk8cGF0aCBpZD0iYXJjIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjQXJjR3JhZGllbnQpIiBzdHJva2Utd2lkdGg9IjQiIGQ9Ik0xMDAsMjUwYzI1MC00MDAsNTUwLTQwMCw4MDAsMCIKCQkJcG9pbnRlci1ldmVudHM9Im5vbmUiIC8+CgkJPGRlZnM+CgkJCTxnIGlkPSJhcnJvdyI+CgkJCQk8bGluZSB4Mj0iNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzg4OCIgc3Ryb2tlLXdpZHRoPSIyIiAvPgoJCQkJPHBvbHlnb24gZmlsbD0iIzg4OCIgcG9pbnRzPSI2NCAwIDU4IDIgNTYgMCA1OCAtMiIgLz4KCQkJCTxwb2x5Z29uIGZpbGw9IiM4OGNlMDIiIHBvaW50cz0iMiAtMyAtNCAtMyAtMSAwIC00IDMgMiAzIDUgMCIgLz4KCQkJPC9nPgoJCTwvZGVmcz4KCQk8ZyBpZD0idGFyZ2V0Ij4KCQkJPHBhdGggZmlsbD0iI0ZGRiIKCQkJCWQ9Ik05MjQuMiwyNzQuMmMtMjEuNSwyMS41LTQ1LjksMTkuOS01MiwzLjJjLTQuNC0xMi4xLDIuNC0yOS4yLDE0LjItNDFjMTEuOC0xMS44LDI5LTE4LjYsNDEtMTQuMiBDOTQ0LjEsMjI4LjMsOTQ1LjcsMjUyLjgsOTI0LjIsMjc0LjJ6IiAvPgoJCQk8cGF0aCBmaWxsPSIjRjQ1MzFDIgoJCQkJZD0iTTkxNS44LDI2NS44Yy0xNC4xLDE0LjEtMzAuOCwxNC42LTM2LDQuMWMtNC4xLTguMywwLjUtMjEuMyw5LjctMzAuNXMyMi4yLTEzLjgsMzAuNS05LjcgQzkzMC40LDIzNSw5MjkuOSwyNTEuNyw5MTUuOCwyNjUuOHoiIC8+CgkJCTxwYXRoIGZpbGw9IiNGRkYiCgkJCQlkPSJNOTA4LjksMjU4LjljLTgsOC0xNy45LDkuMi0yMS42LDMuNWMtMy4yLTQuOS0wLjUtMTMuNCw1LjYtMTkuNWM2LjEtNi4xLDE0LjYtOC44LDE5LjUtNS42IEM5MTguMSwyNDEsOTE2LjksMjUwLjksOTA4LjksMjU4Ljl6IiAvPgoJCQk8cGF0aCBmaWxsPSIjRjQ1MzFDIgoJCQkJZD0iTTkwMy4yLDI1My4yYy0yLjksMi45LTYuNywzLjYtOC4zLDEuN2MtMS41LTEuOC0wLjYtNS40LDItOGMyLjYtMi42LDYuMi0zLjYsOC0yIEM5MDYuOCwyNDYuNSw5MDYuMSwyNTAuMiw5MDMuMiwyNTMuMnoiIC8+CgkJPC9nPgoJCTxnIGlkPSJib3ciIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgdmVjdG9yLWVmZmVjdD0ibm9uLXNjYWxpbmctc3Ryb2tlIiBwb2ludGVyLWV2ZW50cz0ibm9uZSI+CgkJCTxwb2x5bGluZSBmaWxsPSJub25lIiBzdHJva2U9IiNkZGQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgcG9pbnRzPSI4OCwyMDAgODgsMjUwIDg4LDMwMCIgLz4KCQkJPHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjODhjZTAyIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKCQkJCWQ9Ik04OCwzMDAgYzAtMTAuMSwxMi0yNS4xLDEyLTUwcy0xMi0zOS45LTEyLTUwIiAvPgoJCTwvZz4KCQk8ZyBjbGFzcz0iYXJyb3ctYW5nbGUiPgoJCQk8dXNlIHg9IjEwMCIgeT0iMjUwIiB4bGluazpocmVmPSIjYXJyb3ciIC8+CgkJPC9nPgoJCTxjbGlwUGF0aCBpZD0ibWFzayI+CgkJCTxwb2x5Z29uIG9wYWNpdHk9Ii41IiBwb2ludHM9IjAsMCAxNTAwLDAgMTUwMCwyMDAgOTcwLDI5MCA5NTAsMjQwIDkyNSwyMjAgODc1LDI4MCA4OTAsMjk1IDkyMCwzMTAgMCwzNTAiCgkJCQlwb2ludGVyLWV2ZW50cz0ibm9uZSIgLz4KCQk8L2NsaXBQYXRoPgoJCTxnIGNsYXNzPSJhcnJvd3MiIGNsaXAtcGF0aD0idXJsKCNtYXNrKSIgcG9pbnRlci1ldmVudHM9Im5vbmUiPgoJCTwvZz4KCQk8ZyBjbGFzcz0ibWlzcyIgZmlsbD0iI2FhYSIgb3BhY2l0eT0iMCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMTAwKSI+CgkJCTxwYXRoCgkJCQlkPSJNMzU4IDE5NEwzNjMgMTE4IDM4NiAxMjAgNDAwIDE1MyA0MTYgMTIxIDQ0MCAxMTkgNDQ2IDIwMyA0MTkgMjEyIDQxNiAxNjMgNDAxIDE4MCAzODAgMTYwIDM4MSAyMDQiIC8+CgkJCTxwYXRoIGQ9Ik00NTAgMTIwTDQ1OCAyMDAgNDc1IDE5MiA0NzQgMTIxIiAvPgoJCQk8cGF0aAoJCQkJZD0iTTUzNyAxMThMNDg3IDExOCA0ODUgMTYwIDUxNSAxNjIgNTA5IDE3NyA0ODIgMTcxIDQ4MiAxOTMgNTI5IDE5OSA1MzggMTQ4IDUwMSAxNDYgNTA4IDEzMyA1MzcgMTM3IiAvPgoJCQk8cGF0aAoJCQkJZD0iTTU0MCAyMDJMNTQzIDE3OCA1NzAgMTg2IDU2OSAxNjggNTQ0IDE2NyA1NDYgMTIyIDU5MCAxMTYgNTg2IDE0MiA1NjEgMTQwIDU2MCAxNTIgNTg2IDE1MyA1ODYgMjA1IiAvPgoJCQk8cGF0aCBkPSJNNTk1LDIxNWw1LTIzbDMxLDBsLTUsMjlMNTk1LDIxNXogTTYyNywxNzZsMTMtNzBsLTQxLTBsLTAsNzBMNjI3LDE3NnoiIC8+CgkJPC9nPgoJCTxnIGNsYXNzPSJidWxsc2V5ZSIgZmlsbD0iI0Y0NTMxQyIgb3BhY2l0eT0iMCI+CgkJCTxwYXRoCgkJCQlkPSJNMzIyLDE1OWwxNS0yMWwtMjctMTNsLTMyLDEzbDE1LDcxbDQxLTE0bDctMzJMMzIyLDE1OXogTTI5MiwxNDJoMjBsMyw4bC0xNiw4IEwyOTIsMTQyeiBNMzIxLDE4MmwtMTgsOWwtNC0xOGwyMy0yVjE4MnoiIC8+CgkJCTxwYXRoIGQ9Ik0zNDAgMTMxTDM1OSAxMjUgMzYyIDE2OSAzODEgMTY3IDM4NiAxMjMgNDA1IDEyOSAzOTIgMTgzIDM1MSAxODZ6IiAvPgoJCQk8cGF0aCBkPSJNNDEzIDExOUw0MDIgMTg4IDQ1MCAxOTYgNDU0IDE3NSA0MjIgMTc1IDQzOCAxMjB6IiAvPgoJCQk8cGF0aCBkPSJNNDMyIDE2N0w0NTQgMTY5IDQ2NiAxNTQgNDUxIDE1MSA0NzggMTE1IDQ1MyAxMTN6IiAvPgoJCQk8cGF0aAoJCQkJZD0iTTUyNCAxMDlMNDkyIDExMiA0NjYgMTQ4IDQ4NyAxNTUgNDkxIDE3MiA0NjQgMTY3IDQ2MyAxODQgNTAyIDE5MSA1MTMgMTQzIDQ4NyAxNDEgNDk2IDEyNSA1MTcgMTI2eiIgLz4KCQkJPHBhdGgKCQkJCWQ9Ik01MzcgMTE0TDUxMiAxODkgNTU4IDE5OSA1NjYgMTc0IDUzMyAxNzUgNTM5IDE2MiA1NTMgMTY0IDU1OCAxNTAgNTQzIDE0NSA1NDcgMTM0IDU2NiAxNDggNTc1IDEyNHoiIC8+CgkJCTxwYXRoIGQ9Ik01NzcgMTE4TDU4NyAxNTggNTcwIDE5OCA1ODcgMjA0IDYyNiAxMTggNjA2IDExOCA1OTggMTQxIDU5MCAxMTJ6IiAvPgoJCQk8cGF0aAoJCQkJZD0iTTYzNSAxMjJMNTk5IDE5OCA2NDMgMjA3IDY0OSAxODggNjI0IDE4OCA2MzAgMTcwIDYzOSAxNzggNjQ1IDE2MiA2MzcgMTU4IDY0OSAxNDMgNjYyIDE1MSA2NzAgMTM0eiIgLz4KCQkJPHBhdGggZD0iTTY0OSwyMjBsNC0yMWwyOCw0bC02LDI1TDY0OSwyMjB6IE02ODEsMTkxbDQwLTc5bC0zNS04TDY1OSwxODRMNjgxLDE5MXoiIC8+CgkJPC9nPgoJCTxnIGNsYXNzPSJoaXQiIGZpbGw9IiNmZmNjMDAiIG9wYWNpdHk9IjAiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE4MCwgLTgwKSByb3RhdGUoMTIpICI+CgkJCTxwYXRoCgkJCQlkPSJNMzgzIDExNEwzODUgMTk1IDQwNyAxOTEgNDA2IDE2MCA0MjIgMTU1IDQxOCAxOTEgNDM2IDE4OSA0NDQgMTEyIDQyMyAxMTkgNDIyIDE0MSA0MDcgMTQ2IDQwMCAxMTMiIC8+CgkJCTxwYXRoIGQ9Ik00NDkgMTg1TDQ1MyAxMTMgNDc3IDExMiA0NjQgMTg2IiAvPgoJCQk8cGF0aCBkPSJNNDg2IDExM0w0ODQgMTMwIDUwNiAxMzAgNDgxIDE4OCA1MDYgMTg3IDUyMCAxMzEgNTQwIDEzNSA1NDUgMTE5IiAvPgoJCQk8cGF0aCBkPSJNNTI2LDE5NWw1LTIwbDIyLDVsLTksMTZMNTI2LDE5NXogTTU1OCwxNjRsMzItNDRsLTM1LTlsLTE5LDUxTDU1OCwxNjR6IiAvPgoJCTwvZz4KCQk8IS0tIAk8bGluZSB4MT0gIjg3NSIsIHkxPSAiMjgwIiwgeDI9ICI5MjUiLCB5Mj0gIjIyMCIgc3Ryb2tlPSJyZWQiLz4KCjxjaXJjbGUgY2xhc3M9InBvaW50IiByPSI3IiBmaWxsPSJwdXJwbGUiIG9wYWNpdHk9Ii40Ii8+IC0tPgoJPC9zdmc+CgoJPHNwYW4+RHJhdyBiYWNrIGFuIGFycm93IGFuZCBsYXVuY2ggaXQhPC9zcGFuPgoJPHNjcmlwdCBzcmM9J2h0dHBzOi8vY2RuanMuY2xvdWRmbGFyZS5jb20vYWpheC9saWJzL2dzYXAvMS4xOS4xL1R3ZWVuTWF4Lm1pbi5qcyc+PC9zY3JpcHQ+Cgk8c2NyaXB0IHNyYz0nLy9zMy11cy13ZXN0LTIuYW1hem9uYXdzLmNvbS9zLmNkcG4uaW8vMTYzMjcvTW9ycGhTVkdQbHVnaW4ubWluLmpzJz48L3NjcmlwdD4KCTxzY3JpcHQ+dmFyIHN2ZyA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoInN2ZyIpOwp2YXIgY3Vyc29yID0gc3ZnLmNyZWF0ZVNWR1BvaW50KCk7CnZhciBhcnJvd3MgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCIuYXJyb3dzIik7CnZhciByYW5kb21BbmdsZSA9IDA7CgovLyBjZW50ZXIgb2YgdGFyZ2V0CnZhciB0YXJnZXQgPSB7Cgl4OiA5MDAsCgl5OiAyNDkuNQp9OwoKLy8gdGFyZ2V0IGludGVyc2VjdGlvbiBsaW5lIHNlZ21lbnQKdmFyIGxpbmVTZWdtZW50ID0gewoJeDE6IDg3NSwKCXkxOiAyODAsCgl4MjogOTI1LAoJeTI6IDIyMAp9OwoKLy8gYm93IHJvdGF0aW9uIHBvaW50CnZhciBwaXZvdCA9IHsKCXg6IDEwMCwKCXk6IDI1MAp9OwphaW0oewoJY2xpZW50WDogMzIwLAoJY2xpZW50WTogMzAwCn0pOwoKLy8gc2V0IHVwIHN0YXJ0IGRyYWcgZXZlbnQKd2luZG93LmFkZEV2ZW50TGlzdGVuZXIoIm1vdXNlZG93biIsIGRyYXcpOwoKZnVuY3Rpb24gZHJhdyhlKSB7CgkvLyBwdWxsIGJhY2sgYXJyb3cKCXJhbmRvbUFuZ2xlID0gKE1hdGgucmFuZG9tKCkgKiBNYXRoLlBJICogMC4wMykgLSAwLjAxNTsKCVR3ZWVuTWF4LnRvKCIuYXJyb3ctYW5nbGUgdXNlIiwgMC4zLCB7CgkJb3BhY2l0eTogMQoJfSk7Cgl3aW5kb3cuYWRkRXZlbnRMaXN0ZW5lcigibW91c2Vtb3ZlIiwgYWltKTsKCXdpbmRvdy5hZGRFdmVudExpc3RlbmVyKCJtb3VzZXVwIiwgbG9vc2UpOwoJYWltKGUpOwp9CgpmdW5jdGlvbiBhaW0oZSkgewoJLy8gZ2V0IG1vdXNlIHBvc2l0aW9uIGluIHJlbGF0aW9uIHRvIHN2ZyBwb3NpdGlvbiBhbmQgc2NhbGUKCXZhciBwb2ludCA9IGdldE1vdXNlU1ZHKGUpOwoJcG9pbnQueCA9IE1hdGgubWluKHBvaW50LngsIHBpdm90LnggLSA3KTsKCXBvaW50LnkgPSBNYXRoLm1heChwb2ludC55LCBwaXZvdC55ICsgNyk7Cgl2YXIgZHggPSBwb2ludC54IC0gcGl2b3QueDsKCXZhciBkeSA9IHBvaW50LnkgLSBwaXZvdC55OwoJLy8gTWFrZSBpdCBtb3JlIGRpZmZpY3VsdCBieSBhZGRpbmcgcmFuZG9tIGFuZ2xlIGVhY2ggdGltZQoJdmFyIGFuZ2xlID0gTWF0aC5hdGFuMihkeSwgZHgpICsgcmFuZG9tQW5nbGU7Cgl2YXIgYm93QW5nbGUgPSBhbmdsZSAtIE1hdGguUEk7Cgl2YXIgZGlzdGFuY2UgPSBNYXRoLm1pbihNYXRoLnNxcnQoKGR4ICogZHgpICsgKGR5ICogZHkpKSwgNTApOwoJdmFyIHNjYWxlID0gTWF0aC5taW4oTWF0aC5tYXgoZGlzdGFuY2UgLyAzMCwgMSksIDIpOwoJVHdlZW5NYXgudG8oIiNib3ciLCAwLjMsIHsKCQlzY2FsZVg6IHNjYWxlLAoJCXJvdGF0aW9uOiBib3dBbmdsZSArICJyYWQiLAoJCXRyYW5zZm9ybU9yaWdpbjogInJpZ2h0IGNlbnRlciIKCX0pOwoJdmFyIGFycm93WCA9IE1hdGgubWluKHBpdm90LnggLSAoKDEgLyBzY2FsZSkgKiBkaXN0YW5jZSksIDg4KTsKCVR3ZWVuTWF4LnRvKCIuYXJyb3ctYW5nbGUiLCAwLjMsIHsKCQlyb3RhdGlvbjogYm93QW5nbGUgKyAicmFkIiwKCQlzdmdPcmlnaW46ICIxMDAgMjUwIgoJfSk7CglUd2Vlbk1heC50bygiLmFycm93LWFuZ2xlIHVzZSIsIDAuMywgewoJCXg6IC1kaXN0YW5jZQoJfSk7CglUd2Vlbk1heC50bygiI2JvdyBwb2x5bGluZSIsIDAuMywgewoJCWF0dHI6IHsKCQkJcG9pbnRzOiAiODgsMjAwICIgKyBNYXRoLm1pbihwaXZvdC54IC0gKCgxIC8gc2NhbGUpICogZGlzdGFuY2UpLCA4OCkgKyAiLDI1MCA4OCwzMDAiCgkJfQoJfSk7CgoJdmFyIHJhZGl1cyA9IGRpc3RhbmNlICogOTsKCXZhciBvZmZzZXQgPSB7CgkJeDogKE1hdGguY29zKGJvd0FuZ2xlKSAqIHJhZGl1cyksCgkJeTogKE1hdGguc2luKGJvd0FuZ2xlKSAqIHJhZGl1cykKCX07Cgl2YXIgYXJjV2lkdGggPSBvZmZzZXQueCAqIDM7CgoJVHdlZW5NYXgudG8oIiNhcmMiLCAwLjMsIHsKCQlhdHRyOiB7CgkJCWQ6ICJNMTAwLDI1MGMiICsgb2Zmc2V0LnggKyAiLCIgKyBvZmZzZXQueSArICIsIiArIChhcmNXaWR0aCAtIG9mZnNldC54KSArICIsIiArIChvZmZzZXQueSArIDUwKSArICIsIiArIGFyY1dpZHRoICsgIiw1MCIKCQl9LAoJCWF1dG9BbHBoYTogZGlzdGFuY2UgLyA2MAoJfSk7Cgp9CgpmdW5jdGlvbiBsb29zZSgpIHsKCS8vIHJlbGVhc2UgYXJyb3cKCXdpbmRvdy5yZW1vdmVFdmVudExpc3RlbmVyKCJtb3VzZW1vdmUiLCBhaW0pOwoJd2luZG93LnJlbW92ZUV2ZW50TGlzdGVuZXIoIm1vdXNldXAiLCBsb29zZSk7CgoJVHdlZW5NYXgudG8oIiNib3ciLCAwLjQsIHsKCQlzY2FsZVg6IDEsCgkJdHJhbnNmb3JtT3JpZ2luOiAicmlnaHQgY2VudGVyIiwKCQllYXNlOiBFbGFzdGljLmVhc2VPdXQKCX0pOwoJVHdlZW5NYXgudG8oIiNib3cgcG9seWxpbmUiLCAwLjQsIHsKCQlhdHRyOiB7CgkJCXBvaW50czogIjg4LDIwMCA4OCwyNTAgODgsMzAwIgoJCX0sCgkJZWFzZTogRWxhc3RpYy5lYXNlT3V0Cgl9KTsKCS8vIGR1cGxpY2F0ZSBhcnJvdwoJdmFyIG5ld0Fycm93ID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudE5TKCJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIsICJ1c2UiKTsKCW5ld0Fycm93LnNldEF0dHJpYnV0ZU5TKCdodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rJywgJ2hyZWYnLCAiI2Fycm93Iik7CglhcnJvd3MuYXBwZW5kQ2hpbGQobmV3QXJyb3cpOwoKCS8vIGFuaW1hdGUgYXJyb3cgYWxvbmcgcGF0aAoJdmFyIHBhdGggPSBNb3JwaFNWR1BsdWdpbi5wYXRoRGF0YVRvQmV6aWVyKCIjYXJjIik7CglUd2Vlbk1heC50byhbbmV3QXJyb3ddLCAwLjUsIHsKCQlmb3JjZTNEOiB0cnVlLAoJCWJlemllcjogewoJCQl0eXBlOiAiY3ViaWMiLAoJCQl2YWx1ZXM6IHBhdGgsCgkJCWF1dG9Sb3RhdGU6IFsieCIsICJ5IiwgInJvdGF0aW9uIl0KCQl9LAoJCW9uVXBkYXRlOiBoaXRUZXN0LAoJCW9uVXBkYXRlUGFyYW1zOiBbIntzZWxmfSJdLAoJCW9uQ29tcGxldGU6IG9uTWlzcywKCQllYXNlOiBMaW5lYXIuZWFzZU5vbmUKCX0pOwoJVHdlZW5NYXgudG8oIiNhcmMiLCAwLjMsIHsKCQlvcGFjaXR5OiAwCgl9KTsKCS8vaGlkZSBwcmV2aW91cyBhcnJvdwoJVHdlZW5NYXguc2V0KCIuYXJyb3ctYW5nbGUgdXNlIiwgewoJCW9wYWNpdHk6IDAKCX0pOwp9CgpmdW5jdGlvbiBoaXRUZXN0KHR3ZWVuKSB7CgkvLyBjaGVjayBmb3IgY29sbGlzaW9ucyB3aXRoIGFycm93IGFuZCB0YXJnZXQKCXZhciBhcnJvdyA9IHR3ZWVuLnRhcmdldFswXTsKCXZhciB0cmFuc2Zvcm0gPSBhcnJvdy5fZ3NUcmFuc2Zvcm07Cgl2YXIgcmFkaWFucyA9IHRyYW5zZm9ybS5yb3RhdGlvbiAqIE1hdGguUEkgLyAxODA7Cgl2YXIgYXJyb3dTZWdtZW50ID0gewoJCXgxOiB0cmFuc2Zvcm0ueCwKCQl5MTogdHJhbnNmb3JtLnksCgkJeDI6IChNYXRoLmNvcyhyYWRpYW5zKSAqIDYwKSArIHRyYW5zZm9ybS54LAoJCXkyOiAoTWF0aC5zaW4ocmFkaWFucykgKiA2MCkgKyB0cmFuc2Zvcm0ueQoJfQoKCXZhciBpbnRlcnNlY3Rpb24gPSBnZXRJbnRlcnNlY3Rpb24oYXJyb3dTZWdtZW50LCBsaW5lU2VnbWVudCk7CglpZiAoaW50ZXJzZWN0aW9uLnNlZ21lbnQxICYmIGludGVyc2VjdGlvbi5zZWdtZW50MikgewoJCXR3ZWVuLnBhdXNlKCk7CgkJdmFyIGR4ID0gaW50ZXJzZWN0aW9uLnggLSB0YXJnZXQueDsKCQl2YXIgZHkgPSBpbnRlcnNlY3Rpb24ueSAtIHRhcmdldC55OwoJCXZhciBkaXN0YW5jZSA9IE1hdGguc3FydCgoZHggKiBkeCkgKyAoZHkgKiBkeSkpOwoJCXZhciBzZWxlY3RvciA9ICIuaGl0IjsKCQlpZiAoZGlzdGFuY2UgPCA3KSB7CgkJCXNlbGVjdG9yID0gIi5idWxsc2V5ZSIKCQl9CgkJc2hvd01lc3NhZ2Uoc2VsZWN0b3IpOwoJfQoKfQoKZnVuY3Rpb24gb25NaXNzKCkgewoJLy8gRGFtbiEKCXNob3dNZXNzYWdlKCIubWlzcyIpOwp9CgpmdW5jdGlvbiBzaG93TWVzc2FnZShzZWxlY3RvcikgewoJLy8gaGFuZGxlIGFsbCB0ZXh0IGFuaW1hdGlvbnMgYnkgcHJvdmlkaW5nIHNlbGVjdG9yCglUd2Vlbk1heC5raWxsVHdlZW5zT2Yoc2VsZWN0b3IpOwoJVHdlZW5NYXgua2lsbENoaWxkVHdlZW5zT2Yoc2VsZWN0b3IpOwoJVHdlZW5NYXguc2V0KHNlbGVjdG9yLCB7CgkJYXV0b0FscGhhOiAxCgl9KTsKCVR3ZWVuTWF4LnN0YWdnZXJGcm9tVG8oc2VsZWN0b3IgKyAiIHBhdGgiLCAuNSwgewoJCXJvdGF0aW9uOiAtNSwKCQlzY2FsZTogMCwKCQl0cmFuc2Zvcm1PcmlnaW46ICJjZW50ZXIiCgl9LCB7CgkJc2NhbGU6IDEsCgkJZWFzZTogQmFjay5lYXNlT3V0Cgl9LCAuMDUpOwoJVHdlZW5NYXguc3RhZ2dlclRvKHNlbGVjdG9yICsgIiBwYXRoIiwgLjMsIHsKCQlkZWxheTogMiwKCQlyb3RhdGlvbjogMjAsCgkJc2NhbGU6IDAsCgkJZWFzZTogQmFjay5lYXNlSW4KCX0sIC4wMyk7Cn0KCgoKZnVuY3Rpb24gZ2V0TW91c2VTVkcoZSkgewoJLy8gbm9ybWFsaXplIG1vdXNlIHBvc2l0aW9uIHdpdGhpbiBzdmcgY29vcmRpbmF0ZXMKCWN1cnNvci54ID0gZS5jbGllbnRYOwoJY3Vyc29yLnkgPSBlLmNsaWVudFk7CglyZXR1cm4gY3Vyc29yLm1hdHJpeFRyYW5zZm9ybShzdmcuZ2V0U2NyZWVuQ1RNKCkuaW52ZXJzZSgpKTsKfQoKZnVuY3Rpb24gZ2V0SW50ZXJzZWN0aW9uKHNlZ21lbnQxLCBzZWdtZW50MikgewoJLy8gZmluZCBpbnRlcnNlY3Rpb24gcG9pbnQgb2YgdHdvIGxpbmUgc2VnbWVudHMgYW5kIHdoZXRoZXIgb3Igbm90IHRoZSBwb2ludCBpcyBvbiBlaXRoZXIgbGluZSBzZWdtZW50Cgl2YXIgZHgxID0gc2VnbWVudDEueDIgLSBzZWdtZW50MS54MTsKCXZhciBkeTEgPSBzZWdtZW50MS55MiAtIHNlZ21lbnQxLnkxOwoJdmFyIGR4MiA9IHNlZ21lbnQyLngyIC0gc2VnbWVudDIueDE7Cgl2YXIgZHkyID0gc2VnbWVudDIueTIgLSBzZWdtZW50Mi55MTsKCXZhciBjeCA9IHNlZ21lbnQxLngxIC0gc2VnbWVudDIueDE7Cgl2YXIgY3kgPSBzZWdtZW50MS55MSAtIHNlZ21lbnQyLnkxOwoJdmFyIGRlbm9taW5hdG9yID0gZHkyICogZHgxIC0gZHgyICogZHkxOwoJaWYgKGRlbm9taW5hdG9yID09IDApIHsKCQlyZXR1cm4gbnVsbDsKCX0KCXZhciB1YSA9IChkeDIgKiBjeSAtIGR5MiAqIGN4KSAvIGRlbm9taW5hdG9yOwoJdmFyIHViID0gKGR4MSAqIGN5IC0gZHkxICogY3gpIC8gZGVub21pbmF0b3I7CglyZXR1cm4gewoJCXg6IHNlZ21lbnQxLngxICsgdWEgKiBkeDEsCgkJeTogc2VnbWVudDEueTEgKyB1YSAqIGR5MSwKCQlzZWdtZW50MTogdWEgPj0gMCAmJiB1YSA8PSAxLAoJCXNlZ21lbnQyOiB1YiA+PSAwICYmIHViIDw9IDEKCX07Cn08L3NjcmlwdD4KCjwvYm9keT4KPC9odG1sPg==";
   window.openArcheryGame = function() {
