@@ -2188,11 +2188,16 @@ select option{background:#060d14;color:#e8f4ff;}
 
       <!-- LOGS DE ACESSO (segurança legacy) -->
       <div class="card">
-        <div class="card-h"><div class="card-icon">📋</div><div><h4>Log de Acessos e Eventos</h4><p>Últimas 50 entradas</p></div>
-          <button class="btn btn-sm btn-out" style="margin-left:auto" onclick="renderLogSeguranca()">🔄</button>
+        <div class="card-h">
+          <div class="card-icon">📋</div>
+          <div><h4>Log de Acessos e Eventos</h4><p>Últimas 50 entradas</p></div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-sm btn-out" onclick="renderLogSeguranca()">🔄</button>
+            <button class="btn btn-sm btn-danger" onclick="limparLogSeguranca()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Limpar todos</button>
+          </div>
         </div>
         <div class="tbl-wrap">
-          <table><thead><tr><th>Horário</th><th>Evento</th><th>Detalhes</th></tr></thead>
+          <table><thead><tr><th>Horário</th><th>Evento</th><th>Detalhes</th><th>Ação</th></tr></thead>
           <tbody id="seg-log-tbody"></tbody>
           </table>
         </div>
@@ -2288,8 +2293,13 @@ select option{background:#060d14;color:#e8f4ff;}
         <div class="metric"><div class="metric-icon">⏱️</div><div class="metric-lbl">Sessões ativas</div><div class="metric-val" id="online-sessoes">—</div><div class="metric-sub">em andamento</div></div>
       </div>
       <div class="card">
-        <div class="card-h"><div class="card-icon">👁️</div><div><h4>Usuários Ativos</h4><p>Atividade nos últimos 2 minutos</p></div>
-          <button class="btn btn-sm btn-out" style="margin-left:auto" onclick="renderOnlineUsers()">🔄</button>
+        <div class="card-h">
+          <div class="card-icon">👁️</div>
+          <div><h4>Usuários Ativos</h4><p>Atividade nos últimos 2 minutos</p></div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-sm btn-out" onclick="renderOnlineUsers()">🔄</button>
+            <button class="btn btn-sm btn-danger" onclick="encerrarTodosOnline()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Encerrar todos</button>
+          </div>
         </div>
         <div class="card-b" id="online-lista">
           <div class="empty"><div class="empty-icon">🟢</div><p>Nenhum usuário online no momento</p></div>
@@ -2309,6 +2319,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="btn btn-out btn-sm" onclick="carregarSessoes()">🔄 Atualizar</button>
         <button class="btn btn-danger btn-sm" onclick="encerrarTodasSessoes()" style="background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)">⚠️ Encerrar todas</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirTodasSessoes()" style="background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)">🗑️ Limpar todas</button>
       </div>
       <div class="card">
         <div class="card-h"><div class="card-icon">🔗</div><div><h4>Sessões Ativas</h4></div></div>
@@ -3008,6 +3019,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (lerSessao()) {
     showScreen('admin');
     _currentUserEmail = ADMIN_EMAIL;
+    // Pré-inicializa permissões para admin: acesso total imediato, sem esperar Firebase
+    // Isso evita o toast "Você não tem acesso" ao restaurar sessão
+    if (typeof RBAC_PERFIS !== 'undefined') {
+      _rbacPerms = RBAC_PERFIS.total;
+    }
     atualizarAvatarMenu(ADMIN_EMAIL);
     // Reativar sessão Firebase ao restaurar
     setTimeout(async function() {
@@ -3016,6 +3032,10 @@ document.addEventListener('DOMContentLoaded', () => {
         iniciarControleInatividade();
       } catch(e) {}
       try {
+        // Carrega permissões reais do Firebase (confirma acesso total para admin)
+        if (typeof carregarPermissoesUsuario === 'function') {
+          await carregarPermissoesUsuario(ADMIN_EMAIL);
+        }
         var pendentes30 = verificarLembretes30Dias(false);
         if (pendentes30 && pendentes30.length > 0) {
           setTimeout(function() {
@@ -5245,20 +5265,47 @@ function renderLogSeguranca() {
   if (!tbody) return;
   let logs = [];
   try { logs = JSON.parse(localStorage.getItem('vf_seg_log') || '[]'); } catch(e){}
-  // Merge with old vf_logs
   try {
     const old = JSON.parse(localStorage.getItem('vf_logs') || '[]');
     old.forEach(l => logs.push({ts: l.ts, tipo: 'SISTEMA', detalhe: l.msg}));
   } catch(e){}
   logs.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
-  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-l)">Nenhum evento registrado</td></tr>'; return; }
+  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-l)">Nenhum evento registrado</td></tr>'; return; }
   const colorMap = {LOGIN_OK:'var(--ok)',LOGIN_FALHOU:'var(--err)',LOGIN_BLOQUEADO:'var(--err)',BRUTE_FORCE_BLOQUEADO:'var(--err)',LOGOUT:'var(--text-l)',SENHA_REDEFINIDA:'var(--amber)',RESERVA_CRIADA:'var(--cyan)',PAGAMENTO_REGISTRADO:'var(--green)',LEMBRETE_ENVIADO:'var(--purple)',SISTEMA:'var(--text-l)'};
-  tbody.innerHTML = logs.slice(0, 50).map(l => {
+  tbody.innerHTML = logs.slice(0, 50).map((l, idx) => {
     const ts = new Date(l.ts);
     const tsStr = isNaN(ts) ? l.ts : ts.toLocaleDateString('pt-BR')+' '+ts.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const cor = colorMap[l.tipo] || 'var(--text-l)';
-    return `<tr><td style="font-size:0.75rem;white-space:nowrap;color:var(--text-l)">${tsStr}</td><td><span style="color:${cor};font-weight:700;font-size:0.76rem">${escapeHTML(l.tipo||'')}</span></td><td style="font-size:0.78rem;color:var(--text)">${escapeHTML(l.detalhe||'')}</td></tr>`;
+    return `<tr>
+      <td style="font-size:0.75rem;white-space:nowrap;color:var(--text-l)">${tsStr}</td>
+      <td><span style="color:${cor};font-weight:700;font-size:0.76rem">${escapeHTML(l.tipo||'')}</span></td>
+      <td style="font-size:0.78rem;color:var(--text)">${escapeHTML(l.detalhe||'')}</td>
+      <td><button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)"
+        onclick="excluirLogSeguranca(${idx})">🗑️</button></td>
+    </tr>`;
   }).join('');
+}
+
+function excluirLogSeguranca(idx) {
+  if (!confirm('Excluir este registro de log?')) return;
+  try {
+    let logs = JSON.parse(localStorage.getItem('vf_seg_log') || '[]');
+    logs.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+    logs.splice(idx, 1);
+    localStorage.setItem('vf_seg_log', JSON.stringify(logs));
+    renderLogSeguranca();
+    toast('🗑️ Registro excluído');
+  } catch(e) { toast('❌ Erro ao excluir'); }
+}
+
+function limparLogSeguranca() {
+  if (!confirm('Limpar TODOS os registros do log de segurança?\n\nEsta ação é irreversível.')) return;
+  try {
+    localStorage.removeItem('vf_seg_log');
+    localStorage.removeItem('vf_logs');
+    renderLogSeguranca();
+    toast('✅ Log de segurança limpo');
+  } catch(e) { toast('❌ Erro ao limpar'); }
 }
 
 function renderSecurityMetrics() {
@@ -6099,11 +6146,70 @@ function renderSessoesTable(sessoes) {
       <td style="font-size:0.75rem;color:var(--text-l)">${escapeHTML(locStr)}</td>
       <td style="font-size:0.75rem;color:var(--text-l)">${pingStr}</td>
       <td><span class="badge ${isOnline ? 'b-ok' : 'b-err'}">${isOnline ? '🟢 Online' : '⚫ Offline'}</span></td>
-      <td>
+      <td style="display:flex;gap:6px">
         <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="encerrarSessaoEspecifica('${escapeHTML(s.id)}','${escapeHTML(s.usuario_email||'')}')">✕ Encerrar</button>
+        <button class="btn btn-sm btn-danger" style="font-size:0.7rem" onclick="excluirSessao('${escapeHTML(s.id)}')">🗑️ Excluir</button>
       </td>
     </tr>`;
   }).join('');
+}
+
+async function excluirSessao(sessionId) {
+  if (!_db || !sessionId) return;
+  if (!confirm('Excluir permanentemente este registro de sessão?')) return;
+  try {
+    await _db.collection('sessoes_ativas').doc(sessionId).delete();
+    toast('🗑️ Sessão excluída');
+    carregarSessoes();
+  } catch(e) { toast('❌ Erro ao excluir sessão'); }
+}
+
+async function excluirTodasSessoes() {
+  if (!_db) return;
+  if (!confirm('🗑️ Excluir TODOS os registros de sessão?\n\nIsto apagará o histórico permanentemente.')) return;
+  try {
+    toast('⏳ Excluindo sessões...');
+    const snap = await _db.collection('sessoes_ativas').limit(500).get();
+    let batch = _db.batch();
+    let count = 0;
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+      count++;
+      if (count % 499 === 0) { await batch.commit(); batch = _db.batch(); }
+    }
+    if (count % 499 !== 0) await batch.commit();
+    toast(`✅ ${count} sessões excluídas`);
+    carregarSessoes();
+  } catch(e) { toast('❌ Erro ao excluir: ' + (e.message || '')); }
+}
+
+async function encerrarSessaoOnline(sessionId, email) {
+  if (!_db || !sessionId) return;
+  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?')) return;
+  try {
+    await _db.collection('sessoes_ativas').doc(sessionId).update({ status: 'offline' });
+    registrarLogAcesso('SESSAO_ENCERRADA', email, 'Encerrada pelo administrador');
+    toast('✅ Sessão encerrada');
+    renderOnlineUsers();
+  } catch(e) { toast('❌ Erro ao encerrar sessão'); }
+}
+
+async function encerrarTodosOnline() {
+  if (!_db) return;
+  if (!confirm('Encerrar TODAS as sessões online?\n\nTodos os usuários serão desconectados.')) return;
+  try {
+    const agora = Date.now();
+    const snap = await _db.collection('sessoes_ativas').where('status', '==', 'online').get();
+    const ativas = snap.docs.filter(d => {
+      const ping = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0;
+      return (agora - ping) < 2 * 60 * 1000;
+    });
+    const batch = _db.batch();
+    ativas.forEach(d => batch.update(d.ref, { status: 'offline' }));
+    await batch.commit();
+    toast(`✅ ${ativas.length} sessões encerradas`);
+    renderOnlineUsers();
+  } catch(e) { toast('❌ Erro ao encerrar: ' + (e.message || '')); }
 }
 
 async function encerrarSessaoEspecifica(sessionId, email) {
@@ -6167,18 +6273,23 @@ async function renderOnlineUsers() {
       }
       lista.innerHTML = ativas.map(d => {
         const s = d.data();
+        const sid = d.id;
         const ping = new Date(s.ultimo_ping_iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const locStr = [s.cidade, s.pais].filter(Boolean).join(', ') || '—';
         const devIcon = s.tipo_dispositivo === 'Mobile' ? '📱' : s.tipo_dispositivo === 'Tablet' ? '📟' : '🖥️';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
             <span style="width:9px;height:9px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;flex-shrink:0;display:inline-block"></span>
             <div>
               <div style="font-weight:600;font-size:0.86rem">${escapeHTML(s.usuario_email || '—')}</div>
               <div style="font-size:0.74rem;color:var(--text-l)">${devIcon} ${escapeHTML(s.tipo_dispositivo || '—')} · 📍 ${escapeHTML(locStr)}</div>
             </div>
           </div>
-          <div style="font-size:0.74rem;color:var(--text-l)">Último ping: ${ping}</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <div style="font-size:0.74rem;color:var(--text-l)">Último ping: ${ping}</div>
+            <button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)"
+              onclick="encerrarSessaoOnline('${escapeHTML(sid)}','${escapeHTML(s.usuario_email||'')}')">✕ Encerrar</button>
+          </div>
         </div>`;
       }).join('');
     } catch(e) { console.warn('Erro online:', e); }
@@ -6500,14 +6611,15 @@ const RBAC_PERFIS = {
 };
 
 // Permissões do usuário atual em memória
-let _rbacPerms = null; // null = não carregado; [] = sem acesso; [...] = lista de ids
+let _rbacPerms = null; // null = carregando (não bloquear); [] = sem acesso; [...] = lista de ids
 let _rbacUsuarioDocId = null; // doc id do usuário atual no Firestore
 
 // Retorna true se o usuário atual tem permissão para o módulo
 function temPermissao(moduloId) {
-  // Admin principal sempre tem tudo
+  // Admin principal sempre tem tudo — verificação imediata
   if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return true;
-  if (_rbacPerms === null) return false; // ainda carregando
+  // Se ainda carregando, NÃO bloqueia (evita falso negativo na restauração de sessão)
+  if (_rbacPerms === null) return true;
   return _rbacPerms.includes(moduloId);
 }
 
@@ -6629,7 +6741,8 @@ async function salvarPermissoes() {
 // Override de goAdminTab para verificar permissões
 const _goAdminTabOriginal = goAdminTab;
 goAdminTab = function(tab) {
-  if (!temPermissao(tab)) {
+  // Só bloqueia se permissões já foram carregadas (_rbacPerms !== null) e não tem acesso
+  if (_rbacPerms !== null && !temPermissao(tab)) {
     toast('🚫 Você não tem acesso a este módulo');
     return;
   }
@@ -6639,9 +6752,9 @@ goAdminTab = function(tab) {
 // Override de goSubTab para verificar permissões de sub-tabs
 const _goSubTabOriginal = goSubTab;
 goSubTab = function(sub) {
-  // Sub-tabs de administração têm permissão própria
   const moduloSub = RBAC_MODULOS.find(m => m.sub === sub);
-  if (moduloSub && !temPermissao(sub)) {
+  // Só bloqueia se permissões carregadas e realmente sem acesso
+  if (moduloSub && _rbacPerms !== null && !temPermissao(sub)) {
     toast('🚫 Você não tem acesso a este módulo');
     return;
   }
