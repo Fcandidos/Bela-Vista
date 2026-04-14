@@ -2298,7 +2298,8 @@ select option{background:#060d14;color:#e8f4ff;}
           <div><h4>Usuários Ativos</h4><p>Atividade nos últimos 2 minutos</p></div>
           <div style="margin-left:auto;display:flex;gap:8px">
             <button class="btn btn-sm btn-out" onclick="renderOnlineUsers()">🔄</button>
-            <button class="btn btn-sm btn-danger" onclick="encerrarTodosOnline()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Encerrar todos</button>
+            <button class="btn btn-sm btn-danger" onclick="encerrarTodosOnline()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">✕ Encerrar todos</button>
+            <button class="btn btn-sm btn-danger" onclick="excluirTodosOnline()" style="font-size:0.72rem;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)">🗑️ Limpar todos</button>
           </div>
         </div>
         <div class="card-b" id="online-lista">
@@ -3042,7 +3043,12 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('🔁 ' + pendentes30.length + ' cliente(s) aguardando lembrete de retorno!');
           }, 1500);
         }
-        addLogSeguranca('SESSAO_RESTAURADA', 'Login automático via sessão salva');
+        // Só registra log de restauração UMA VEZ por aba (evita spam ao recarregar)
+        const flagKey = 'vf_sessao_restaurada_log';
+        if (!sessionStorage.getItem(flagKey)) {
+          sessionStorage.setItem(flagKey, '1');
+          addLogSeguranca('SESSAO_RESTAURADA', 'Login automático via sessão salva');
+        }
       } catch(e) {}
     }, 800);
   }
@@ -3180,6 +3186,8 @@ async function doLogin() {
     goAdminTab(tabSalva);
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
     registrarLogAcesso('LOGIN_OK', emailSanitized);
+    // Marca que este é um login real (não restauração), para evitar log duplicado
+    try { sessionStorage.setItem('vf_sessao_restaurada_log', '1'); } catch(e) {}
     iniciarSessaoFirebase(emailSanitized);
     iniciarControleInatividade();
     // Carrega permissões RBAC do usuário
@@ -6033,25 +6041,68 @@ async function iniciarSessaoFirebase(email) {
   try {
     const geo = await obterGeolocalizacao();
     _currentUserEmail = email;
-    _currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-    const sessao = {
-      session_id: _currentSessionId,
-      usuario_email: email,
-      data_login: firebase.firestore.FieldValue.serverTimestamp(),
-      data_login_iso: new Date().toISOString(),
-      ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
-      ultimo_ping_iso: new Date().toISOString(),
-      ip_usuario: geo.ip,
-      cidade: geo.cidade,
-      regiao: geo.regiao,
-      pais: geo.pais,
-      latitude: geo.latitude,
-      longitude: geo.longitude,
-      tipo_dispositivo: detectarDispositivo(),
-      user_agent: navigator.userAgent.slice(0, 300),
-      status: 'online'
-    };
-    await _db.collection('sessoes_ativas').doc(_currentSessionId).set(sessao);
+    const dispositivo = detectarDispositivo();
+    const userAgent = navigator.userAgent.slice(0, 300);
+
+    // Busca todas as sessões online deste usuário
+    const existentes = await _db.collection('sessoes_ativas')
+      .where('usuario_email', '==', email)
+      .where('status', '==', 'online')
+      .get();
+
+    // Procura sessão existente com mesmo user_agent (mesma aba/navegador)
+    let sessaoExistente = null;
+    const sessoesParaFechar = [];
+
+    existentes.forEach(doc => {
+      const d = doc.data();
+      if (!sessaoExistente && d.user_agent === userAgent) {
+        // Mesma aba/navegador: reutiliza
+        sessaoExistente = doc;
+      } else if (d.user_agent === userAgent) {
+        // Duplicata do mesmo navegador: marca para fechar
+        sessoesParaFechar.push(doc);
+      }
+    });
+
+    // Fecha duplicatas do mesmo navegador silenciosamente
+    if (sessoesParaFechar.length > 0) {
+      const batchClean = _db.batch();
+      sessoesParaFechar.forEach(doc => batchClean.update(doc.ref, { status: 'offline' }));
+      await batchClean.commit();
+    }
+
+    if (sessaoExistente) {
+      // Reutiliza sessão existente — apenas atualiza o ping
+      _currentSessionId = sessaoExistente.id;
+      await _db.collection('sessoes_ativas').doc(_currentSessionId).update({
+        ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
+        ultimo_ping_iso: new Date().toISOString(),
+        status: 'online'
+      });
+    } else {
+      // Cria nova sessão (primeiro login ou outro dispositivo/navegador)
+      _currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const sessao = {
+        session_id: _currentSessionId,
+        usuario_email: email,
+        data_login: firebase.firestore.FieldValue.serverTimestamp(),
+        data_login_iso: new Date().toISOString(),
+        ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
+        ultimo_ping_iso: new Date().toISOString(),
+        ip_usuario: geo.ip,
+        cidade: geo.cidade,
+        regiao: geo.regiao,
+        pais: geo.pais,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        tipo_dispositivo: dispositivo,
+        user_agent: userAgent,
+        status: 'online'
+      };
+      await _db.collection('sessoes_ativas').doc(_currentSessionId).set(sessao);
+    }
+
     // Atualiza status online no RTDB se disponível
     atualizarStatusOnline(email, true);
     // Ping a cada 30s
@@ -6185,13 +6236,48 @@ async function excluirTodasSessoes() {
 
 async function encerrarSessaoOnline(sessionId, email) {
   if (!_db || !sessionId) return;
-  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?')) return;
+  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?\n\n(Mantém o histórico, apenas marca como offline)')) return;
   try {
     await _db.collection('sessoes_ativas').doc(sessionId).update({ status: 'offline' });
     registrarLogAcesso('SESSAO_ENCERRADA', email, 'Encerrada pelo administrador');
     toast('✅ Sessão encerrada');
     renderOnlineUsers();
   } catch(e) { toast('❌ Erro ao encerrar sessão'); }
+}
+
+async function excluirSessaoOnline(sessionId) {
+  if (!_db || !sessionId) return;
+  if (!confirm('🗑️ Excluir permanentemente este registro de sessão?\n\nO histórico será removido.')) return;
+  try {
+    await _db.collection('sessoes_ativas').doc(sessionId).delete();
+    toast('🗑️ Sessão excluída permanentemente');
+    renderOnlineUsers();
+  } catch(e) { toast('❌ Erro ao excluir: ' + (e.message || '')); }
+}
+
+async function excluirTodosOnline() {
+  if (!_db) return;
+  if (!confirm('🗑️ Excluir TODOS os registros de sessão online?\n\nIsto remove permanentemente o histórico. Esta ação é irreversível.')) return;
+  try {
+    toast('⏳ Excluindo registros...');
+    const agora = Date.now();
+    const snap = await _db.collection('sessoes_ativas').where('status', '==', 'online').get();
+    const ativas = snap.docs.filter(d => {
+      const ping = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0;
+      return (agora - ping) < 2 * 60 * 1000;
+    });
+    if (!ativas.length) { toast('⚠️ Nenhuma sessão online encontrada'); return; }
+    let batch = _db.batch();
+    let count = 0;
+    for (const doc of ativas) {
+      batch.delete(doc.ref);
+      count++;
+      if (count % 499 === 0) { await batch.commit(); batch = _db.batch(); }
+    }
+    if (count % 499 !== 0) await batch.commit();
+    toast(`✅ ${count} registros excluídos permanentemente`);
+    renderOnlineUsers();
+  } catch(e) { toast('❌ Erro ao excluir: ' + (e.message || '')); }
 }
 
 async function encerrarTodosOnline() {
@@ -6289,6 +6375,8 @@ async function renderOnlineUsers() {
             <div style="font-size:0.74rem;color:var(--text-l)">Último ping: ${ping}</div>
             <button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px;background:var(--err-bg);color:var(--err);border:1px solid rgba(255,68,102,0.3)"
               onclick="encerrarSessaoOnline('${escapeHTML(sid)}','${escapeHTML(s.usuario_email||'')}')">✕ Encerrar</button>
+            <button class="btn btn-sm btn-danger" style="font-size:0.68rem;padding:4px 8px"
+              onclick="excluirSessaoOnline('${escapeHTML(sid)}')">🗑️</button>
           </div>
         </div>`;
       }).join('');
