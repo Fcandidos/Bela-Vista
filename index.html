@@ -7,7 +7,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-<meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+<meta http-equiv="Permissions-Policy" content="microphone=(), camera=()">
 <title>Bela Vista — Sistema de Reservas</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -2156,9 +2156,12 @@ select option{background:#060d14;color:#e8f4ff;}
       <!-- ===== SUB: MAPA ===== -->
       <div id="subtab-mapa" class="adm-sub-content">
       <div class="page-title">🗺️ Mapa de Acessos</div>
-      <div class="page-sub">Visualização geográfica dos últimos acessos</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-        <button class="btn btn-out btn-sm" onclick="carregarMapa()">🔄 Atualizar mapa</button>
+      <div class="page-sub">Visualização geográfica dos últimos acessos · <span style="color:var(--green);font-size:0.78rem">📡 GPS ativo</span> quando disponível</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-out btn-sm" onclick="carregarMapa()">🔄 Atualizar</button>
+        <button class="btn btn-out btn-sm" onclick="centralizarMapaRecente()">📍 Centralizar no mais recente</button>
+        <button class="btn btn-out btn-sm" onclick="verTodosOsPontos()">🌐 Ver todos os pontos</button>
+        <button id="btn-atualizar-gps" class="btn btn-ok btn-sm" onclick="atualizarLocalizacaoGPS()" title="Captura sua localização exata via GPS do dispositivo e atualiza o mapa">📡 Ativar GPS preciso</button>
         <select id="mapa-filter-evento" onchange="carregarMapa()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:0.84rem">
           <option value="">Todos os eventos</option>
           <option value="LOGIN_OK">LOGIN_OK</option>
@@ -2166,8 +2169,15 @@ select option{background:#060d14;color:#e8f4ff;}
           <option value="INATIVIDADE">INATIVIDADE</option>
         </select>
       </div>
+      <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.78rem;color:var(--text-l)">
+        💡 <strong style="color:var(--green)">Para localização exata:</strong> clique em <strong>📡 Ativar GPS preciso</strong> e permita o acesso à localização. A posição é salva na sessão — <strong>só precisa fazer isso uma vez</strong> por visita ao sistema.
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;font-size:0.74rem;color:var(--text-l)">
+        <span>🟢 LOGIN OK</span><span style="color:#ff4466">🔴 LOGIN ERRO</span><span style="color:#a78bfa">🟣 LOGOUT</span><span style="color:#ffb040">🟡 INATIVIDADE</span>
+        <span style="margin-left:8px;color:var(--text-l)">· Borda branca = mais recente</span>
+      </div>
       <div class="card" style="margin-bottom:18px">
-        <div id="mapa-leaflet" style="height:420px;border-radius:12px;overflow:hidden;"></div>
+        <div id="mapa-leaflet" style="height:500px;border-radius:12px;overflow:hidden;"></div>
       </div>
       <div class="card">
         <div class="card-h"><div class="card-icon">📍</div><div><h4>Últimos Acessos no Mapa</h4></div></div>
@@ -5200,32 +5210,136 @@ function detectarDispositivo() {
 }
 
 // ================================================================
-// GEOLOCALIZAÇÃO POR IP
+// GEOLOCALIZAÇÃO — GPS preciso + IP como fallback de metadados
 // ================================================================
 let _geoCache = null;
-async function obterGeolocalizacao() {
-  if (_geoCache) return _geoCache;
+const _GEO_SESSION_KEY = 'vf_geo_cache';
+
+// Tenta restaurar posição GPS salva na sessão atual (evita pedir permissão de novo)
+function _restaurarGeoSessao() {
+  try {
+    const raw = sessionStorage.getItem(_GEO_SESSION_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      // Só reutiliza se tiver menos de 30 minutos
+      if (cached && cached._ts && (Date.now() - cached._ts) < 30 * 60 * 1000) {
+        return cached;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+
+function _salvarGeoSessao(geo) {
+  try { sessionStorage.setItem(_GEO_SESSION_KEY, JSON.stringify({ ...geo, _ts: Date.now() })); } catch(e) {}
+}
+
+// Obtém coordenadas via browser GPS (alta precisão)
+function obterPosicaoBrowser() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('sem suporte')); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, precisao: pos.coords.accuracy }),
+      err => reject(err),
+      { timeout: 8000, maximumAge: 30000, enableHighAccuracy: true }
+    );
+  });
+}
+
+// Obtém metadados (cidade/país/IP) via API de IP
+async function obterGeoIP() {
   const apis = [
     async () => {
-      const r = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+      const r = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
-      return { ip: d.ip, cidade: d.city || '', regiao: d.region || '', pais: d.country_name || d.country || '', latitude: d.latitude || 0, longitude: d.longitude || 0 };
+      if (d.error) throw new Error(d.reason || 'ipapi error');
+      return { ip: d.ip || '', cidade: d.city || '', regiao: d.region || '', pais: d.country_name || d.country || '', latitude: d.latitude || 0, longitude: d.longitude || 0 };
     },
     async () => {
-      const r = await fetch('https://ipinfo.io/json?token=', { signal: AbortSignal.timeout(4000) });
+      const r = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(5000) });
       const d = await r.json();
-      const [lat, lon] = (d.loc || '0,0').split(',');
-      return { ip: d.ip, cidade: d.city || '', regiao: d.region || '', pais: d.country || '', latitude: parseFloat(lat) || 0, longitude: parseFloat(lon) || 0 };
+      return { ip: d.ip || '', cidade: d.city || '', regiao: d.region || '', pais: d.country || '', latitude: d.latitude || 0, longitude: d.longitude || 0 };
+    },
+    async () => {
+      const r = await fetch('https://ip-api.com/json/?fields=status,message,country,regionName,city,lat,lon,query', { signal: AbortSignal.timeout(5000) });
+      const d = await r.json();
+      if (d.status !== 'success') throw new Error(d.message || 'ip-api error');
+      return { ip: d.query || '', cidade: d.city || '', regiao: d.regionName || '', pais: d.country || '', latitude: d.lat || 0, longitude: d.lon || 0 };
     }
   ];
   for (const api of apis) {
-    try {
-      const geo = await api();
-      _geoCache = geo;
-      return geo;
-    } catch(e) {}
+    try { return await api(); } catch(e) { console.warn('GeoIP fallback:', e.message); }
   }
   return { ip: 'desconhecido', cidade: '', regiao: '', pais: '', latitude: 0, longitude: 0 };
+}
+
+async function obterGeolocalizacao(forceGPS) {
+  // 1. Usa cache de memória se disponível e não forçando novo GPS
+  if (_geoCache && !forceGPS) return _geoCache;
+
+  // 2. Tenta restaurar GPS da sessão (não pede permissão de novo)
+  if (!forceGPS) {
+    const salvo = _restaurarGeoSessao();
+    if (salvo) { _geoCache = salvo; return _geoCache; }
+  }
+
+  // 3. Busca metadados de IP (rápido, sem permissão)
+  const geoIP = await obterGeoIP();
+
+  // 4. Tenta GPS do browser
+  try {
+    const pos = await obterPosicaoBrowser();
+    _geoCache = { ...geoIP, latitude: pos.latitude, longitude: pos.longitude, precisao: pos.precisao, fonte: 'gps' };
+    _salvarGeoSessao(_geoCache); // salva na sessão para não pedir de novo
+    console.log(`✅ GPS obtido: ${pos.latitude}, ${pos.longitude} (±${Math.round(pos.precisao)}m)`);
+  } catch(e) {
+    _geoCache = { ...geoIP, fonte: 'ip' };
+    console.warn('⚠️ GPS indisponível, usando IP:', e.message);
+  }
+  return _geoCache;
+}
+
+// Força nova captura GPS e atualiza o log mais recente no Firebase
+async function atualizarLocalizacaoGPS() {
+  const btn = document.getElementById('btn-atualizar-gps');
+  if (btn) { btn.disabled = true; btn.textContent = '📡 Aguardando GPS...'; }
+  try {
+    _geoCache = null; // força nova captura
+    try { sessionStorage.removeItem(_GEO_SESSION_KEY); } catch(e) {} // limpa cache de sessão
+    const geo = await obterGeolocalizacao(true);
+    if (geo.fonte === 'gps') {
+      // Atualiza o log mais recente no Firebase com a posição GPS
+      // Usa apenas orderBy sem where para evitar necessidade de índice composto
+      if (_db) {
+        const snap = await _db.collection('logs_acesso')
+          .orderBy('data_hora', 'desc').limit(20).get();
+        // Filtra client-side pelo usuário atual
+        const email = _currentUserEmail || '';
+        const docAlvo = snap.docs.find(d => {
+          const data = d.data();
+          return !email || data.usuario_email === email;
+        });
+        if (docAlvo) {
+          await docAlvo.ref.update({
+            latitude: geo.latitude,
+            longitude: geo.longitude,
+            precisao: geo.precisao || 0,
+            fonte: 'gps'
+          });
+        }
+      }
+      toast(`✅ GPS capturado: ±${Math.round(geo.precisao || 0)}m`);
+      if (btn) { btn.textContent = `✅ GPS ativo (±${Math.round(geo.precisao||0)}m)`; btn.style.color = 'var(--green)'; btn.disabled = true; }
+    } else {
+      toast('⚠️ Permissão GPS negada — usando localização por IP');
+      if (btn) { btn.disabled = false; btn.textContent = '📡 Ativar GPS (permissão necessária)'; }
+    }
+    // Recarrega o mapa
+    await carregarMapa();
+  } catch(e) {
+    toast('❌ Erro ao capturar GPS: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '📡 Tentar GPS novamente'; }
+  }
 }
 
 // ================================================================
@@ -5246,6 +5360,8 @@ async function registrarLogAcesso(tipoEvento, usuarioEmail, detalhes) {
       pais: geo.pais,
       latitude: geo.latitude,
       longitude: geo.longitude,
+      precisao: geo.precisao || null,
+      fonte: geo.fonte || 'ip',
       tipo_dispositivo: detectarDispositivo(),
       user_agent: navigator.userAgent.slice(0, 300),
       detalhes: detalhes || ''
@@ -5358,6 +5474,7 @@ async function carregarMapa() {
     const snap = await q.get();
     let logs = snap.docs.map(d => d.data()).filter(l => l.latitude && l.longitude && (l.latitude !== 0 || l.longitude !== 0));
     if (filtroEvento) logs = logs.filter(l => l.tipo_evento === filtroEvento);
+    _logsMapaAtual = logs;
     renderMapaLeaflet(logs);
     renderMapaLista(logs);
   } catch(e) { console.warn('Erro mapa:', e); toast('❌ Erro ao carregar mapa'); }
@@ -5368,27 +5485,162 @@ function renderMapaLeaflet(logs) {
   if (!container) return;
   if (!window.L) { container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-l)">⚠️ Leaflet não carregado</div>'; return; }
   if (_mapaInstance) { _mapaInstance.remove(); _mapaInstance = null; }
-  _mapaInstance = L.map('mapa-leaflet').setView([-15, -50], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 18
-  }).addTo(_mapaInstance);
+
+  // Centro padrão: Brasil
+  let centerLat = -15, centerLon = -50, zoomInicial = 4;
+
+  // Se há logs, centraliza no mais recente com zoom alto
+  const logsValidos = logs.filter(l => l.latitude && l.longitude && (l.latitude !== 0 || l.longitude !== 0));
+  if (logsValidos.length > 0) {
+    const mais_recente = logsValidos[0];
+    centerLat = mais_recente.latitude;
+    centerLon = mais_recente.longitude;
+    // Zoom maior se coordenada parece precisa (GPS), menor se for apenas cidade (IP)
+    zoomInicial = mais_recente.fonte === 'gps' ? 15 : 12;
+  }
+
+  _mapaInstance = L.map('mapa-leaflet', { zoomControl: true }).setView([centerLat, centerLon], zoomInicial);
+
+  // ── Provedores de tiles (todos sem restrição de Referer) ──────────────
+  const _tileStyles = {
+    ruas: {
+      label: '🗺️ Ruas',
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      opts: { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19 }
+    },
+    dark: {
+      label: '🌑 Dark',
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      opts: { attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19 }
+    },
+    satelite: {
+      label: '🛰️ Satélite',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      opts: { attribution: '© Esri © NASA', maxZoom: 19 }
+    },
+    hibrido: {
+      label: '🗾 Híbrido',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      opts: { attribution: '© Esri © NASA', maxZoom: 19 },
+      overlay: {
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+        opts: { attribution: '', subdomains: 'abcd', maxZoom: 19, opacity: 0.85 }
+      }
+    },
+    terreno: {
+      label: '⛰️ Terreno',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      opts: { attribution: '© Esri', maxZoom: 19 }
+    },
+    humanitario: {
+      label: '🏘️ Humanitário',
+      url: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+      opts: { attribution: '© OpenStreetMap Humanitarian', maxZoom: 19 }
+    }
+  };
+
+  let _tileAtivo = null;
+  let _overlayAtivo = null;
+  let _estiloAtual = 'ruas';
+
+  function _aplicarEstilo(estilo) {
+    if (!_mapaInstance) return;
+    const s = _tileStyles[estilo];
+    if (!s) return;
+    if (_tileAtivo) { _mapaInstance.removeLayer(_tileAtivo); _tileAtivo = null; }
+    if (_overlayAtivo) { _mapaInstance.removeLayer(_overlayAtivo); _overlayAtivo = null; }
+    _tileAtivo = L.tileLayer(s.url, s.opts).addTo(_mapaInstance);
+    if (s.overlay) {
+      _overlayAtivo = L.tileLayer(s.overlay.url, s.overlay.opts).addTo(_mapaInstance);
+    }
+    _estiloAtual = estilo;
+    // Atualiza botões do seletor
+    document.querySelectorAll('.mapa-style-btn').forEach(b => {
+      b.style.background = b.dataset.style === estilo
+        ? 'rgba(0,212,255,0.25)' : 'rgba(6,13,20,0.82)';
+      b.style.color = b.dataset.style === estilo ? '#00d4ff' : '#e8f4ff';
+      b.style.borderColor = b.dataset.style === estilo ? '#00d4ff' : 'rgba(255,255,255,0.15)';
+    });
+    // Salva preferência
+    try { localStorage.setItem('vf_mapa_style', estilo); } catch(e) {}
+  }
+
+  // ── Cria controle de estilo customizado ──────────────────────────────
+  const StyleControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function() {
+      const div = L.DomUtil.create('div', '');
+      div.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+      Object.entries(_tileStyles).forEach(([key, s]) => {
+        const btn = L.DomUtil.create('button', 'mapa-style-btn', div);
+        btn.dataset.style = key;
+        btn.textContent = s.label;
+        btn.style.cssText = `
+          padding: 5px 10px; border-radius: 8px; font-size: 0.73rem; font-weight: 600;
+          cursor: pointer; white-space: nowrap; font-family: inherit;
+          background: rgba(6,13,20,0.82); color: #e8f4ff;
+          border: 1px solid rgba(255,255,255,0.15);
+          backdrop-filter: blur(8px);
+          transition: all 0.15s; text-align: left;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        `;
+        btn.onmouseover = () => { if (btn.dataset.style !== _estiloAtual) btn.style.background = 'rgba(0,212,255,0.1)'; };
+        btn.onmouseout  = () => { if (btn.dataset.style !== _estiloAtual) btn.style.background = 'rgba(6,13,20,0.82)'; };
+        L.DomEvent.on(btn, 'click', L.DomEvent.stopPropagation);
+        L.DomEvent.on(btn, 'click', () => _aplicarEstilo(key));
+      });
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    }
+  });
+  new StyleControl().addTo(_mapaInstance);
+
+  // Aplica estilo salvo ou padrão
+  const estiloSalvo = (() => { try { return localStorage.getItem('vf_mapa_style') || 'ruas'; } catch(e) { return 'ruas'; } })();
+  _aplicarEstilo(estiloSalvo);
+
   const corEvento = { LOGIN_OK: '#00ff88', LOGIN_ERRO: '#ff4466', LOGOUT: '#a78bfa', INATIVIDADE: '#ffb040' };
-  logs.forEach(l => {
-    if (!l.latitude || !l.longitude) return;
+
+  logsValidos.forEach((l, idx) => {
     const cor = corEvento[l.tipo_evento] || '#00d4ff';
     const ts = l.data_hora_iso ? new Date(l.data_hora_iso).toLocaleString('pt-BR') : '—';
+    const isGPS = l.fonte === 'gps';
+    const precisaoTxt = isGPS
+      ? `📡 GPS (±${l.precisao ? Math.round(l.precisao) + 'm' : 'alta precisão'})`
+      : '🌐 Por IP (precisão de cidade)';
+
+    // Marcador: círculo maior e pulsante para o mais recente
+    const raio = idx === 0 ? 10 : 7;
     const circle = L.circleMarker([l.latitude, l.longitude], {
-      radius: 8, fillColor: cor, color: cor, weight: 2, opacity: 0.9, fillOpacity: 0.5
+      radius: raio,
+      fillColor: cor,
+      color: idx === 0 ? '#ffffff' : cor,
+      weight: idx === 0 ? 2.5 : 1.5,
+      opacity: 1,
+      fillOpacity: idx === 0 ? 0.85 : 0.55
     }).addTo(_mapaInstance);
-    circle.bindPopup(`<div style="font-size:13px;min-width:180px">
-      <strong>${l.usuario_email || '—'}</strong><br>
+
+    circle.bindPopup(`<div style="font-size:13px;min-width:200px;line-height:1.7">
+      <strong style="color:#1a1a2e">${l.usuario_email || '—'}</strong><br>
       🕐 ${ts}<br>
-      📍 ${[l.cidade, l.pais].filter(Boolean).join(', ') || '—'}<br>
-      🏷️ ${l.tipo_evento || '—'}<br>
+      📍 ${[l.cidade, l.regiao, l.pais].filter(Boolean).join(', ') || '—'}<br>
+      🏷️ <strong>${l.tipo_evento || '—'}</strong><br>
+      ${precisaoTxt}<br>
       ${l.tipo_dispositivo ? '📱 ' + l.tipo_dispositivo : ''}
+      ${idx === 0 ? '<br><span style="color:#0077ff;font-size:11px;font-weight:700">⬆ Acesso mais recente</span>' : ''}
     </div>`);
+
+    // Abre popup automaticamente no ponto mais recente
+    if (idx === 0) circle.openPopup();
   });
+
+  // Se só tem 1 ponto, ajusta zoom para garantir boa visualização
+  if (logsValidos.length === 1) {
+    _mapaInstance.setView([logsValidos[0].latitude, logsValidos[0].longitude], zoomInicial);
+  } else if (logsValidos.length > 1) {
+    // Opcional: ajusta bounds para mostrar todos os pontos com padding
+    // Mas mantém foco no mais recente — não faz fitBounds automático
+  }
 }
 
 function renderMapaLista(logs) {
@@ -5409,8 +5661,29 @@ function renderMapaLista(logs) {
   }).join('');
 }
 
-// ================================================================
-// CONTROLE DE INATIVIDADE (10 minutos)
+// Centraliza mapa no acesso mais recente com zoom alto
+let _logsMapaAtual = [];
+function centralizarMapaRecente() {
+  if (!_mapaInstance || !_logsMapaAtual.length) return;
+  const l = _logsMapaAtual[0];
+  const zoom = l.fonte === 'gps' ? 15 : 12;
+  _mapaInstance.flyTo([l.latitude, l.longitude], zoom, { animate: true, duration: 1.2 });
+}
+
+// Ajusta mapa para mostrar todos os pontos
+function verTodosOsPontos() {
+  if (!_mapaInstance || !_logsMapaAtual.length) return;
+  const bounds = _logsMapaAtual
+    .filter(l => l.latitude && l.longitude)
+    .map(l => [l.latitude, l.longitude]);
+  if (bounds.length === 1) {
+    _mapaInstance.flyTo(bounds[0], 12, { animate: true, duration: 1.2 });
+  } else if (bounds.length > 1) {
+    _mapaInstance.flyToBounds(L.latLngBounds(bounds), { padding: [40, 40], animate: true, duration: 1.2 });
+  }
+}
+
+
 // ================================================================
 let _inactivityTimer = null;
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos
@@ -5700,7 +5973,10 @@ function renderUsuariosTable(usuarios) {
       <td>${statusBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;padding:8px">
         <button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email || '')}')">🔑 Reset senha</button>
-        ${u.email !== ADMIN_EMAIL ? `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="alterarStatusUsuario('${escapeHTML(u.id || '')}','${u.status === 'ativo' ? 'inativo' : 'ativo'}')">${u.status === 'ativo' ? '🚫 Desativar' : '✅ Ativar'}</button>` : ''}
+        ${u.email !== ADMIN_EMAIL ? `
+          <button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)" onclick="alterarStatusUsuario('${escapeHTML(u.id || '')}','${u.status === 'ativo' ? 'inativo' : 'ativo'}')">${u.status === 'ativo' ? '🚫 Desativar' : '✅ Ativar'}</button>
+          <button class="btn btn-sm btn-danger" style="font-size:0.7rem" onclick="excluirUsuario('${escapeHTML(u.id || '')}','${escapeHTML(u.email || '')}')">🗑️ Excluir</button>
+        ` : '<span style="font-size:0.7rem;color:var(--text-l)">🔒 Admin principal</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -5717,32 +5993,90 @@ async function criarNovoUsuario() {
   if (!_auth || !_db) { toast('⚠️ Firebase não conectado'); return; }
   const email = (document.getElementById('nu-email').value || '').trim();
   const senha = document.getElementById('nu-senha').value;
-  const tipo = document.getElementById('nu-tipo').value;
+  const tipo  = document.getElementById('nu-tipo').value;
   if (!email || !senha) { toast('⚠️ Preencha e-mail e senha'); return; }
-  if (senha.length < 6) { toast('❌ Senha mínima: 6 caracteres'); return; }
+  if (senha.length < 6)  { toast('❌ Senha mínima: 6 caracteres'); return; }
+
+  // Verifica duplicata no Firestore
   try {
-    // Salva usuário atual para re-autenticar depois
-    const userAtual = _auth.currentUser;
-    // Cria no Firebase Auth
-    await _auth.createUserWithEmailAndPassword(email, senha);
+    const existe = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+    if (!existe.empty) { toast('❌ E-mail já cadastrado'); return; }
+  } catch(e) {}
+
+  const btnCriar = document.querySelector('[onclick="criarNovoUsuario()"]');
+  if (btnCriar) { btnCriar.disabled = true; btnCriar.textContent = '⏳ Criando...'; }
+
+  let appSecundario = null;
+  try {
+    const nomeApp = 'bv-criar-' + Date.now();
+    appSecundario = firebase.initializeApp(FIREBASE_CONFIG, nomeApp);
+    const authSec = appSecundario.auth();
+
+    let uid = '';
+    try {
+      // Tenta criar no Firebase Auth
+      const cred = await authSec.createUserWithEmailAndPassword(email, senha);
+      uid = cred.user?.uid || '';
+      await authSec.signOut();
+    } catch(authErr) {
+      if (authErr.code === 'auth/email-already-in-use') {
+        // Auth já tem o e-mail (registro órfão de tentativa anterior)
+        // Apenas registra no Firestore sem recriar no Auth
+        console.warn('Auth já tem esse e-mail, registrando apenas no Firestore:', email);
+      } else {
+        throw authErr; // outros erros propagam normalmente
+      }
+    }
+
     // Salva no Firestore
     await _db.collection('usuarios').add({
-      email: email,
-      tipo: tipo,
+      email:    email,
+      tipo:     tipo,
       criadoEm: new Date().toISOString(),
-      status: 'ativo'
+      status:   'ativo',
+      uid:      uid
     });
+
     registrarLogAcesso('USUARIO_CRIADO', _currentUserEmail || ADMIN_EMAIL, 'Novo usuário: ' + email);
     closeM('m-novo-usuario');
     toast('✅ Usuário criado: ' + email);
     carregarUsuarios();
+
   } catch(e) {
     const msgs = {
-      'auth/email-already-in-use': 'E-mail já cadastrado',
-      'auth/invalid-email': 'E-mail inválido',
-      'auth/weak-password': 'Senha fraca (mínimo 6 caracteres)'
+      'auth/invalid-email':         'E-mail inválido',
+      'auth/weak-password':         'Senha fraca (mínimo 6 caracteres)',
+      'auth/operation-not-allowed': 'Criação de usuários desativada no Firebase Console',
     };
     toast('❌ ' + (msgs[e.code] || e.message || 'Erro ao criar usuário'));
+    console.error('Erro criarNovoUsuario:', e);
+  } finally {
+    if (appSecundario) { try { await appSecundario.delete(); } catch(e) {} }
+    if (btnCriar) { btnCriar.disabled = false; btnCriar.innerHTML = '✅ Criar usuário'; }
+  }
+}
+
+async function excluirUsuario(docId, email) {
+  if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  if (email === ADMIN_EMAIL) { toast('❌ Não é possível excluir o administrador principal'); return; }
+  if (!confirm(`Excluir o usuário "${email}"?\n\nEsta ação removerá o acesso ao sistema. O registro no Firebase Auth não será removido automaticamente (pode ser feito pelo Console Firebase).`)) return;
+
+  try {
+    // Remove do Firestore
+    await _db.collection('usuarios').doc(docId).delete();
+    // Encerra sessões ativas desse usuário no Realtime DB
+    if (_rtdb) {
+      try {
+        const sessSnap = await _rtdb.ref('usuarios_online').orderByChild('email').equalTo(email).once('value');
+        sessSnap.forEach(child => child.ref.remove());
+      } catch(e) {}
+    }
+    registrarLogAcesso('USUARIO_EXCLUIDO', _currentUserEmail || ADMIN_EMAIL, 'Excluído: ' + email);
+    toast('🗑️ Usuário excluído: ' + email);
+    carregarUsuarios();
+  } catch(e) {
+    toast('❌ Erro ao excluir: ' + (e.message || 'Tente novamente'));
+    console.error('Erro excluirUsuario:', e);
   }
 }
 
