@@ -2830,12 +2830,8 @@ function addLogSeguranca(tipo, detalhe) {
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
   } catch(e) {}
-  // Também persiste no Firebase quando disponível
-  try {
-    if (window.registrarLogAcesso) {
-      window.registrarLogAcesso(tipo, ADMIN_EMAIL, detalhe);
-    }
-  } catch(e) {}
+  // Nota: NÃO chama registrarLogAcesso aqui para evitar duplicatas.
+  // O registrarLogAcesso é chamado explicitamente em cada ponto de login/logout.
 }
 function verificarLembretes30Dias(mostrarToast) { return []; }
 function renderWhatsAppTab() {}
@@ -5260,61 +5256,36 @@ function addLogSeguranca(tipo, detalhe) {
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
   } catch(e){}
-  // Persiste no Firebase (assíncrono, não bloqueia)
-  try {
-    if (typeof registrarLogAcesso === 'function') {
-      registrarLogAcesso(tipo, _currentUserEmail || ADMIN_EMAIL, detalhe);
-    }
-  } catch(e) {}
+  // Nota: NÃO chama registrarLogAcesso aqui para evitar duplicatas.
+  // O registrarLogAcesso é chamado explicitamente em cada ponto de login/logout.
 }
 
 function renderLogSeguranca() {
   const tbody = document.getElementById('seg-log-tbody');
   if (!tbody) return;
-  // Mostra loading
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-l)">⏳ Carregando...</td></tr>';
-
-  // Carrega do Firestore se disponível
   if (_db) {
     _db.collection('logs_acesso').orderBy('data_hora', 'desc').limit(50).get().then(snap => {
       const fsLogs = snap.docs.map(d => {
         const data = d.data();
-        return {
-          ts: data.data_hora_iso || '',
-          tipo: data.tipo_evento || 'SISTEMA',
-          detalhe: data.usuario_email ? 'Email: ' + data.usuario_email + (data.detalhes ? ' — ' + data.detalhes : '') : (data.detalhes || '')
-        };
+        return { ts: data.data_hora_iso || '', tipo: data.tipo_evento || 'SISTEMA',
+          detalhe: data.usuario_email ? 'Email: ' + data.usuario_email + (data.detalhes ? ' — ' + data.detalhes : '') : (data.detalhes || '') };
       });
-      // Mescla com logs locais
       let localLogs = [];
       try { localLogs = JSON.parse(localStorage.getItem('vf_seg_log') || '[]'); } catch(e){}
-      try {
-        const old = JSON.parse(localStorage.getItem('vf_logs') || '[]');
-        old.forEach(l => localLogs.push({ts: l.ts, tipo: 'SISTEMA', detalhe: l.msg}));
-      } catch(e){}
-      // Une e ordena por data
+      try { const old = JSON.parse(localStorage.getItem('vf_logs') || '[]'); old.forEach(l => localLogs.push({ts: l.ts, tipo: 'SISTEMA', detalhe: l.msg})); } catch(e){}
       const todos = [...fsLogs, ...localLogs];
       todos.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
       _renderSegLogTbody(tbody, todos);
     }).catch(() => {
-      // Fallback: só localStorage
       let logs = [];
       try { logs = JSON.parse(localStorage.getItem('vf_seg_log') || '[]'); } catch(e){}
-      try {
-        const old = JSON.parse(localStorage.getItem('vf_logs') || '[]');
-        old.forEach(l => logs.push({ts: l.ts, tipo: 'SISTEMA', detalhe: l.msg}));
-      } catch(e){}
       logs.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
       _renderSegLogTbody(tbody, logs);
     });
   } else {
-    // Sem Firebase: apenas localStorage
     let logs = [];
     try { logs = JSON.parse(localStorage.getItem('vf_seg_log') || '[]'); } catch(e){}
-    try {
-      const old = JSON.parse(localStorage.getItem('vf_logs') || '[]');
-      old.forEach(l => logs.push({ts: l.ts, tipo: 'SISTEMA', detalhe: l.msg}));
-    } catch(e){}
     logs.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
     _renderSegLogTbody(tbody, logs);
   }
@@ -5562,24 +5533,20 @@ async function obterGeolocalizacao(forceGPS) {
     if (salvo) { _geoCache = salvo; return _geoCache; }
   }
 
-  // 3. Busca apenas o IP (sem cidade por IP — cidades via IP são do provedor, não do usuário real)
+  // 3. Busca apenas o IP (cidade via IP é do provedor/CDN, não do usuário real — não usar)
   let ipAtual = 'desconhecido';
-  try {
-    const geoIP = await obterGeoIP();
-    ipAtual = geoIP.ip || 'desconhecido';
-  } catch(e) {}
+  try { const geoIP = await obterGeoIP(); ipAtual = geoIP.ip || 'desconhecido'; } catch(e) {}
 
   // 4. Tenta GPS do browser
   try {
     const pos = await obterPosicaoBrowser();
-    // GPS capturado: usa coordenadas precisas, mas cidade/país só se GPS confirmado
     _geoCache = { ip: ipAtual, cidade: '', regiao: '', pais: '', latitude: pos.latitude, longitude: pos.longitude, precisao: pos.precisao, fonte: 'gps' };
-    _salvarGeoSessao(_geoCache); // salva na sessão para não pedir de novo
+    _salvarGeoSessao(_geoCache);
     console.log(`✅ GPS obtido: ${pos.latitude}, ${pos.longitude} (±${Math.round(pos.precisao)}m)`);
   } catch(e) {
-    // Sem GPS: não usa cidade/localização por IP (imprecisa — mostra cidade do provedor)
+    // Sem GPS: localização por IP desativada (mostraria cidade do provedor, não do usuário)
     _geoCache = { ip: ipAtual, cidade: '', regiao: '', pais: '', latitude: 0, longitude: 0, fonte: 'ip' };
-    console.warn('⚠️ GPS indisponível, localização por IP desativada para evitar imprecisão:', e.message);
+    console.warn('⚠️ GPS indisponível, localização por IP desativada:', e.message);
   }
   return _geoCache;
 }
@@ -6150,8 +6117,6 @@ async function iniciarSessaoFirebase(email) {
         status: 'online'
       };
       await _db.collection('sessoes_ativas').doc(_currentSessionId).set(sessao);
-      // Registra log de acesso para que apareça na aba de Log de Acessos e Eventos
-      try { await registrarLogAcesso('LOGIN_OK', email, 'Email: ' + email); } catch(e) {}
     }
 
     // Atualiza status online no RTDB se disponível
@@ -6532,7 +6497,7 @@ function renderUsuariosTable(usuarios) {
     const btnExcluir = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem"
         onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>`;
 
-    // Todos os usuários têm botões de desativar e excluir (exceto o admin principal não pode ser excluído)
+    // Todos têm Desativar/Excluir — Admin Principal não pode ser excluído (segurança)
     const acoes = isAdminPrincipal
       ? `${btnPermissoes} ${btnReset} ${btnToggle}`
       : `${btnPermissoes} ${btnReset} ${btnToggle} ${btnExcluir}`;
