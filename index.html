@@ -2830,8 +2830,7 @@ function addLogSeguranca(tipo, detalhe) {
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
   } catch(e) {}
-  // Nota: NÃO chama registrarLogAcesso aqui para evitar duplicatas.
-  // O registrarLogAcesso é chamado explicitamente em cada ponto de login/logout.
+  // Nota: NÃO chama registrarLogAcesso aqui — é chamado explicitamente onde necessário.
 }
 function verificarLembretes30Dias(mostrarToast) { return []; }
 function renderWhatsAppTab() {}
@@ -2891,11 +2890,11 @@ function carregarDados() {
     if (d) despesas = JSON.parse(d);
   } catch(e){}
 }
-function salvarSessao(logado, token) {
+function salvarSessao(logado, token, email) {
   try {
     if (logado && token) {
       const expiry = Date.now() + 8 * 60 * 60 * 1000; // 8 horas
-      localStorage.setItem('vf_sessao', JSON.stringify({token, expiry, logado: true}));
+      localStorage.setItem('vf_sessao', JSON.stringify({token, expiry, logado: true, email: email || ''}));
     } else {
       localStorage.removeItem('vf_sessao');
     }
@@ -2918,7 +2917,7 @@ function lerSessao() {
       localStorage.removeItem('vf_sessao');
       return false;
     }
-    return true;
+    return s; // retorna o objeto completo (com .email)
   } catch(e) {
     // Formato inválido - limpa e pede novo login
     try { localStorage.removeItem('vf_sessao'); } catch(_) {}
@@ -3013,25 +3012,27 @@ document.addEventListener('DOMContentLoaded', () => {
   window._appPronto = true;
 
   // Restaura sessão se já estava logado
-  if (lerSessao()) {
+  const _sessaoRestaurada = lerSessao();
+  if (_sessaoRestaurada) {
+    // Usa o email salvo na sessão; fallback para ADMIN_EMAIL apenas se não houver
+    const _emailRestaurado = (_sessaoRestaurada.email) || ADMIN_EMAIL;
     showScreen('admin');
-    _currentUserEmail = ADMIN_EMAIL;
-    // Pré-inicializa permissões para admin: acesso total imediato, sem esperar Firebase
-    // Isso evita o toast "Você não tem acesso" ao restaurar sessão
-    if (typeof RBAC_PERFIS !== 'undefined') {
+    _currentUserEmail = _emailRestaurado;
+    // Pré-inicializa permissões: admin principal tem acesso total imediato
+    if (_emailRestaurado === ADMIN_EMAIL && typeof RBAC_PERFIS !== 'undefined') {
       _rbacPerms = RBAC_PERFIS.total;
     }
-    atualizarAvatarMenu(ADMIN_EMAIL);
+    atualizarAvatarMenu(_emailRestaurado);
     // Reativar sessão Firebase ao restaurar
     setTimeout(async function() {
       try {
-        await iniciarSessaoFirebase(ADMIN_EMAIL);
+        await iniciarSessaoFirebase(_emailRestaurado);
         iniciarControleInatividade();
       } catch(e) {}
       try {
-        // Carrega permissões reais do Firebase (confirma acesso total para admin)
+        // Carrega permissões reais do Firebase
         if (typeof carregarPermissoesUsuario === 'function') {
-          await carregarPermissoesUsuario(ADMIN_EMAIL);
+          await carregarPermissoesUsuario(_emailRestaurado);
         }
         var pendentes30 = verificarLembretes30Dias(false);
         if (pendentes30 && pendentes30.length > 0) {
@@ -3172,7 +3173,7 @@ async function doLogin() {
   if (loginOk) {
     try { sessionStorage.removeItem(rateLimitKey); } catch(e) {}
     const token = gerarTokenSessao();
-    salvarSessao(true, token);
+    salvarSessao(true, token, emailSanitized);
     _currentUserEmail = emailSanitized;
     fecharLogin();
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3965,7 +3966,7 @@ function renderRelatorios() {
     document.getElementById('rel-table-title').textContent='Eventos — Este ano';
   }
   const tot=list.reduce((s,r)=>s+r.total,0);
-  const rec=list.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+r.sinal,0);
+  const rec=list.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
   const ticket=list.length?Math.round(tot/list.length):0;
   document.getElementById('rel-metrics').innerHTML=`
     <div class="metric"><div class="metric-icon">📅</div><div class="metric-lbl">Eventos</div><div class="metric-val">${list.length}</div></div>
@@ -5256,8 +5257,7 @@ function addLogSeguranca(tipo, detalhe) {
     if (logs.length > 200) logs.length = 200;
     localStorage.setItem('vf_seg_log', JSON.stringify(logs));
   } catch(e){}
-  // Nota: NÃO chama registrarLogAcesso aqui para evitar duplicatas.
-  // O registrarLogAcesso é chamado explicitamente em cada ponto de login/logout.
+  // Nota: NÃO chama registrarLogAcesso aqui — é chamado explicitamente onde necessário.
 }
 
 function renderLogSeguranca() {
