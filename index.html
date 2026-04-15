@@ -3066,16 +3066,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const _sessaoRestaurada = lerSessao();
   if (_sessaoRestaurada) {
     const _emailRestaurado = (_sessaoRestaurada.email) || ADMIN_EMAIL;
-    // Garante que sempre começa no dashboard ao restaurar sessão
+    // Sempre começa no dashboard ao restaurar sessão
     try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
     _currentUserEmail = _emailRestaurado;
-    // Pré-define permissões: admin principal tem tudo; outros aguardam Firebase
+    // Admin principal: permissão total imediata
     if (_emailRestaurado === ADMIN_EMAIL && typeof RBAC_PERFIS !== 'undefined') {
       _rbacPerms = RBAC_PERFIS.total;
-    } else {
-      _rbacPerms = null; // aguardando — dashboard é sempre permitido
     }
-    showScreen('admin'); // sempre abre no dashboard
+    showScreen('admin');
     atualizarAvatarMenu(_emailRestaurado);
     setTimeout(async function() {
       try {
@@ -3086,7 +3084,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof carregarPermissoesUsuario === 'function') {
           await carregarPermissoesUsuario(_emailRestaurado);
         }
-        // Aplica RBAC após carregar permissões reais
         if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
         if (typeof atualizarAvatarMenu === 'function') atualizarAvatarMenu(_emailRestaurado);
         var pendentes30 = verificarLembretes30Dias(false);
@@ -3236,36 +3233,32 @@ async function doLogin() {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-admin').classList.add('active');
     window.scrollTo({ top: 0, behavior: 'instant' });
-    // Sempre abre no dashboard ao fazer login (nunca restaura aba anterior)
+    // Sempre abre no dashboard ao fazer login
     try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
-    // Bloqueia navegação até permissões carregarem (exceto dashboard)
-    _rbacPerms = null;
     goAdminTab('dashboard');
-    // Carrega permissões imediatamente — sem aguardar
-    if (typeof _doLoginRBACHook === 'function') {
-      _doLoginRBACHook(emailSanitized).then(() => {
-        // Após carregar, aplica RBAC e garante que está no dashboard
-        if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
-        goAdminTab('dashboard');
-      });
-    }
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
     registrarLogAcesso('LOGIN_OK', emailSanitized);
-    // Marca que este é um login real (não restauração), para evitar log duplicado
     try { sessionStorage.setItem('vf_sessao_restaurada_log', '1'); } catch(e) {}
     iniciarSessaoFirebase(emailSanitized);
     iniciarControleInatividade();
-    // Verificações de segurança pós-login
+    // Carrega permissões RBAC (após tudo iniciado)
     setTimeout(async () => {
+      try {
+        if (typeof carregarPermissoesUsuario === 'function') await carregarPermissoesUsuario(emailSanitized);
+        if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
+        if (typeof atualizarAvatarMenu === 'function') atualizarAvatarMenu(emailSanitized);
+      } catch(e) {}
+      // Verificações de segurança pós-login
       try { await verificarNovoDispositivo(emailSanitized); } catch(e) {}
       try { await verificarSessaoSimultanea(emailSanitized); } catch(e) {}
-      // Verifica primeiro acesso
-      const isPrimeiroAcesso = await verificarPrimeiroAcesso(emailSanitized);
-      if (isPrimeiroAcesso) {
-        const mPA = document.getElementById('m-primeiro-acesso');
-        if (mPA) mPA.style.display = 'flex';
-      }
-    }, 1000);
+      try {
+        const isPrimeiroAcesso = await verificarPrimeiroAcesso(emailSanitized);
+        if (isPrimeiroAcesso) {
+          const mPA = document.getElementById('m-primeiro-acesso');
+          if (mPA) mPA.style.display = 'flex';
+        }
+      } catch(e) {}
+    }, 500);
     toast('✅ Bem-vindo!');
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
