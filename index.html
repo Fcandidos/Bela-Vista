@@ -1236,7 +1236,10 @@ td strong{color:#e8f4ff;font-weight:600;}
 /* ============================================================ RESPONSIVE */
 @media(max-width:720px){
   .admin-nav{display:none;}
-  .mobile-menu-btn{display:flex!important;}
+  .mobile-menu-btn{display:none!important;}
+  #mob-bottom-bar{display:block!important;}
+  .admin-body{padding-bottom:76px!important;}
+  .admin-header{padding-right:12px;}
   .metrics{grid-template-columns:1fr 1fr;}
   .pub-hero{padding:48px 16px 32px;}
   .admin-body{padding:16px 12px 60px;}
@@ -1258,25 +1261,141 @@ td strong{color:#e8f4ff;font-weight:600;}
 }
 
 /* ============================================================ MOBILE MENU */
+/* ============================================================ MOBILE BOTTOM NAV */
 .mobile-menu-btn{
   display:none;width:38px;height:38px;border-radius:9px;
   border:1px solid var(--border);background:transparent;
   color:var(--text-l);cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem;
 }
-.mobile-nav{
-  display:none;position:fixed;inset:0;
-  background:rgba(2,6,9,0.97);
+
+/* Bottom tab bar */
+#mob-bottom-bar{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  height:64px;
+  z-index:500;
+  background:rgba(2,6,9,0.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(0,212,255,0.15);
+  box-shadow:0 -4px 30px rgba(0,0,0,0.5), 0 -1px 0 rgba(0,212,255,0.08);
+}
+#mob-bottom-bar::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(0,212,255,0.03) 0%,transparent 100%);
+  pointer-events:none;
+}
+.mob-bar-items{
+  display:flex;align-items:center;justify-content:space-around;
+  height:100%;padding:0 4px;
+  position:relative;z-index:1;
+}
+.mob-bar-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;flex:1;height:100%;
+  background:none;border:none;cursor:pointer;
+  padding:8px 2px 10px;
+  position:relative;
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mob-bar-btn .mob-icon{
+  font-size:1.3rem;line-height:1;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1), filter .2s;
+  filter:grayscale(0.3) opacity(0.6);
+}
+.mob-bar-btn .mob-lbl{
+  font-size:0.58rem;font-weight:600;letter-spacing:0.4px;
+  color:rgba(232,244,255,0.4);
+  transition:color .2s;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.mob-bar-btn.active .mob-icon{
+  filter:grayscale(0) opacity(1) drop-shadow(0 0 6px var(--mob-clr,#00d4ff));
+  transform:translateY(-2px) scale(1.15);
+}
+.mob-bar-btn.active .mob-lbl{
+  color:var(--mob-clr,#00d4ff);
+  text-shadow:0 0 8px var(--mob-clr,#00d4ff);
+}
+.mob-bar-btn.active::after{
+  content:'';
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:28px;height:2px;border-radius:0 0 3px 3px;
+  background:var(--mob-clr,#00d4ff);
+  box-shadow:0 0 10px var(--mob-clr,#00d4ff), 0 0 20px var(--mob-clr,#00d4ff);
+  animation:mob-bar-line .3s ease;
+}
+@keyframes mob-bar-line{from{width:0;opacity:0}to{width:28px;opacity:1}}
+.mob-bar-btn:not(.active):active .mob-icon{
+  transform:scale(0.9);
+}
+
+/* More menu overlay */
+#mob-more-overlay{
+  display:none;position:fixed;inset:0;z-index:490;
+}
+#mob-more-overlay.open{display:block;}
+#mob-more-panel{
+  position:fixed;bottom:72px;left:12px;right:12px;
+  background:rgba(6,13,20,0.98);
   backdrop-filter:blur(24px);
-  z-index:400;flex-direction:column;
-  align-items:center;justify-content:center;gap:10px;
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:20px;
+  padding:8px;
+  z-index:495;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,212,255,0.05);
+  transform:translateY(20px);opacity:0;pointer-events:none;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);
 }
-.mobile-nav.open{display:flex;}
-.mobile-nav .admin-nav-btn{
-  font-size:1rem;padding:14px 36px;border-radius:14px;
-  width:220px;text-align:center;
-  border:1px solid var(--border);
+#mob-more-panel.open{
+  transform:translateY(0);opacity:1;pointer-events:auto;
 }
-.mobile-nav-close{position:absolute;top:22px;right:22px;background:transparent;border:none;color:var(--text-l);font-size:1.5rem;cursor:pointer;}
+.mob-more-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+}
+.mob-more-item{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:14px 8px;border-radius:14px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+  cursor:pointer;transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mob-more-item:active{transform:scale(0.95);}
+.mob-more-item.active{
+  background:rgba(0,212,255,0.08);
+  border-color:rgba(0,212,255,0.3);
+}
+.mob-more-item .mmi-icon{font-size:1.5rem;line-height:1;}
+.mob-more-item .mmi-lbl{font-size:0.68rem;font-weight:600;color:rgba(232,244,255,0.7);text-align:center;letter-spacing:0.2px;}
+.mob-more-item.active .mmi-lbl{color:var(--cyan);}
+
+/* More button pulsing dot */
+.mob-more-dot{
+  position:absolute;top:8px;right:calc(50% - 18px);
+  width:7px;height:7px;border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);
+}
+
+[data-theme="light"] #mob-bottom-bar{
+  background:rgba(255,255,255,0.95);
+  border-top:1px solid rgba(0,0,0,0.08);
+  box-shadow:0 -2px 20px rgba(0,0,0,0.08);
+}
+[data-theme="light"] #mob-bottom-bar::before{background:none;}
+[data-theme="light"] .mob-bar-btn .mob-lbl{color:rgba(74,85,104,0.5);}
+[data-theme="light"] .mob-bar-btn.active .mob-lbl{color:var(--mob-clr,#0099cc);}
+[data-theme="light"] #mob-more-panel{background:rgba(255,255,255,0.99);border-color:rgba(0,0,0,0.1);}
+[data-theme="light"] .mob-more-item{background:rgba(0,0,0,0.02);border-color:rgba(0,0,0,0.08);}
+[data-theme="light"] .mob-more-item.active{background:rgba(0,153,204,0.08);border-color:rgba(0,153,204,0.3);}
+[data-theme="light"] .mob-more-item .mmi-lbl{color:#4a5568;}
+
+/* Legacy - hide old mobile nav */
+.mobile-nav{display:none!important;}
+.mobile-nav-close{display:none!important;}
 
 /* ============================================================ ACTIONS DROPDOWN */
 .act-wrap{position:relative;display:inline-block;}
@@ -1774,16 +1893,74 @@ select option{background:#060d14;color:#e8f4ff;}
     </div>
   </header>
 
-  <!-- Mobile nav overlay -->
-  <div class="mobile-nav" id="mobile-nav">
-    <button class="mobile-nav-close" onclick="toggleMobileMenu()">✕</button>
-    <button class="admin-nav-btn" data-tab="dashboard" onclick="goAdminTab('dashboard');toggleMobileMenu()">📊 Dashboard</button>
-    <button class="admin-nav-btn" data-tab="reservas" onclick="goAdminTab('reservas');toggleMobileMenu()">📋 Reservas</button>
-    <button class="admin-nav-btn" data-tab="calendario" onclick="goAdminTab('calendario');toggleMobileMenu()">📅 Calendário</button>
-    <button class="admin-nav-btn" data-tab="relatorios" onclick="goAdminTab('relatorios');toggleMobileMenu()">💰 Relatórios</button>
-    <button class="admin-nav-btn" data-tab="despesas" onclick="goAdminTab('despesas');toggleMobileMenu()">💸 Despesas</button>
-    <button class="admin-nav-btn" data-tab="financeiro" onclick="goAdminTab('financeiro');toggleMobileMenu()">📈 Financeiro</button>
-    <button class="admin-nav-btn" data-tab="administracao" onclick="goAdminTab('administracao');toggleMobileMenu()">⚙️ Administração</button>
+  <!-- Legacy mobile nav (hidden) -->
+  <div class="mobile-nav" id="mobile-nav" style="display:none!important"></div>
+
+  <!-- ===== NEW MOBILE BOTTOM BAR ===== -->
+  <div id="mob-bottom-bar">
+    <div class="mob-bar-items">
+      <!-- Dashboard -->
+      <button class="mob-bar-btn active" data-tab="dashboard"
+        style="--mob-clr:#00d4ff"
+        onclick="mobGoTab('dashboard')">
+        <span class="mob-icon">📊</span>
+        <span class="mob-lbl">Dashboard</span>
+      </button>
+      <!-- Reservas -->
+      <button class="mob-bar-btn" data-tab="reservas"
+        style="--mob-clr:#00ff88"
+        onclick="mobGoTab('reservas')">
+        <span class="mob-icon">📋</span>
+        <span class="mob-lbl">Reservas</span>
+      </button>
+      <!-- Calendário -->
+      <button class="mob-bar-btn" data-tab="calendario"
+        style="--mob-clr:#a78bfa"
+        onclick="mobGoTab('calendario')">
+        <span class="mob-icon">📅</span>
+        <span class="mob-lbl">Agenda</span>
+      </button>
+      <!-- Financeiro -->
+      <button class="mob-bar-btn" data-tab="financeiro"
+        style="--mob-clr:#ffb040"
+        onclick="mobGoTab('financeiro')">
+        <span class="mob-icon">📈</span>
+        <span class="mob-lbl">Financeiro</span>
+      </button>
+      <!-- More -->
+      <button class="mob-bar-btn" id="mob-more-btn"
+        style="--mob-clr:#00d4ff"
+        onclick="toggleMobMore()">
+        <span class="mob-icon">⊞</span>
+        <span class="mob-lbl">Mais</span>
+        <span class="mob-more-dot" id="mob-more-dot" style="display:none"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- More panel overlay -->
+  <div id="mob-more-overlay" onclick="closeMobMore()"></div>
+
+  <!-- More panel -->
+  <div id="mob-more-panel">
+    <div style="padding:4px 8px 10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:0.7rem;font-weight:700;letter-spacing:1.5px;color:var(--text-l);text-transform:uppercase">Mais módulos</span>
+      <button onclick="closeMobMore()" style="background:none;border:none;color:var(--text-l);font-size:1.1rem;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>
+    <div class="mob-more-grid">
+      <div class="mob-more-item" data-tab="relatorios" onclick="mobGoTab('relatorios');closeMobMore()">
+        <span class="mmi-icon">💰</span>
+        <span class="mmi-lbl">Relatórios</span>
+      </div>
+      <div class="mob-more-item" data-tab="despesas" onclick="mobGoTab('despesas');closeMobMore()">
+        <span class="mmi-icon">💸</span>
+        <span class="mmi-lbl">Despesas</span>
+      </div>
+      <div class="mob-more-item" data-tab="administracao" onclick="mobGoTab('administracao');closeMobMore()">
+        <span class="mmi-icon">⚙️</span>
+        <span class="mmi-lbl">Admin</span>
+      </div>
+    </div>
   </div>
 
   <div class="admin-body">
@@ -3480,7 +3657,51 @@ function goSubTab(sub) {
   if (sub === 'usuarios')  { try { carregarUsuarios(); } catch(e){} }
 }
 function toggleMobileMenu() {
-  document.getElementById('mobile-nav').classList.toggle('open');
+  // Legacy - mantido para compatibilidade
+}
+
+// ── NOVO MENU MOBILE BOTTOM BAR ──────────────────────────────
+function mobGoTab(tab) {
+  goAdminTab(tab);
+  _syncMobBar(tab);
+}
+
+function _syncMobBar(tab) {
+  try {
+    const moreTabs = ['relatorios','despesas','administracao'];
+    document.querySelectorAll('#mob-bottom-bar .mob-bar-btn').forEach(b => {
+      if (b.id === 'mob-more-btn') {
+        b.classList.toggle('active', moreTabs.includes(tab));
+      } else {
+        b.classList.toggle('active', b.dataset.tab === tab);
+      }
+    });
+    document.querySelectorAll('#mob-more-panel .mob-more-item').forEach(i => {
+      i.classList.toggle('active', i.dataset.tab === tab);
+    });
+    const dot = document.getElementById('mob-more-dot');
+    if (dot) dot.style.display = moreTabs.includes(tab) ? 'block' : 'none';
+  } catch(e) {}
+}
+
+function toggleMobMore() {
+  const panel = document.getElementById('mob-more-panel');
+  const overlay = document.getElementById('mob-more-overlay');
+  if (!panel || !overlay) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+  } else {
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    if (navigator.vibrate) navigator.vibrate(8);
+  }
+}
+
+function closeMobMore() {
+  document.getElementById('mob-more-panel')?.classList.remove('open');
+  document.getElementById('mob-more-overlay')?.classList.remove('open');
 }
 
 // ================================================================
@@ -7091,19 +7312,20 @@ async function salvarPermissoes() {
   }
 }
 
-// Override de goAdminTab para verificar permissões
+// Override de goAdminTab para verificar permissões + sincronizar mobile bar
 const _goAdminTabOriginal = goAdminTab;
 goAdminTab = function(tab) {
   // Dashboard é sempre acessível para qualquer usuário logado
-  if (tab === 'dashboard') { _goAdminTabOriginal(tab); return; }
+  if (tab === 'dashboard') { _goAdminTabOriginal(tab); _syncMobBar(tab); return; }
   // Só bloqueia se permissões já foram carregadas (_rbacPerms !== null)
   if (_rbacPerms !== null && !temPermissao(tab)) {
     toast('🚫 Você não tem acesso a este módulo');
-    // Redireciona para dashboard em vez de deixar em tela errada
     _goAdminTabOriginal('dashboard');
+    _syncMobBar('dashboard');
     return;
   }
   _goAdminTabOriginal(tab);
+  _syncMobBar(tab);
 };
 
 // Override de goSubTab para verificar permissões de sub-tabs
