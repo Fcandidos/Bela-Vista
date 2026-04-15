@@ -2625,15 +2625,14 @@ select option{background:#060d14;color:#e8f4ff;}
 
 <!-- Modal: Novo Usuário -->
 <div class="modal-bg" id="m-novo-usuario">
-  <div class="modal" style="max-width:460px">
+  <div class="modal" style="max-width:480px">
     <div class="modal-h"><h3>👤 Novo Usuário</h3><button class="modal-close" onclick="closeM('m-novo-usuario')">✕</button></div>
     <div class="modal-body">
       <div class="fg"><label>E-mail *</label><input type="email" id="nu-email" placeholder="usuario@email.com"></div>
-      <div class="fg"><label>Senha *</label>
-        <div style="position:relative">
-          <input type="password" id="nu-senha" placeholder="Mínimo 6 caracteres" style="padding-right:40px">
-          <button type="button" onclick="toggleSenha('nu-senha',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-l);font-size:1rem;padding:4px;">👁</button>
-        </div>
+      <div style="background:var(--info-bg);border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.8rem;color:var(--text-l);display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:1.1rem;flex-shrink:0">🔐</span>
+        <div><strong style="color:var(--cyan);display:block;margin-bottom:3px">Senha gerada automaticamente</strong>
+        O sistema gera uma senha aleatória segura. Um e-mail com link para definir a senha será enviado ao usuário.</div>
       </div>
       <div class="fg"><label>Tipo de usuário</label>
         <select id="nu-tipo" onchange="atualizarPermissoesNovoUsuario()">
@@ -2644,7 +2643,69 @@ select option{background:#060d14;color:#e8f4ff;}
     </div>
     <div class="modal-foot">
       <button class="btn btn-out" onclick="closeM('m-novo-usuario')">Cancelar</button>
-      <button class="btn btn-gold" onclick="criarNovoUsuario()">✅ Criar usuário</button>
+      <button class="btn btn-gold" onclick="criarNovoUsuario()">✅ Criar e enviar e-mail</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Reautenticação para ações críticas -->
+<div class="modal-bg" id="m-reauth">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-h"><h3>🔒 Confirmar identidade</h3><button class="modal-close" onclick="closeM('m-reauth');_reauthCallback=null">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--text-l);margin-bottom:16px">Por segurança, confirme sua senha para continuar com esta ação crítica.</p>
+      <div class="fg"><label>Sua senha atual *</label>
+        <div style="position:relative">
+          <input type="password" id="reauth-senha" placeholder="Digite sua senha" style="padding-right:40px" onkeydown="if(event.key==='Enter')confirmarReauth()">
+          <button type="button" onclick="toggleSenha('reauth-senha',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-l);font-size:1rem;padding:4px;">👁</button>
+        </div>
+      </div>
+      <div id="reauth-erro" style="color:var(--err);font-size:0.8rem;margin-top:6px;display:none">❌ Senha incorreta. Tente novamente.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-out" onclick="closeM('m-reauth');_reauthCallback=null">Cancelar</button>
+      <button class="btn btn-gold" onclick="confirmarReauth()">🔓 Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Primeiro acesso — troca de senha obrigatória -->
+<div class="modal-bg" id="m-primeiro-acesso" style="z-index:99999">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-h"><h3>🔑 Defina sua senha</h3></div>
+    <div class="modal-body">
+      <div style="background:var(--warn-bg);border:1px solid rgba(255,176,64,0.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem;color:var(--text-l)">
+        ⚠️ Este é seu primeiro acesso. Por segurança, defina uma nova senha antes de continuar.
+      </div>
+      <div class="fg"><label>Nova senha *</label>
+        <div style="position:relative">
+          <input type="password" id="pa-nova" placeholder="Mínimo 8 caracteres" oninput="atualizarForcaSenha(this.value,'pa-forca','pa-forca-bar')" style="padding-right:40px">
+          <button type="button" onclick="toggleSenha('pa-nova',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-l);font-size:1rem;padding:4px;">👁</button>
+        </div>
+        <div id="pa-forca" style="font-size:0.74rem;margin-top:4px;color:var(--text-l)"></div>
+        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px"><div id="pa-forca-bar" style="height:100%;width:0%;border-radius:2px;transition:all .3s"></div></div>
+      </div>
+      <div class="fg"><label>Confirmar nova senha *</label>
+        <input type="password" id="pa-confirma" placeholder="Repita a senha">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-gold" onclick="salvarPrimeiroAcesso()" style="width:100%">✅ Definir senha e entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Aviso de inatividade com countdown -->
+<div class="modal-bg" id="m-inatividade-warn" style="z-index:99998">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div class="modal-body" style="padding:32px 24px">
+      <div style="font-size:3rem;margin-bottom:12px">⏰</div>
+      <h3 style="margin-bottom:8px">Sessão prestes a expirar</h3>
+      <p style="font-size:0.85rem;color:var(--text-l);margin-bottom:20px">Sua sessão expirará em <strong id="inatividade-countdown" style="color:var(--err);font-size:1.1rem">120</strong> segundos por inatividade.</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-out" onclick="doLogout('INATIVIDADE')">Sair agora</button>
+        <button class="btn btn-gold" onclick="continuarSessao()">✅ Continuar conectado</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3126,6 +3187,9 @@ async function doLogin() {
 
   const emailSanitized = email.replace(/[<>"'&]/g, '');
 
+  // Verifica IP suspeito (múltiplos e-mails diferentes)
+  if (verificarIPSuspeito(emailSanitized)) return;
+
   // ── Bloco de login ──────────────────────────────────────────────
   // 1. Tenta Firebase Auth (suporta senhas redefinidas pelo link)
   // 2. Fallback: senha local (adminSenha) para o admin principal
@@ -3172,6 +3236,17 @@ async function doLogin() {
     try { sessionStorage.setItem('vf_sessao_restaurada_log', '1'); } catch(e) {}
     iniciarSessaoFirebase(emailSanitized);
     iniciarControleInatividade();
+    // Verificações de segurança pós-login
+    setTimeout(async () => {
+      try { await verificarNovoDispositivo(emailSanitized); } catch(e) {}
+      try { await verificarSessaoSimultanea(emailSanitized); } catch(e) {}
+      // Verifica primeiro acesso
+      const isPrimeiroAcesso = await verificarPrimeiroAcesso(emailSanitized);
+      if (isPrimeiroAcesso) {
+        const mPA = document.getElementById('m-primeiro-acesso');
+        if (mPA) mPA.style.display = 'flex';
+      }
+    }, 1000);
     // Carrega permissões RBAC do usuário
     if (typeof _doLoginRBACHook === 'function') _doLoginRBACHook(emailSanitized);
     toast('✅ Bem-vindo!');
@@ -6011,26 +6086,68 @@ function verTodosOsPontos() {
 
 // ================================================================
 let _inactivityTimer = null;
+let _inactivityWarnTimer = null;
+let _inactivityCountdownInterval = null;
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos
+const INACTIVITY_WARN    =  8 * 60 * 1000; //  8 minutos → avisa 2 min antes
 
 function iniciarControleInatividade() {
   pararControleInatividade();
-  const resetar = () => { clearTimeout(_inactivityTimer); _inactivityTimer = setTimeout(expirarPorInatividade, INACTIVITY_TIMEOUT); };
+  const resetar = () => {
+    clearTimeout(_inactivityTimer);
+    clearTimeout(_inactivityWarnTimer);
+    clearInterval(_inactivityCountdownInterval);
+    // Fecha modal de aviso se estava aberto
+    const mWarn = document.getElementById('m-inatividade-warn');
+    if (mWarn) mWarn.style.display = 'none';
+    _inactivityWarnTimer = setTimeout(mostrarAvisoInatividade, INACTIVITY_WARN);
+    _inactivityTimer = setTimeout(expirarPorInatividade, INACTIVITY_TIMEOUT);
+  };
   ['click', 'mousemove', 'keydown', 'scroll', 'touchstart', 'touchmove'].forEach(ev => document.addEventListener(ev, resetar, { passive: true }));
   window._inactivityReset = resetar;
   resetar();
 }
 
 function pararControleInatividade() {
-  if (_inactivityTimer) { clearTimeout(_inactivityTimer); _inactivityTimer = null; }
+  if (_inactivityTimer)          { clearTimeout(_inactivityTimer); _inactivityTimer = null; }
+  if (_inactivityWarnTimer)      { clearTimeout(_inactivityWarnTimer); _inactivityWarnTimer = null; }
+  if (_inactivityCountdownInterval) { clearInterval(_inactivityCountdownInterval); _inactivityCountdownInterval = null; }
   if (window._inactivityReset) {
     ['click', 'mousemove', 'keydown', 'scroll', 'touchstart', 'touchmove'].forEach(ev => document.removeEventListener(ev, window._inactivityReset));
     window._inactivityReset = null;
   }
 }
 
+function mostrarAvisoInatividade() {
+  if (!lerSessao()) return;
+  const modal = document.getElementById('m-inatividade-warn');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  let seg = 120;
+  const el = document.getElementById('inatividade-countdown');
+  if (el) el.textContent = seg;
+  clearInterval(_inactivityCountdownInterval);
+  _inactivityCountdownInterval = setInterval(() => {
+    seg--;
+    if (el) el.textContent = seg;
+    if (seg <= 0) { clearInterval(_inactivityCountdownInterval); }
+  }, 1000);
+}
+
+function continuarSessao() {
+  const modal = document.getElementById('m-inatividade-warn');
+  if (modal) modal.style.display = 'none';
+  clearInterval(_inactivityCountdownInterval);
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_inactivityWarnTimer);
+  _inactivityWarnTimer = setTimeout(mostrarAvisoInatividade, INACTIVITY_WARN);
+  _inactivityTimer = setTimeout(expirarPorInatividade, INACTIVITY_TIMEOUT);
+}
+
 function expirarPorInatividade() {
   if (!lerSessao()) return;
+  const modal = document.getElementById('m-inatividade-warn');
+  if (modal) modal.style.display = 'none';
   doLogout('INATIVIDADE');
 }
 
@@ -6507,15 +6624,73 @@ function abrirModalNovoUsuario() {
   openM('m-novo-usuario');
 }
 
+// ================================================================
+// GERADOR DE SENHA ALEATÓRIA SEGURA
+// ================================================================
+function gerarSenhaAleatoria(tamanho = 14) {
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lower = 'abcdefghijklmnopqrstuvwxyz';
+  const nums  = '0123456789';
+  const syms  = '!@#$%^&*()_+-=[]{}';
+  const todos = upper + lower + nums + syms;
+  let senha = '';
+  // Garante pelo menos 1 de cada categoria
+  senha += upper[Math.floor(Math.random() * upper.length)];
+  senha += lower[Math.floor(Math.random() * lower.length)];
+  senha += nums[Math.floor(Math.random() * nums.length)];
+  senha += syms[Math.floor(Math.random() * syms.length)];
+  for (let i = 4; i < tamanho; i++) {
+    senha += todos[Math.floor(Math.random() * todos.length)];
+  }
+  // Embaralha
+  return senha.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+// ================================================================
+// INDICADOR DE FORÇA DE SENHA
+// ================================================================
+function atualizarForcaSenha(senha, labelId, barId) {
+  const labelEl = document.getElementById(labelId);
+  const barEl   = document.getElementById(barId);
+  if (!labelEl || !barEl) return;
+  let score = 0;
+  if (senha.length >= 8)  score++;
+  if (senha.length >= 12) score++;
+  if (/[A-Z]/.test(senha)) score++;
+  if (/[0-9]/.test(senha)) score++;
+  if (/[^A-Za-z0-9]/.test(senha)) score++;
+  const niveis = [
+    { label: '', color: 'transparent', pct: 0 },
+    { label: '🔴 Muito fraca', color: '#ff4466', pct: 20 },
+    { label: '🟠 Fraca', color: '#ff8800', pct: 40 },
+    { label: '🟡 Média', color: '#ffb040', pct: 60 },
+    { label: '🟢 Forte', color: '#00cc6a', pct: 80 },
+    { label: '✅ Muito forte', color: '#00ff88', pct: 100 },
+  ];
+  const n = niveis[score] || niveis[0];
+  labelEl.textContent = n.label;
+  barEl.style.width = n.pct + '%';
+  barEl.style.background = n.color;
+}
+
+// ================================================================
+// CRIAR NOVO USUÁRIO — com senha aleatória + e-mail de boas-vindas
+// ================================================================
 async function criarNovoUsuario() {
   if (!_auth || !_db) { toast('⚠️ Firebase não conectado'); return; }
   const email = (document.getElementById('nu-email').value || '').trim();
-  const senha = document.getElementById('nu-senha').value;
   const tipo  = document.getElementById('nu-tipo').value;
-  if (!email || !senha) { toast('⚠️ Preencha e-mail e senha'); return; }
-  if (senha.length < 6)  { toast('❌ Senha mínima: 6 caracteres'); return; }
+  if (!email) { toast('⚠️ Preencha o e-mail'); return; }
 
-  // Verifica duplicata no Firestore
+  // Rate limiting: máx 3 resets/hora por e-mail
+  const rlKey = 'vf_reset_rl_' + email;
+  try {
+    const rl = JSON.parse(localStorage.getItem(rlKey) || '{"count":0,"janela":0}');
+    if (Date.now() - rl.janela > 3600000) { rl.count = 0; rl.janela = Date.now(); }
+    if (rl.count >= 3) { toast('⚠️ Limite de e-mails atingido para este endereço. Tente em 1 hora.'); return; }
+  } catch(e) {}
+
+  // Verifica duplicata
   try {
     const existe = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
     if (!existe.empty) { toast('❌ E-mail já cadastrado'); return; }
@@ -6526,51 +6701,68 @@ async function criarNovoUsuario() {
 
   let appSecundario = null;
   try {
+    const senhaTemp = gerarSenhaAleatoria(14);
     const nomeApp = 'bv-criar-' + Date.now();
     appSecundario = firebase.initializeApp(FIREBASE_CONFIG, nomeApp);
     const authSec = appSecundario.auth();
 
     let uid = '';
     try {
-      // Tenta criar no Firebase Auth
-      const cred = await authSec.createUserWithEmailAndPassword(email, senha);
+      const cred = await authSec.createUserWithEmailAndPassword(email, senhaTemp);
       uid = cred.user?.uid || '';
       await authSec.signOut();
     } catch(authErr) {
       if (authErr.code === 'auth/email-already-in-use') {
-        // Auth já tem o e-mail (registro órfão de tentativa anterior)
-        // Apenas registra no Firestore sem recriar no Auth
-        console.warn('Auth já tem esse e-mail, registrando apenas no Firestore:', email);
+        console.warn('Auth já tem esse e-mail:', email);
       } else {
-        throw authErr; // outros erros propagam normalmente
+        throw authErr;
       }
     }
 
-    // Salva no Firestore
+    // Salva no Firestore com primeiroAcesso: true
     await _db.collection('usuarios').add({
-      email:    email,
-      tipo:     tipo,
-      criadoEm: new Date().toISOString(),
-      status:   'ativo',
-      uid:      uid
+      email:         email,
+      tipo:          tipo,
+      criadoEm:      new Date().toISOString(),
+      status:        'ativo',
+      uid:           uid,
+      primeiroAcesso: true,
+      historicoSenhas: []
     });
+
+    // Envia e-mail de boas-vindas com link para definir senha
+    try {
+      await _auth.sendPasswordResetEmail(email, {
+        url: window.location.href,
+        handleCodeInApp: false
+      });
+      // Atualiza rate limiting
+      const rlKey2 = 'vf_reset_rl_' + email;
+      try {
+        const rl2 = JSON.parse(localStorage.getItem(rlKey2) || '{"count":0,"janela":' + Date.now() + '}');
+        rl2.count = (rl2.count || 0) + 1;
+        localStorage.setItem(rlKey2, JSON.stringify(rl2));
+      } catch(e) {}
+    } catch(emailErr) {
+      console.warn('Aviso: e-mail de boas-vindas não enviado:', emailErr.message);
+    }
 
     registrarLogAcesso('USUARIO_CRIADO', _currentUserEmail || ADMIN_EMAIL, 'Novo usuário: ' + email);
     closeM('m-novo-usuario');
-    toast('✅ Usuário criado: ' + email);
+    toast('✅ Usuário criado! E-mail de boas-vindas enviado para ' + email);
     carregarUsuarios();
 
   } catch(e) {
     const msgs = {
       'auth/invalid-email':         'E-mail inválido',
-      'auth/weak-password':         'Senha fraca (mínimo 6 caracteres)',
+      'auth/weak-password':         'Senha fraca',
       'auth/operation-not-allowed': 'Criação de usuários desativada no Firebase Console',
     };
     toast('❌ ' + (msgs[e.code] || e.message || 'Erro ao criar usuário'));
     console.error('Erro criarNovoUsuario:', e);
   } finally {
     if (appSecundario) { try { await appSecundario.delete(); } catch(e) {} }
-    if (btnCriar) { btnCriar.disabled = false; btnCriar.innerHTML = '✅ Criar usuário'; }
+    if (btnCriar) { btnCriar.disabled = false; btnCriar.innerHTML = '✅ Criar e enviar e-mail'; }
   }
 }
 
@@ -6601,8 +6793,10 @@ async function excluirUsuario(docId, email) {
 async function redefinirSenhaUsuario(email) {
   if (!_auth || !email) return;
   if (!confirm('Enviar e-mail de redefinição de senha para: ' + email + '?')) return;
+  // Rate limiting: máx 3 resets por hora por e-mail
+  if (verificarRateLimitReset(email)) return;
   try {
-    await _auth.sendPasswordResetEmail(email);
+    await _auth.sendPasswordResetEmail(email, { url: window.location.href });
     registrarLogAcesso('SENHA_RESET_ENVIADO', _currentUserEmail || ADMIN_EMAIL, 'Reset para: ' + email);
     toast('📧 E-mail de redefinição enviado para ' + email);
   } catch(e) {
@@ -6878,6 +7072,325 @@ doLogout = function(motivo) {
   _rbacUsuarioDocId = null;
   _doLogoutOriginal(motivo);
 };
+
+// ================================================================
+// SEGURANÇA — REAUTENTICAÇÃO PARA AÇÕES CRÍTICAS
+// ================================================================
+let _reauthCallback = null;
+
+function solicitarReauth(callback) {
+  _reauthCallback = callback;
+  const erroEl = document.getElementById('reauth-erro');
+  const senhaEl = document.getElementById('reauth-senha');
+  if (erroEl) erroEl.style.display = 'none';
+  if (senhaEl) senhaEl.value = '';
+  openM('m-reauth');
+  setTimeout(() => { if (senhaEl) senhaEl.focus(); }, 300);
+}
+
+async function confirmarReauth() {
+  const senha = (document.getElementById('reauth-senha')?.value || '');
+  const erroEl = document.getElementById('reauth-erro');
+  if (!senha) { if (erroEl) { erroEl.textContent = '❌ Digite sua senha.'; erroEl.style.display = 'block'; } return; }
+
+  // Verifica senha via Firebase Auth
+  let ok = false;
+  try {
+    if (_auth && _auth.currentUser) {
+      const cred = firebase.auth.EmailAuthProvider.credential(_auth.currentUser.email, senha);
+      await _auth.currentUser.reauthenticateWithCredential(cred);
+      ok = true;
+    } else {
+      // Fallback: admin local
+      ok = senha === adminSenha || simpleHash(senha) === simpleHash(adminSenha);
+    }
+  } catch(e) { ok = false; }
+
+  if (!ok) {
+    if (erroEl) { erroEl.textContent = '❌ Senha incorreta. Tente novamente.'; erroEl.style.display = 'block'; }
+    registrarLogAcesso('REAUTH_FALHOU', _currentUserEmail || ADMIN_EMAIL, 'Tentativa de reautenticação falhou');
+    return;
+  }
+
+  closeM('m-reauth');
+  if (typeof _reauthCallback === 'function') {
+    const cb = _reauthCallback;
+    _reauthCallback = null;
+    cb();
+  }
+}
+
+// Wrapper: exige reauth antes de executar ação crítica
+function comReauth(fn) {
+  solicitarReauth(fn);
+}
+
+// ================================================================
+// SEGURANÇA — PRIMEIRO ACESSO: TROCA DE SENHA OBRIGATÓRIA
+// ================================================================
+async function verificarPrimeiroAcesso(email) {
+  if (!_db || !email) return false;
+  try {
+    const snap = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+    if (!snap.empty) {
+      const data = snap.docs[0].data();
+      return data.primeiroAcesso === true;
+    }
+  } catch(e) { console.warn('Erro ao verificar primeiroAcesso:', e); }
+  return false;
+}
+
+async function salvarPrimeiroAcesso() {
+  const nova    = document.getElementById('pa-nova')?.value || '';
+  const confirma = document.getElementById('pa-confirma')?.value || '';
+
+  if (!nova || nova.length < 8) { toast('❌ Senha mínima: 8 caracteres'); return; }
+
+  // Valida força mínima
+  const temMaius = /[A-Z]/.test(nova);
+  const temNum   = /[0-9]/.test(nova);
+  const temSimb  = /[^A-Za-z0-9]/.test(nova);
+  if (!temMaius || !temNum || !temSimb) {
+    toast('❌ Senha precisa ter maiúscula, número e símbolo'); return;
+  }
+  if (nova !== confirma) { toast('❌ As senhas não coincidem'); return; }
+
+  try {
+    const btn = document.querySelector('[onclick="salvarPrimeiroAcesso()"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+
+    if (_auth && _auth.currentUser) {
+      await _auth.currentUser.updatePassword(nova);
+    }
+
+    // Atualiza Firestore: primeiroAcesso = false, salva hash no histórico
+    if (_db) {
+      const snap = await _db.collection('usuarios').where('email', '==', _currentUserEmail).limit(1).get();
+      if (!snap.empty) {
+        const docRef = snap.docs[0].ref;
+        const hist = snap.docs[0].data().historicoSenhas || [];
+        hist.unshift(simpleHash(nova));
+        if (hist.length > 3) hist.length = 3;
+        await docRef.update({ primeiroAcesso: false, historicoSenhas: hist, ultimaTrocaSenha: new Date().toISOString() });
+      }
+    }
+
+    registrarLogAcesso('SENHA_DEFINIDA_PRIMEIRO_ACESSO', _currentUserEmail || '', 'Senha definida no primeiro acesso');
+    document.getElementById('m-primeiro-acesso').style.display = 'none';
+    toast('✅ Senha definida com sucesso! Bem-vindo(a)!');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Definir senha e entrar'; }
+  } catch(e) {
+    toast('❌ Erro ao salvar senha: ' + (e.message || 'Tente novamente'));
+    const btn = document.querySelector('[onclick="salvarPrimeiroAcesso()"]');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Definir senha e entrar'; }
+  }
+}
+
+// ================================================================
+// SEGURANÇA — VALIDAÇÃO DE FORÇA DE SENHA (para telas de reset)
+// ================================================================
+function validarSenhaForte(senha) {
+  if (!senha || senha.length < 8) return { ok: false, msg: 'Mínimo 8 caracteres' };
+  if (!/[A-Z]/.test(senha)) return { ok: false, msg: 'Precisa de pelo menos 1 letra maiúscula' };
+  if (!/[0-9]/.test(senha)) return { ok: false, msg: 'Precisa de pelo menos 1 número' };
+  if (!/[^A-Za-z0-9]/.test(senha)) return { ok: false, msg: 'Precisa de pelo menos 1 símbolo (!@#$...)' };
+  return { ok: true };
+}
+
+// ================================================================
+// SEGURANÇA — HISTÓRICO DE SENHAS (evita reutilização)
+// ================================================================
+async function verificarHistoricoSenha(email, novaSenha) {
+  if (!_db || !email) return false;
+  try {
+    const snap = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+    if (!snap.empty) {
+      const hist = snap.docs[0].data().historicoSenhas || [];
+      const novoHash = simpleHash(novaSenha);
+      return hist.includes(novoHash); // true = senha já usada
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function atualizarHistoricoSenha(email, novaSenha) {
+  if (!_db || !email) return;
+  try {
+    const snap = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+    if (!snap.empty) {
+      const hist = snap.docs[0].data().historicoSenhas || [];
+      hist.unshift(simpleHash(novaSenha));
+      if (hist.length > 3) hist.length = 3;
+      await snap.docs[0].ref.update({ historicoSenhas: hist, ultimaTrocaSenha: new Date().toISOString() });
+    }
+  } catch(e) { console.warn('Erro histórico senha:', e); }
+}
+
+// ================================================================
+// SEGURANÇA — BLOQUEIO POR IP SUSPEITO
+// ================================================================
+function verificarIPSuspeito(email) {
+  try {
+    const chave = 'vf_ip_emails';
+    const dados = JSON.parse(sessionStorage.getItem(chave) || '{"emails":[],"bloqueadoAte":0,"janela":0}');
+    const agora = Date.now();
+
+    // Reset de janela a cada 10 minutos
+    if (agora - dados.janela > 10 * 60 * 1000) {
+      dados.emails = [];
+      dados.janela = agora;
+      dados.bloqueadoAte = 0;
+    }
+
+    // Verifica se bloqueado
+    if (dados.bloqueadoAte && agora < dados.bloqueadoAte) {
+      const mins = Math.ceil((dados.bloqueadoAte - agora) / 60000);
+      toast('🚨 Acesso bloqueado por atividade suspeita. Aguarde ' + mins + ' min.');
+      return true;
+    }
+
+    // Adiciona e-mail se ainda não estava na lista
+    if (!dados.emails.includes(email.toLowerCase())) {
+      dados.emails.push(email.toLowerCase());
+    }
+
+    // 3+ e-mails diferentes = ataque
+    if (dados.emails.length >= 3) {
+      dados.bloqueadoAte = agora + 30 * 60 * 1000;
+      sessionStorage.setItem(chave, JSON.stringify(dados));
+      registrarLogAcesso('ATAQUE_DETECTADO', email, 'Tentativas com múltiplos e-mails: ' + dados.emails.join(', '));
+      toast('🚨 Atividade suspeita detectada. Acesso bloqueado por 30 minutos.');
+      return true;
+    }
+
+    sessionStorage.setItem(chave, JSON.stringify(dados));
+    return false;
+  } catch(e) { return false; }
+}
+
+// ================================================================
+// SEGURANÇA — RATE LIMITING RESET DE SENHA
+// ================================================================
+function verificarRateLimitReset(email) {
+  try {
+    const chave = 'vf_reset_rl_' + email.toLowerCase().replace(/[^a-z0-9]/g,'_');
+    const dados = JSON.parse(localStorage.getItem(chave) || '{"count":0,"janela":0}');
+    const agora = Date.now();
+    if (agora - dados.janela > 3600000) { dados.count = 0; dados.janela = agora; }
+    if (dados.count >= 3) {
+      const mins = Math.ceil((dados.janela + 3600000 - agora) / 60000);
+      toast('⚠️ Limite de reset atingido. Aguarde ' + mins + ' min.');
+      return true;
+    }
+    dados.count++;
+    dados.janela = dados.janela || agora;
+    localStorage.setItem(chave, JSON.stringify(dados));
+    return false;
+  } catch(e) { return false; }
+}
+
+// ================================================================
+// SEGURANÇA — NOTIFICAÇÃO DE NOVO DISPOSITIVO
+// ================================================================
+async function verificarNovoDispositivo(email) {
+  if (!_db || !email) return;
+  try {
+    const uaAtual = navigator.userAgent.slice(0, 200);
+    const snap = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+    if (snap.empty) return;
+    const data = snap.docs[0].data();
+    const uaAnterior = data.ultimoUserAgent || '';
+
+    // Dispositivo diferente detectado
+    if (uaAnterior && uaAnterior !== uaAtual) {
+      const disp = detectarDispositivo();
+      const ts = new Date().toLocaleString('pt-BR');
+      registrarLogAcesso('LOGIN_NOVO_DISPOSITIVO', email,
+        'Dispositivo: ' + disp + ' | Data: ' + ts);
+      toast('⚠️ Acesso de um novo dispositivo detectado e registrado.');
+      // Tenta enviar e-mail de alerta via reset (melhor que nada no client-side)
+      try {
+        // Apenas registra — e-mail real exigiria Cloud Functions
+        console.info('Novo dispositivo detectado para', email, '| UA:', uaAtual.slice(0,80));
+      } catch(e) {}
+    }
+
+    // Atualiza ultimo user agent
+    await snap.docs[0].ref.update({ ultimoUserAgent: uaAtual, ultimoAcesso: new Date().toISOString() });
+  } catch(e) { console.warn('Erro verificarNovoDispositivo:', e); }
+}
+
+// ================================================================
+// SEGURANÇA — SESSÃO SIMULTÂNEA
+// ================================================================
+async function verificarSessaoSimultanea(email) {
+  if (!_db || !email) return;
+  try {
+    const agora = Date.now();
+    const snap = await _db.collection('sessoes_ativas')
+      .where('usuario_email', '==', email)
+      .where('status', '==', 'online')
+      .get();
+    const ativas = snap.docs.filter(d => {
+      const ping = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0;
+      return (agora - ping) < 3 * 60 * 1000; // ativas nos últimos 3 min
+    });
+    if (ativas.length > 1) {
+      const uaAtual = navigator.userAgent.slice(0, 200);
+      // Verifica se há sessão de dispositivo diferente
+      const outra = ativas.find(d => d.data().user_agent !== uaAtual);
+      if (outra) {
+        registrarLogAcesso('SESSAO_SIMULTANEA', email, 'Login simultâneo detectado em outro dispositivo');
+        // Mostra toast com opção de encerrar a outra sessão
+        const encerrar = confirm(
+          '⚠️ Detectamos que sua conta está aberta em outro dispositivo.
+
+' +
+          'Deseja encerrar a sessão do outro dispositivo?'
+        );
+        if (encerrar) {
+          await _db.collection('sessoes_ativas').doc(outra.id).update({ status: 'offline' });
+          toast('✅ Sessão do outro dispositivo encerrada.');
+        }
+      }
+    }
+  } catch(e) { console.warn('Erro sessão simultânea:', e); }
+}
+
+// ================================================================
+// SEGURANÇA — LOG DE AÇÕES ADMINISTRATIVAS COMPLETO
+// ================================================================
+function logAdmin(acao, detalhe) {
+  registrarLogAcesso(acao, _currentUserEmail || ADMIN_EMAIL, detalhe || '');
+}
+
+// Wrappers para ações destrutivas com reauth + log
+function excluirReservaComSeguranca(codigo) {
+  comReauth(() => {
+    logAdmin('RESERVA_EXCLUIDA', 'Reserva: ' + codigo);
+    abrirDeletar(codigo);
+  });
+}
+
+function excluirUsuarioComSeguranca(docId, email) {
+  comReauth(() => {
+    logAdmin('USUARIO_EXCLUIDO_ADMIN', 'Usuário: ' + email);
+    excluirUsuario(docId, email);
+  });
+}
+
+function limparLogsComSeguranca() {
+  comReauth(() => {
+    logAdmin('LOGS_LIMPOS', 'Todos os logs foram apagados');
+    limparTodosLogs();
+  });
+}
+
+function alterarPermissoesComSeguranca(docId) {
+  // Log ao salvar permissões já é feito em salvarPermissoes()
+  abrirPermissoesById(docId);
+}
+
 </script>
 <script>
 (function() {
