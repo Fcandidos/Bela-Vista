@@ -1152,6 +1152,112 @@ td strong{color:#e8f4ff;font-weight:600;}
   border:1px solid var(--border);backdrop-filter:blur(12px);
 }
 .wa-fab:hover~.wa-tip{opacity:1;}
+/* WhatsApp FAB: só visível na tela pública (antes do login) */
+#screen-admin.active ~ .wa-fab,
+#screen-admin.active ~ .wa-tip { display:none!important; }
+
+
+/* ── SIDE RAIL (landscape mobile) ── */
+#mob-side-rail{
+  display:none;
+  position:fixed;top:0;left:0;bottom:0;width:64px;
+  z-index:500;
+  background:rgba(2,6,9,0.96);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-right:1px solid rgba(0,212,255,0.15);
+  box-shadow:4px 0 24px rgba(0,0,0,0.5);
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:8px 0;
+}
+#mob-side-rail::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(0,212,255,0.04) 0%,transparent 100%);
+  pointer-events:none;
+}
+.mob-rail-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;width:52px;height:52px;
+  background:none;border:none;cursor:pointer;
+  border-radius:12px;
+  padding:6px 4px;
+  position:relative;
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mob-rail-btn .rail-icon{
+  font-size:1.2rem;line-height:1;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1), filter .2s;
+  filter:grayscale(0.4) opacity(0.55);
+}
+.mob-rail-btn .rail-lbl{
+  font-size:0.45rem;font-weight:700;letter-spacing:0.3px;
+  color:rgba(232,244,255,0.35);
+  text-transform:uppercase;white-space:nowrap;
+  transition:color .2s;
+}
+.mob-rail-btn.active{background:rgba(0,212,255,0.08);}
+.mob-rail-btn.active .rail-icon{
+  filter:grayscale(0) opacity(1) drop-shadow(0 0 5px var(--mob-clr,#00d4ff));
+  transform:scale(1.12);
+}
+.mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#00d4ff);}
+.mob-rail-btn.active::before{
+  content:'';
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:24px;border-radius:0 3px 3px 0;
+  background:var(--mob-clr,#00d4ff);
+  box-shadow:0 0 8px var(--mob-clr,#00d4ff);
+}
+.mob-rail-divider{
+  width:32px;height:1px;
+  background:rgba(0,212,255,0.12);
+  margin:4px 0;flex-shrink:0;
+}
+/* More popup on side rail */
+#mob-rail-more-panel{
+  position:fixed;left:68px;
+  bottom:20px;
+  background:rgba(6,13,20,0.98);
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:16px;
+  padding:8px;
+  z-index:501;
+  box-shadow:8px 0 32px rgba(0,0,0,0.5);
+  display:none;
+  flex-direction:column;gap:4px;
+  min-width:130px;
+}
+#mob-rail-more-panel.open{display:flex;}
+.mob-rail-more-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:10px;
+  cursor:pointer;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.05);
+  transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.mob-rail-more-item:active,.mob-rail-more-item.active{
+  background:rgba(0,212,255,0.08);
+  border-color:rgba(0,212,255,0.25);
+}
+.mob-rail-more-item span:first-child{font-size:1rem;}
+.mob-rail-more-item span:last-child{font-size:0.72rem;font-weight:600;color:rgba(232,244,255,0.7);}
+
+[data-theme="light"] #mob-side-rail{
+  background:rgba(255,255,255,0.97);
+  border-right:1px solid rgba(0,0,0,0.08);
+  box-shadow:2px 0 16px rgba(0,0,0,0.08);
+}
+[data-theme="light"] .mob-rail-btn .rail-lbl{color:rgba(74,85,104,0.4);}
+[data-theme="light"] .mob-rail-btn.active{background:rgba(0,153,204,0.08);}
+[data-theme="light"] .mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#0099cc);}
+[data-theme="light"] #mob-rail-more-panel{background:rgba(255,255,255,0.99);border-color:rgba(0,0,0,0.1);}
+[data-theme="light"] .mob-rail-more-item{background:rgba(0,0,0,0.02);border-color:rgba(0,0,0,0.07);}
 
 /* ============================================================ SEARCH ROW */
 .search-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
@@ -1242,7 +1348,7 @@ td strong{color:#e8f4ff;font-weight:600;}
   .admin-header{padding-right:12px;}
   .metrics{grid-template-columns:1fr 1fr;}
   .pub-hero{padding:48px 16px 32px;}
-  .admin-body{padding:16px 12px 60px;}
+  .admin-body{padding:16px 12px 76px;}
   .bars{height:80px;}
   .card-b{padding:14px;}
   .card-h{padding:13px 16px;}
@@ -1258,6 +1364,20 @@ td strong{color:#e8f4ff;font-weight:600;}
   .metrics{grid-template-columns:1fr;}
   #fin-kpis{grid-template-columns:1fr!important;}
   th,td{padding:7px 6px;font-size:0.7rem;}
+}
+
+/* ── LANDSCAPE MOBILE: side rail nav ── */
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  /* Esconde bottom bar, mostra side rail */
+  #mob-bottom-bar{display:none!important;}
+  #mob-side-rail{display:flex!important;}
+  .admin-body{padding-bottom:16px!important;padding-left:72px!important;}
+  .admin-header{padding-left:72px;}
+  /* Esconde header logo/nav pra ganhar espaço */
+  .admin-logo{display:none!important;}
+  .admin-user{display:none!important;}
+  .theme-widget{display:none!important;}
+  .admin-header{min-height:0;padding:0;}
 }
 
 /* ============================================================ MOBILE MENU */
@@ -1940,6 +2060,33 @@ select option{background:#060d14;color:#e8f4ff;}
 
   <!-- More panel overlay -->
   <div id="mob-more-overlay" onclick="closeMobMore()"></div>
+
+  <!-- Side Rail (landscape) -->
+  <div id="mob-side-rail">
+    <button class="mob-rail-btn active" data-tab="dashboard" style="--mob-clr:#00d4ff" onclick="mobGoTab('dashboard');closeMobRailMore()">
+      <span class="rail-icon">📊</span><span class="rail-lbl">Dash</span>
+    </button>
+    <button class="mob-rail-btn" data-tab="reservas" style="--mob-clr:#00ff88" onclick="mobGoTab('reservas');closeMobRailMore()">
+      <span class="rail-icon">📋</span><span class="rail-lbl">Reservas</span>
+    </button>
+    <button class="mob-rail-btn" data-tab="calendario" style="--mob-clr:#a78bfa" onclick="mobGoTab('calendario');closeMobRailMore()">
+      <span class="rail-icon">📅</span><span class="rail-lbl">Agenda</span>
+    </button>
+    <div class="mob-rail-divider"></div>
+    <button class="mob-rail-btn" data-tab="financeiro" style="--mob-clr:#ffb040" onclick="mobGoTab('financeiro');closeMobRailMore()">
+      <span class="rail-icon">📈</span><span class="rail-lbl">Fin.</span>
+    </button>
+    <button class="mob-rail-btn" data-tab="relatorios" style="--mob-clr:#00d4ff" onclick="mobGoTab('relatorios');closeMobRailMore()">
+      <span class="rail-icon">💰</span><span class="rail-lbl">Rel.</span>
+    </button>
+    <button class="mob-rail-btn" data-tab="despesas" style="--mob-clr:#ff6600" onclick="mobGoTab('despesas');closeMobRailMore()">
+      <span class="rail-icon">💸</span><span class="rail-lbl">Desp.</span>
+    </button>
+    <div class="mob-rail-divider"></div>
+    <button class="mob-rail-btn" data-tab="administracao" style="--mob-clr:#ff4466" onclick="mobGoTab('administracao');closeMobRailMore()">
+      <span class="rail-icon">⚙️</span><span class="rail-lbl">Admin</span>
+    </button>
+  </div>
 
   <!-- More panel -->
   <div id="mob-more-panel">
@@ -3669,6 +3816,7 @@ function mobGoTab(tab) {
 function _syncMobBar(tab) {
   try {
     const moreTabs = ['relatorios','despesas','administracao'];
+    // Bottom bar
     document.querySelectorAll('#mob-bottom-bar .mob-bar-btn').forEach(b => {
       if (b.id === 'mob-more-btn') {
         b.classList.toggle('active', moreTabs.includes(tab));
@@ -3681,7 +3829,15 @@ function _syncMobBar(tab) {
     });
     const dot = document.getElementById('mob-more-dot');
     if (dot) dot.style.display = moreTabs.includes(tab) ? 'block' : 'none';
+    // Side rail (landscape)
+    document.querySelectorAll('#mob-side-rail .mob-rail-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
   } catch(e) {}
+}
+
+function closeMobRailMore() {
+  // placeholder for future rail submenu
 }
 
 function toggleMobMore() {
