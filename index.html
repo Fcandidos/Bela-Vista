@@ -2904,22 +2904,12 @@ function lerSessao() {
   try {
     const raw = localStorage.getItem('vf_sessao');
     if (!raw) return false;
-    // Suporta formato antigo ('1') e novo (JSON)
-    if (raw === '1') {
-      // Migra para novo formato
-      localStorage.removeItem('vf_sessao');
-      return false;
-    }
+    if (raw === '1') { localStorage.removeItem('vf_sessao'); return false; }
     const s = JSON.parse(raw);
     if (!s || !s.logado) return false;
-    // Se tiver expiry, verifica
-    if (s.expiry && Date.now() > s.expiry) {
-      localStorage.removeItem('vf_sessao');
-      return false;
-    }
-    return s; // retorna o objeto completo (com .email)
+    if (s.expiry && Date.now() > s.expiry) { localStorage.removeItem('vf_sessao'); return false; }
+    return s; // retorna objeto completo (com .email)
   } catch(e) {
-    // Formato inválido - limpa e pede novo login
     try { localStorage.removeItem('vf_sessao'); } catch(_) {}
     return false;
   }
@@ -3014,23 +3004,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restaura sessão se já estava logado
   const _sessaoRestaurada = lerSessao();
   if (_sessaoRestaurada) {
-    // Usa o email salvo na sessão; fallback para ADMIN_EMAIL apenas se não houver
     const _emailRestaurado = (_sessaoRestaurada.email) || ADMIN_EMAIL;
     showScreen('admin');
     _currentUserEmail = _emailRestaurado;
-    // Pré-inicializa permissões: admin principal tem acesso total imediato
     if (_emailRestaurado === ADMIN_EMAIL && typeof RBAC_PERFIS !== 'undefined') {
       _rbacPerms = RBAC_PERFIS.total;
     }
     atualizarAvatarMenu(_emailRestaurado);
-    // Reativar sessão Firebase ao restaurar
     setTimeout(async function() {
       try {
         await iniciarSessaoFirebase(_emailRestaurado);
         iniciarControleInatividade();
       } catch(e) {}
       try {
-        // Carrega permissões reais do Firebase
         if (typeof carregarPermissoesUsuario === 'function') {
           await carregarPermissoesUsuario(_emailRestaurado);
         }
@@ -3040,7 +3026,6 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('🔁 ' + pendentes30.length + ' cliente(s) aguardando lembrete de retorno!');
           }, 1500);
         }
-        // Só registra log de restauração UMA VEZ por aba (evita spam ao recarregar)
         const flagKey = 'vf_sessao_restaurada_log';
         if (!sessionStorage.getItem(flagKey)) {
           sessionStorage.setItem(flagKey, '1');
@@ -3966,7 +3951,9 @@ function renderRelatorios() {
     document.getElementById('rel-table-title').textContent='Eventos — Este ano';
   }
   const tot=list.reduce((s,r)=>s+r.total,0);
-  const rec=list.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
+  // Mesma lógica do dashboard "Já recebido": total das pagas + sinal das pendentes
+  const rec=list.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0)
+            +list.filter(r=>r.pagamento==='pendente').reduce((s,r)=>s+(Number(r.sinal)||0),0);
   const ticket=list.length?Math.round(tot/list.length):0;
   document.getElementById('rel-metrics').innerHTML=`
     <div class="metric"><div class="metric-icon">📅</div><div class="metric-lbl">Eventos</div><div class="metric-val">${list.length}</div></div>
