@@ -6274,6 +6274,16 @@ async function iniciarSessaoFirebase(email) {
 async function pingSessionAtiva() {
   if (!_db || !_currentSessionId) return;
   try {
+    // Verifica primeiro se a sessão foi encerrada remotamente (por novo login em outro dispositivo)
+    const doc = await _db.collection('sessoes_ativas').doc(_currentSessionId).get();
+    if (doc.exists && doc.data().status === 'offline' && doc.data().encerradoPor === 'novo_login') {
+      // Sessão foi encerrada por novo login em outro dispositivo — força logout
+      clearInterval(_pingInterval);
+      _pingInterval = null;
+      toast('⚠️ Sua sessão foi encerrada porque você entrou em outro dispositivo.');
+      setTimeout(() => doLogout('SESSAO_ENCERRADA_REMOTO'), 2000);
+      return;
+    }
     await _db.collection('sessoes_ativas').doc(_currentSessionId).update({
       ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
       ultimo_ping_iso: new Date().toISOString(),
@@ -6631,20 +6641,31 @@ function renderUsuariosTable(usuarios) {
       ? '<span style="color:var(--cyan);font-size:0.75rem">✅ Acesso total</span>'
       : `<span style="font-size:0.75rem;color:var(--text-l)">${nPerms}/${total} módulos</span>`;
 
-    // Botão Permissões — aparece para TODOS
-    const btnPermissoes = `<button class="btn btn-sm"
-        style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit"
-        onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>`;
-    const btnReset   = `<button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>`;
-    const btnToggle  = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
-        onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>`;
-    const btnExcluir = `<button class="btn btn-sm btn-danger" style="font-size:0.7rem"
-        onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>`;
+    // Verifica se o usuário logado é admin (principal ou tem permissão de administração)
+    const logadoEhAdmin = _currentUserEmail === ADMIN_EMAIL || temPermissao('administracao');
+    const logadoEhAdminPrincipal = _currentUserEmail === ADMIN_EMAIL;
 
-    // Todos têm Desativar/Excluir — Admin Principal não pode ser excluído (segurança)
-    const acoes = isAdminPrincipal
-      ? `${btnPermissoes} ${btnReset} ${btnToggle}`
-      : `${btnPermissoes} ${btnReset} ${btnToggle} ${btnExcluir}`;
+    // Botão Permissões — só para admin
+    const btnPermissoes = logadoEhAdmin ? `<button class="btn btn-sm"
+        style="font-size:0.7rem;background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit"
+        onclick="abrirPermissoesById('${escapeHTML(u.id||'')}')">🔐 Permissões</button>` : '';
+    const btnReset = logadoEhAdmin ? `<button class="btn btn-sm btn-out" style="font-size:0.7rem" onclick="redefinirSenhaUsuario('${escapeHTML(u.email||'')}')">🔑 Reset senha</button>` : '';
+    const btnToggle = logadoEhAdmin ? `<button class="btn btn-sm btn-danger" style="font-size:0.7rem;background:var(--err-bg);color:var(--err);border-color:rgba(255,68,102,0.3)"
+        onclick="alterarStatusUsuario('${escapeHTML(u.id||'')}','${u.status==='ativo'?'inativo':'ativo'}')">${u.status==='ativo'?'🚫 Desativar':'✅ Ativar'}</button>` : '';
+    const btnExcluir = logadoEhAdmin && !isAdminPrincipal ? `<button class="btn btn-sm btn-danger" style="font-size:0.7rem"
+        onclick="excluirUsuario('${escapeHTML(u.id||'')}','${escapeHTML(u.email||'')}')">🗑️ Excluir</button>` : '';
+
+    // Monta ações conforme quem está logado
+    let acoes;
+    if (!logadoEhAdmin) {
+      // Usuário comum: não vê nenhum botão de gestão
+      acoes = '<span style="font-size:0.75rem;color:var(--text-l);font-style:italic">Sem permissão</span>';
+    } else if (isAdminPrincipal) {
+      // Admin principal: não pode ser excluído
+      acoes = `${btnPermissoes} ${btnReset} ${btnToggle}`;
+    } else {
+      acoes = `${btnPermissoes} ${btnReset} ${btnToggle} ${btnExcluir}`;
+    }
 
     return `<tr>
       <td style="font-size:0.84rem"><strong>${escapeHTML(u.email || '—')}</strong></td>
@@ -6808,6 +6829,9 @@ async function criarNovoUsuario() {
 
 async function excluirUsuario(docId, email) {
   if (!_db) { toast('⚠️ Firebase não conectado'); return; }
+  if (_currentUserEmail !== ADMIN_EMAIL && !temPermissao('administracao')) {
+    toast('🚫 Sem permissão para excluir usuários'); return;
+  }
   if (email === ADMIN_EMAIL) { toast('❌ Não é possível excluir o administrador principal'); return; }
   if (!confirm(`Excluir o usuário "${email}"?\n\nEsta ação removerá o acesso ao sistema. O registro no Firebase Auth não será removido automaticamente (pode ser feito pelo Console Firebase).`)) return;
 
@@ -6846,6 +6870,9 @@ async function redefinirSenhaUsuario(email) {
 
 async function alterarStatusUsuario(docId, novoStatus) {
   if (!_db || !docId) return;
+  if (_currentUserEmail !== ADMIN_EMAIL && !temPermissao('administracao')) {
+    toast('🚫 Sem permissão para alterar status de usuários'); return;
+  }
   try {
     await _db.collection('usuarios').doc(docId).update({ status: novoStatus });
     toast(novoStatus === 'ativo' ? '✅ Usuário ativado' : '🚫 Usuário desativado');
@@ -7093,6 +7120,9 @@ goSubTab = function(sub) {
 
 // Abre modal de permissões buscando dados do cache (sem JSON no onclick)
 function abrirPermissoesById(docId) {
+  if (_currentUserEmail !== ADMIN_EMAIL && !temPermissao('administracao')) {
+    toast('🚫 Sem permissão para gerenciar permissões'); return;
+  }
   const u = window._rbacUsuariosCache && window._rbacUsuariosCache[docId];
   if (!u) { toast('⚠️ Usuário não encontrado'); return; }
   abrirModalPermissoes(docId, u.email, u.permissoes || null);
@@ -7377,27 +7407,26 @@ async function verificarSessaoSimultanea(email) {
       .where('usuario_email', '==', email)
       .where('status', '==', 'online')
       .get();
+    const uaAtual = navigator.userAgent.slice(0, 200);
     const ativas = snap.docs.filter(d => {
       const ping = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0;
       return (agora - ping) < 3 * 60 * 1000; // ativas nos últimos 3 min
     });
-    if (ativas.length > 1) {
-      const uaAtual = navigator.userAgent.slice(0, 200);
-      // Verifica se há sessão de dispositivo diferente
-      const outra = ativas.find(d => d.data().user_agent !== uaAtual);
-      if (outra) {
-        registrarLogAcesso('SESSAO_SIMULTANEA', email, 'Login simultâneo detectado em outro dispositivo');
-        // Mostra toast com opção de encerrar a outra sessão
-        const encerrar = confirm(
-          '⚠️ Detectamos que sua conta está aberta em outro dispositivo.
 
-' +
-          'Deseja encerrar a sessão do outro dispositivo?'
-        );
-        if (encerrar) {
-          await _db.collection('sessoes_ativas').doc(outra.id).update({ status: 'offline' });
-          toast('✅ Sessão do outro dispositivo encerrada.');
-        }
+    if (ativas.length > 1) {
+      // Encerra TODAS as sessões de outros dispositivos automaticamente
+      const outras = ativas.filter(d => d.data().user_agent !== uaAtual);
+      if (outras.length > 0) {
+        const batch = _db.batch();
+        outras.forEach(d => batch.update(d.ref, {
+          status: 'offline',
+          encerradoPor: 'novo_login',
+          ultimo_ping_iso: new Date().toISOString()
+        }));
+        await batch.commit();
+        registrarLogAcesso('SESSAO_SIMULTANEA_ENCERRADA', email,
+          outras.length + ' sessão(ões) anterior(es) encerrada(s) automaticamente por novo login');
+        toast('⚠️ Sessão anterior encerrada automaticamente. Apenas um acesso por vez é permitido.');
       }
     }
   } catch(e) { console.warn('Erro sessão simultânea:', e); }
