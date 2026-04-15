@@ -1157,107 +1157,209 @@ td strong{color:#e8f4ff;font-weight:600;}
 #screen-admin.active ~ .wa-tip { display:none!important; }
 
 
-/* ── SIDE RAIL (landscape mobile) ── */
+/* ── SIDE RAIL PREMIUM (landscape mobile) ── */
 #mob-side-rail{
   display:none;
-  position:fixed;top:0;left:0;bottom:0;width:64px;
+  position:fixed;top:0;left:0;bottom:0;width:72px;
   z-index:500;
-  background:rgba(2,6,9,0.96);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border-right:1px solid rgba(0,212,255,0.15);
-  box-shadow:4px 0 24px rgba(0,0,0,0.5);
   flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:4px;
-  padding:8px 0;
+  justify-content:flex-start;
+  padding:0;
+  overflow:hidden;
+  /* Glassmorphism dark */
+  background:linear-gradient(180deg,
+    rgba(2,8,14,0.98) 0%,
+    rgba(4,12,22,0.97) 50%,
+    rgba(2,8,14,0.98) 100%);
+  border-right:1px solid rgba(0,212,255,0.12);
+  box-shadow:
+    6px 0 32px rgba(0,0,0,0.6),
+    1px 0 0 rgba(0,212,255,0.06);
 }
-#mob-side-rail::after{
+/* Scan-line overlay effect */
+#mob-side-rail::before{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(0,212,255,0.04) 0%,transparent 100%);
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,212,255,0.012) 2px,
+    rgba(0,212,255,0.012) 4px
+  );
   pointer-events:none;
+  z-index:0;
 }
+/* Neon edge glow */
+#mob-side-rail::after{
+  content:'';
+  position:absolute;top:0;right:-1px;bottom:0;width:1px;
+  background:linear-gradient(180deg,
+    transparent 0%,
+    rgba(0,212,255,0.4) 30%,
+    rgba(167,139,250,0.4) 70%,
+    transparent 100%);
+  animation:rail-edge-glow 3s ease-in-out infinite alternate;
+}
+@keyframes rail-edge-glow{
+  0%{opacity:0.4}100%{opacity:1}
+}
+
+/* Rail logo */
+.mob-rail-logo{
+  width:100%;padding:10px 0 8px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:1;flex-shrink:0;
+}
+.mob-rail-logo-icon{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(167,139,250,0.2));
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;
+  box-shadow:0 0 14px rgba(0,212,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Top divider */
+.mob-rail-top-div{
+  width:40px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,0.3),transparent);
+  margin-bottom:4px;flex-shrink:0;position:relative;z-index:1;
+}
+
+/* Nav items */
+.mob-rail-nav{
+  flex:1;width:100%;
+  display:flex;flex-direction:column;
+  align-items:center;
+  gap:2px;padding:2px 6px;
+  overflow-y:auto;overflow-x:hidden;
+  position:relative;z-index:1;
+}
+.mob-rail-nav::-webkit-scrollbar{display:none;}
 .mob-rail-btn{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;width:52px;height:52px;
+  gap:2px;width:54px;height:48px;
   background:none;border:none;cursor:pointer;
   border-radius:12px;
-  padding:6px 4px;
+  padding:4px 2px;
   position:relative;
-  transition:all .2s;
+  transition:all .2s cubic-bezier(.4,0,.2,1);
   -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.mob-rail-btn::before{
+  content:'';
+  position:absolute;inset:0;border-radius:12px;
+  background:transparent;
+  transition:background .2s;
 }
 .mob-rail-btn .rail-icon{
-  font-size:1.2rem;line-height:1;
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1), filter .2s;
-  filter:grayscale(0.4) opacity(0.55);
+  font-size:1.15rem;line-height:1;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1), filter .2s;
+  filter:grayscale(0.6) opacity(0.45) brightness(0.9);
+  position:relative;z-index:1;
 }
 .mob-rail-btn .rail-lbl{
-  font-size:0.45rem;font-weight:700;letter-spacing:0.3px;
-  color:rgba(232,244,255,0.35);
+  font-size:0.42rem;font-weight:800;letter-spacing:0.6px;
+  color:rgba(232,244,255,0.28);
   text-transform:uppercase;white-space:nowrap;
-  transition:color .2s;
+  transition:color .2s, text-shadow .2s;
+  position:relative;z-index:1;
+  font-family:'Syne',sans-serif;
 }
-.mob-rail-btn.active{background:rgba(0,212,255,0.08);}
-.mob-rail-btn.active .rail-icon{
-  filter:grayscale(0) opacity(1) drop-shadow(0 0 5px var(--mob-clr,#00d4ff));
-  transform:scale(1.12);
-}
-.mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#00d4ff);}
+.mob-rail-btn:active::before{background:rgba(255,255,255,0.04);}
+
+/* Active state */
 .mob-rail-btn.active::before{
+  background:linear-gradient(135deg,
+    rgba(0,212,255,0.12) 0%,
+    rgba(167,139,250,0.06) 100%);
+  border:1px solid rgba(0,212,255,0.2);
+  box-shadow:
+    0 0 16px rgba(0,212,255,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.mob-rail-btn.active .rail-icon{
+  filter:grayscale(0) opacity(1);
+  transform:scale(1.15) translateY(-1px);
+  filter:drop-shadow(0 0 6px var(--mob-clr,#00d4ff)) drop-shadow(0 0 12px var(--mob-clr,#00d4ff));
+}
+.mob-rail-btn.active .rail-lbl{
+  color:var(--mob-clr,#00d4ff);
+  text-shadow:0 0 8px var(--mob-clr,#00d4ff);
+}
+/* Active left bar */
+.mob-rail-btn.active::after{
   content:'';
   position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:3px;height:24px;border-radius:0 3px 3px 0;
+  width:3px;height:28px;
+  border-radius:0 3px 3px 0;
   background:var(--mob-clr,#00d4ff);
-  box-shadow:0 0 8px var(--mob-clr,#00d4ff);
+  box-shadow:
+    0 0 8px var(--mob-clr,#00d4ff),
+    0 0 16px var(--mob-clr,#00d4ff),
+    2px 0 8px var(--mob-clr,#00d4ff);
+  animation:rail-bar-in .25s ease;
 }
+@keyframes rail-bar-in{
+  from{height:0;opacity:0}
+  to{height:28px;opacity:1}
+}
+
+/* Divider */
 .mob-rail-divider{
-  width:32px;height:1px;
-  background:rgba(0,212,255,0.12);
-  margin:4px 0;flex-shrink:0;
+  width:36px;height:1px;flex-shrink:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);
+  margin:3px 0;position:relative;z-index:1;
 }
-/* More popup on side rail */
-#mob-rail-more-panel{
-  position:fixed;left:68px;
-  bottom:20px;
-  background:rgba(6,13,20,0.98);
-  border:1px solid rgba(0,212,255,0.2);
-  border-radius:16px;
-  padding:8px;
-  z-index:501;
-  box-shadow:8px 0 32px rgba(0,0,0,0.5);
-  display:none;
-  flex-direction:column;gap:4px;
-  min-width:130px;
+
+/* Bottom user/logout area */
+.mob-rail-bottom{
+  width:100%;padding:6px 0 8px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  border-top:1px solid rgba(0,212,255,0.08);
+  position:relative;z-index:1;flex-shrink:0;
 }
-#mob-rail-more-panel.open{display:flex;}
-.mob-rail-more-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 12px;border-radius:10px;
+.mob-rail-avatar{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.7rem;font-weight:700;color:#fff;
+  box-shadow:0 0 10px rgba(0,212,255,0.3);
   cursor:pointer;
-  background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.05);
-  transition:all .15s;
+  font-family:'Syne',sans-serif;
+}
+.mob-rail-logout{
+  background:none;border:none;cursor:pointer;
+  font-size:0.9rem;opacity:0.4;
+  transition:opacity .2s;
   -webkit-tap-highlight-color:transparent;
 }
-.mob-rail-more-item:active,.mob-rail-more-item.active{
-  background:rgba(0,212,255,0.08);
-  border-color:rgba(0,212,255,0.25);
-}
-.mob-rail-more-item span:first-child{font-size:1rem;}
-.mob-rail-more-item span:last-child{font-size:0.72rem;font-weight:600;color:rgba(232,244,255,0.7);}
+.mob-rail-logout:active{opacity:1;}
 
+/* Light theme */
 [data-theme="light"] #mob-side-rail{
-  background:rgba(255,255,255,0.97);
+  background:linear-gradient(180deg,#f0f4f8 0%,#e8eef5 100%);
   border-right:1px solid rgba(0,0,0,0.08);
-  box-shadow:2px 0 16px rgba(0,0,0,0.08);
+  box-shadow:3px 0 20px rgba(0,0,0,0.1);
 }
-[data-theme="light"] .mob-rail-btn .rail-lbl{color:rgba(74,85,104,0.4);}
-[data-theme="light"] .mob-rail-btn.active{background:rgba(0,153,204,0.08);}
-[data-theme="light"] .mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#0099cc);}
-[data-theme="light"] #mob-rail-more-panel{background:rgba(255,255,255,0.99);border-color:rgba(0,0,0,0.1);}
-[data-theme="light"] .mob-rail-more-item{background:rgba(0,0,0,0.02);border-color:rgba(0,0,0,0.07);}
+[data-theme="light"] #mob-side-rail::before{
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.012) 3px,rgba(0,0,0,0.012) 6px);
+}
+[data-theme="light"] #mob-side-rail::after{
+  background:linear-gradient(180deg,transparent,rgba(0,153,204,0.3) 30%,rgba(99,102,241,0.3) 70%,transparent);
+}
+[data-theme="light"] .mob-rail-logo-icon{
+  background:rgba(0,153,204,0.1);border-color:rgba(0,153,204,0.25);
+}
+[data-theme="light"] .mob-rail-btn .rail-lbl{color:rgba(74,85,104,0.35);}
+[data-theme="light"] .mob-rail-btn.active::before{
+  background:rgba(0,153,204,0.08);border-color:rgba(0,153,204,0.2);
+}
+[data-theme="light"] .mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#0099cc);text-shadow:none;}
+[data-theme="light"] .mob-rail-bottom{border-top-color:rgba(0,0,0,0.07);}
 
 /* ============================================================ SEARCH ROW */
 .search-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
@@ -1368,16 +1470,23 @@ td strong{color:#e8f4ff;font-weight:600;}
 
 /* ── LANDSCAPE MOBILE: side rail nav ── */
 @media(max-width:900px) and (orientation:landscape) and (max-height:500px){
-  /* Esconde bottom bar, mostra side rail */
+  /* Esconde bottom bar e header completo, mostra só side rail */
   #mob-bottom-bar{display:none!important;}
   #mob-side-rail{display:flex!important;}
-  .admin-body{padding-bottom:16px!important;padding-left:72px!important;}
-  .admin-header{padding-left:72px;}
-  /* Esconde header logo/nav pra ganhar espaço */
-  .admin-logo{display:none!important;}
-  .admin-user{display:none!important;}
-  .theme-widget{display:none!important;}
-  .admin-header{min-height:0;padding:0;}
+  .admin-header{display:none!important;}
+  .admin-body{
+    padding-top:8px!important;
+    padding-bottom:8px!important;
+    padding-left:76px!important;
+    padding-right:12px!important;
+  }
+  /* Compacta cards e métricas no landscape */
+  .metrics{grid-template-columns:repeat(3,1fr)!important;}
+  .card-h{padding:10px 14px!important;}
+  .card-b{padding:12px!important;}
+  .page-title{font-size:1.1rem!important;margin-bottom:2px!important;}
+  .page-sub{font-size:0.75rem!important;margin-bottom:12px!important;}
+  .modal{max-height:90vh;overflow-y:auto;}
 }
 
 /* ============================================================ MOBILE MENU */
@@ -2061,31 +2170,50 @@ select option{background:#060d14;color:#e8f4ff;}
   <!-- More panel overlay -->
   <div id="mob-more-overlay" onclick="closeMobMore()"></div>
 
-  <!-- Side Rail (landscape) -->
+  <!-- Side Rail Premium (landscape) -->
   <div id="mob-side-rail">
-    <button class="mob-rail-btn active" data-tab="dashboard" style="--mob-clr:#00d4ff" onclick="mobGoTab('dashboard');closeMobRailMore()">
-      <span class="rail-icon">📊</span><span class="rail-lbl">Dash</span>
-    </button>
-    <button class="mob-rail-btn" data-tab="reservas" style="--mob-clr:#00ff88" onclick="mobGoTab('reservas');closeMobRailMore()">
-      <span class="rail-icon">📋</span><span class="rail-lbl">Reservas</span>
-    </button>
-    <button class="mob-rail-btn" data-tab="calendario" style="--mob-clr:#a78bfa" onclick="mobGoTab('calendario');closeMobRailMore()">
-      <span class="rail-icon">📅</span><span class="rail-lbl">Agenda</span>
-    </button>
-    <div class="mob-rail-divider"></div>
-    <button class="mob-rail-btn" data-tab="financeiro" style="--mob-clr:#ffb040" onclick="mobGoTab('financeiro');closeMobRailMore()">
-      <span class="rail-icon">📈</span><span class="rail-lbl">Fin.</span>
-    </button>
-    <button class="mob-rail-btn" data-tab="relatorios" style="--mob-clr:#00d4ff" onclick="mobGoTab('relatorios');closeMobRailMore()">
-      <span class="rail-icon">💰</span><span class="rail-lbl">Rel.</span>
-    </button>
-    <button class="mob-rail-btn" data-tab="despesas" style="--mob-clr:#ff6600" onclick="mobGoTab('despesas');closeMobRailMore()">
-      <span class="rail-icon">💸</span><span class="rail-lbl">Desp.</span>
-    </button>
-    <div class="mob-rail-divider"></div>
-    <button class="mob-rail-btn" data-tab="administracao" style="--mob-clr:#ff4466" onclick="mobGoTab('administracao');closeMobRailMore()">
-      <span class="rail-icon">⚙️</span><span class="rail-lbl">Admin</span>
-    </button>
+    <!-- Logo -->
+    <div class="mob-rail-logo">
+      <div class="mob-rail-logo-icon">🏛️</div>
+    </div>
+    <div class="mob-rail-top-div"></div>
+
+    <!-- Nav items -->
+    <div class="mob-rail-nav">
+      <button class="mob-rail-btn active" data-tab="dashboard" style="--mob-clr:#00d4ff" onclick="mobGoTab('dashboard')">
+        <span class="rail-icon">📊</span><span class="rail-lbl">Dash</span>
+      </button>
+      <button class="mob-rail-btn" data-tab="reservas" style="--mob-clr:#00ff88" onclick="mobGoTab('reservas')">
+        <span class="rail-icon">📋</span><span class="rail-lbl">Reservas</span>
+      </button>
+      <button class="mob-rail-btn" data-tab="calendario" style="--mob-clr:#a78bfa" onclick="mobGoTab('calendario')">
+        <span class="rail-icon">📅</span><span class="rail-lbl">Agenda</span>
+      </button>
+
+      <div class="mob-rail-divider"></div>
+
+      <button class="mob-rail-btn" data-tab="relatorios" style="--mob-clr:#00d4ff" onclick="mobGoTab('relatorios')">
+        <span class="rail-icon">💰</span><span class="rail-lbl">Relat.</span>
+      </button>
+      <button class="mob-rail-btn" data-tab="despesas" style="--mob-clr:#ff6600" onclick="mobGoTab('despesas')">
+        <span class="rail-icon">💸</span><span class="rail-lbl">Desp.</span>
+      </button>
+      <button class="mob-rail-btn" data-tab="financeiro" style="--mob-clr:#ffb040" onclick="mobGoTab('financeiro')">
+        <span class="rail-icon">📈</span><span class="rail-lbl">Fin.</span>
+      </button>
+
+      <div class="mob-rail-divider"></div>
+
+      <button class="mob-rail-btn" data-tab="administracao" style="--mob-clr:#ff4466" onclick="mobGoTab('administracao')">
+        <span class="rail-icon">⚙️</span><span class="rail-lbl">Admin</span>
+      </button>
+    </div>
+
+    <!-- Bottom: avatar + logout -->
+    <div class="mob-rail-bottom">
+      <div class="mob-rail-avatar" id="mob-rail-avatar" onclick="doLogout()">?</div>
+      <button class="mob-rail-logout" onclick="doLogout()" title="Sair">⏻</button>
+    </div>
   </div>
 
   <!-- More panel -->
@@ -7296,6 +7424,9 @@ function atualizarAvatarMenu(email) {
   if (avatarLg) avatarLg.textContent = inicial;
   if (nameEl)   nameEl.textContent = nome;
   if (roleEl)   roleEl.textContent = email === ADMIN_EMAIL ? '👑 Admin Principal' : '👤 Usuário';
+  // Side rail avatar (landscape)
+  const railAv = document.getElementById('mob-rail-avatar');
+  if (railAv) railAv.textContent = inicial;
 }
 
 // Atualiza ao restaurar sessão
