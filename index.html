@@ -3066,11 +3066,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const _sessaoRestaurada = lerSessao();
   if (_sessaoRestaurada) {
     const _emailRestaurado = (_sessaoRestaurada.email) || ADMIN_EMAIL;
-    showScreen('admin');
+    // Garante que sempre começa no dashboard ao restaurar sessão
+    try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
     _currentUserEmail = _emailRestaurado;
+    // Pré-define permissões: admin principal tem tudo; outros aguardam Firebase
     if (_emailRestaurado === ADMIN_EMAIL && typeof RBAC_PERFIS !== 'undefined') {
       _rbacPerms = RBAC_PERFIS.total;
+    } else {
+      _rbacPerms = null; // aguardando — dashboard é sempre permitido
     }
+    showScreen('admin'); // sempre abre no dashboard
     atualizarAvatarMenu(_emailRestaurado);
     setTimeout(async function() {
       try {
@@ -3081,6 +3086,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof carregarPermissoesUsuario === 'function') {
           await carregarPermissoesUsuario(_emailRestaurado);
         }
+        // Aplica RBAC após carregar permissões reais
+        if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
+        if (typeof atualizarAvatarMenu === 'function') atualizarAvatarMenu(_emailRestaurado);
         var pendentes30 = verificarLembretes30Dias(false);
         if (pendentes30 && pendentes30.length > 0) {
           setTimeout(function() {
@@ -3228,8 +3236,19 @@ async function doLogin() {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-admin').classList.add('active');
     window.scrollTo({ top: 0, behavior: 'instant' });
-    const tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
-    goAdminTab(tabSalva);
+    // Sempre abre no dashboard ao fazer login (nunca restaura aba anterior)
+    try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
+    // Bloqueia navegação até permissões carregarem (exceto dashboard)
+    _rbacPerms = null;
+    goAdminTab('dashboard');
+    // Carrega permissões imediatamente — sem aguardar
+    if (typeof _doLoginRBACHook === 'function') {
+      _doLoginRBACHook(emailSanitized).then(() => {
+        // Após carregar, aplica RBAC e garante que está no dashboard
+        if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
+        goAdminTab('dashboard');
+      });
+    }
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
     registrarLogAcesso('LOGIN_OK', emailSanitized);
     // Marca que este é um login real (não restauração), para evitar log duplicado
@@ -3247,8 +3266,6 @@ async function doLogin() {
         if (mPA) mPA.style.display = 'flex';
       }
     }, 1000);
-    // Carrega permissões RBAC do usuário
-    if (typeof _doLoginRBACHook === 'function') _doLoginRBACHook(emailSanitized);
     toast('✅ Bem-vindo!');
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
@@ -7027,9 +7044,13 @@ async function salvarPermissoes() {
 // Override de goAdminTab para verificar permissões
 const _goAdminTabOriginal = goAdminTab;
 goAdminTab = function(tab) {
-  // Só bloqueia se permissões já foram carregadas (_rbacPerms !== null) e não tem acesso
+  // Dashboard é sempre acessível para qualquer usuário logado
+  if (tab === 'dashboard') { _goAdminTabOriginal(tab); return; }
+  // Só bloqueia se permissões já foram carregadas (_rbacPerms !== null)
   if (_rbacPerms !== null && !temPermissao(tab)) {
     toast('🚫 Você não tem acesso a este módulo');
+    // Redireciona para dashboard em vez de deixar em tela errada
+    _goAdminTabOriginal('dashboard');
     return;
   }
   _goAdminTabOriginal(tab);
