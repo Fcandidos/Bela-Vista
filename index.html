@@ -1640,6 +1640,10 @@ select option{background:#060d14;color:#e8f4ff;}
           <button class="forgot-link" onclick="showLoginState('forgot')">Esqueci minha senha</button>
         </div>
         <button class="btn btn-gold btn-full" onclick="doLogin()">Entrar no painel</button>
+        <div id="login-bloqueio-aviso" style="display:none;margin-top:12px;background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.3);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:var(--err);text-align:center">
+          🔒 Acesso temporariamente bloqueado.
+          <button onclick="limparBloqueioLogin()" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:0.78rem;text-decoration:underline;margin-left:6px">Desbloquear agora</button>
+        </div>
 
         <!-- Archery Game shortcut -->
         <div style="display:flex;justify-content:center;margin-top:20px;padding-top:18px;border-top:1px solid rgba(0,255,136,0.12);">
@@ -3035,6 +3039,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const att = JSON.parse(sessionStorage.getItem('vf_login_attempts') || '{}');
     if (att.blockedUntil && Date.now() > att.blockedUntil) sessionStorage.removeItem('vf_login_attempts');
   } catch(e) {}
+  // Limpa bloqueio de IP suspeito expirado
+  try {
+    const ipd = JSON.parse(sessionStorage.getItem('vf_ip_emails') || '{}');
+    if (ipd.bloqueadoAte && Date.now() > ipd.bloqueadoAte) sessionStorage.removeItem('vf_ip_emails');
+    // Se ainda não expirou mas janela é antiga (>30min), limpa também
+    if (ipd.janela && Date.now() - ipd.janela > 30 * 60 * 1000) sessionStorage.removeItem('vf_ip_emails');
+  } catch(e) {}
 
   renderPubCal();
 
@@ -3145,11 +3156,31 @@ function showScreen(id) {
   }
   if (id === 'public') renderPubCal();
 }
+function limparBloqueioLogin() {
+  try { sessionStorage.removeItem('vf_ip_emails'); } catch(e) {}
+  try { sessionStorage.removeItem('vf_login_attempts'); } catch(e) {}
+  const av = document.getElementById('login-bloqueio-aviso');
+  if (av) av.style.display = 'none';
+  toast('✅ Bloqueio removido. Tente fazer login novamente.');
+}
+
 function abrirLogin() {
   document.getElementById('l-email').value = '';
   document.getElementById('l-senha').value = '';
   showLoginState('login');
   document.getElementById('screen-login').classList.add('active');
+  // Verifica e exibe aviso se houver bloqueio ativo
+  setTimeout(() => {
+    try {
+      const av = document.getElementById('login-bloqueio-aviso');
+      if (!av) return;
+      const att = JSON.parse(sessionStorage.getItem('vf_login_attempts') || '{}');
+      const ip  = JSON.parse(sessionStorage.getItem('vf_ip_emails') || '{}');
+      const bloqueado = (att.blockedUntil && Date.now() < att.blockedUntil) ||
+                        (ip.bloqueadoAte  && Date.now() < ip.bloqueadoAte);
+      av.style.display = bloqueado ? 'block' : 'none';
+    } catch(e) {}
+  }, 100);
 }
 function fecharLogin() {
   document.getElementById('screen-login').classList.remove('active');
@@ -3191,9 +3222,6 @@ async function doLogin() {
   }
 
   const emailSanitized = email.replace(/[<>"'&]/g, '');
-
-  // Verifica IP suspeito (múltiplos e-mails diferentes)
-  if (verificarIPSuspeito(emailSanitized)) return;
 
   // ── Bloco de login ──────────────────────────────────────────────
   // 1. Tenta Firebase Auth (suporta senhas redefinidas pelo link)
@@ -3269,6 +3297,8 @@ async function doLogin() {
       }
     }, 600);
   } else {
+    // Registra e-mail com falha para detecção de ataque (só conta falhas, não tentativas)
+    verificarIPSuspeito(emailSanitized);
     attempts.count = (attempts.count || 0) + 1;
     if (attempts.count >= 5) {
       attempts.blockedUntil = now + 15 * 60 * 1000;
@@ -7244,13 +7274,15 @@ async function atualizarHistoricoSenha(email, novaSenha) {
 // SEGURANÇA — BLOQUEIO POR IP SUSPEITO
 // ================================================================
 function verificarIPSuspeito(email) {
+  // Detecta força bruta com muitos e-mails DIFERENTES em sequência rápida
+  // Só é chamada após falha de login, não em logins normais
   try {
     const chave = 'vf_ip_emails';
     const dados = JSON.parse(sessionStorage.getItem(chave) || '{"emails":[],"bloqueadoAte":0,"janela":0}');
     const agora = Date.now();
 
-    // Reset de janela a cada 10 minutos
-    if (agora - dados.janela > 10 * 60 * 1000) {
+    // Reset de janela a cada 30 minutos
+    if (agora - dados.janela > 30 * 60 * 1000) {
       dados.emails = [];
       dados.janela = agora;
       dados.bloqueadoAte = 0;
@@ -7268,11 +7300,11 @@ function verificarIPSuspeito(email) {
       dados.emails.push(email.toLowerCase());
     }
 
-    // 3+ e-mails diferentes = ataque
-    if (dados.emails.length >= 3) {
+    // 10+ e-mails diferentes com falha = ataque (threshold seguro para sistemas com múltiplos usuários)
+    if (dados.emails.length >= 10) {
       dados.bloqueadoAte = agora + 30 * 60 * 1000;
       sessionStorage.setItem(chave, JSON.stringify(dados));
-      registrarLogAcesso('ATAQUE_DETECTADO', email, 'Tentativas com múltiplos e-mails: ' + dados.emails.join(', '));
+      registrarLogAcesso('ATAQUE_DETECTADO', email, 'Tentativas com múltiplos e-mails: ' + dados.emails.length);
       toast('🚨 Atividade suspeita detectada. Acesso bloqueado por 30 minutos.');
       return true;
     }
