@@ -1117,20 +1117,53 @@ td strong{color:#e8f4ff;font-weight:600;}
 .bar-lbl{font-size:0.6rem;color:var(--text-l);margin-top:5px;text-align:center;white-space:nowrap;overflow:visible;width:100%;}
 
 /* ============================================================ TOAST */
-.toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:rgba(6,13,20,0.95);
-  color:#e8f4ff;
-  padding:13px 20px;border-radius:14px;
-  display:none;align-items:center;gap:14px;
-  box-shadow:0 12px 40px rgba(0,0,0,0.4),var(--sh-glow);
-  z-index:9999;
-  border:1px solid rgba(0,212,255,0.25);
-  font-size:0.84rem;font-weight:600;white-space:nowrap;
-  backdrop-filter:blur(20px);
+/* ============================================================ TOAST SYSTEM v2 */
+#toast-container{
+  position:fixed;
+  bottom:80px; /* above mobile bottom bar */
+  left:50%;transform:translateX(-50%);
+  z-index:99999;
+  display:flex;flex-direction:column-reverse;
+  align-items:center;gap:8px;
+  pointer-events:none;
+  width:min(420px, 92vw);
 }
-.toast.show{display:flex;animation:fadeInUp 0.3s ease both;}
-.toast button{background:transparent;border:none;color:var(--cyan);font-weight:600;cursor:pointer;}
+@media(max-width:720px){#toast-container{bottom:76px;}}
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  #toast-container{bottom:16px;left:calc(50% + 36px);}
+}
+.bv-toast{
+  pointer-events:auto;
+  display:flex;align-items:center;gap:12px;
+  padding:12px 18px;border-radius:14px;
+  font-size:0.84rem;font-weight:600;
+  width:100%;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  animation:bv-toast-in .3s cubic-bezier(.34,1.56,.64,1) both;
+  transition:opacity .3s, transform .3s;
+  cursor:pointer;
+}
+.bv-toast.hiding{
+  animation:bv-toast-out .25s ease both;
+}
+.bv-toast-ok   { background:rgba(0,180,100,0.15); border:1px solid rgba(0,255,136,0.25); color:#e8fff4; }
+.bv-toast-err  { background:rgba(255,60,80,0.15);  border:1px solid rgba(255,68,102,0.3);  color:#ffe8ec; }
+.bv-toast-warn { background:rgba(255,176,64,0.15); border:1px solid rgba(255,176,64,0.3);  color:#fff8e8; }
+.bv-toast-info { background:rgba(0,212,255,0.12);  border:1px solid rgba(0,212,255,0.25);  color:#e8f8ff; }
+.bv-toast-icon { font-size:1.1rem; flex-shrink:0; }
+.bv-toast-msg  { flex:1; line-height:1.35; white-space:pre-wrap; word-break:break-word; }
+.bv-toast-close{ background:none;border:none;color:currentColor;opacity:.5;cursor:pointer;font-size:.9rem;padding:0 2px;flex-shrink:0; }
+.bv-toast-close:hover{opacity:1;}
+@keyframes bv-toast-in{from{opacity:0;transform:translateY(16px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes bv-toast-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(8px) scale(0.97)}}
+
+/* legacy toast hidden */
+.toast{display:none!important;}
+[data-theme="light"] .bv-toast-ok  {background:rgba(0,160,80,0.1);border-color:rgba(0,180,100,0.25);color:#0a4a2a;}
+[data-theme="light"] .bv-toast-err {background:rgba(220,30,60,0.08);border-color:rgba(220,30,60,0.2);color:#7a1020;}
+[data-theme="light"] .bv-toast-warn{background:rgba(200,130,0,0.08);border-color:rgba(200,130,0,0.2);color:#6a4000;}
+[data-theme="light"] .bv-toast-info{background:rgba(0,140,200,0.08);border-color:rgba(0,140,200,0.2);color:#004070;}
 
 /* ============================================================ WHATSAPP FAB */
 .wa-fab{
@@ -1360,6 +1393,47 @@ td strong{color:#e8f4ff;font-weight:600;}
 }
 [data-theme="light"] .mob-rail-btn.active .rail-lbl{color:var(--mob-clr,#0099cc);text-shadow:none;}
 [data-theme="light"] .mob-rail-bottom{border-top-color:rgba(0,0,0,0.07);}
+
+/* ============================================================ LOADING SCREEN */
+#bv-loading{
+  position:fixed;inset:0;z-index:99998;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;
+  transition:opacity .4s ease;
+}
+#bv-loading.hiding{opacity:0;pointer-events:none;}
+#bv-loading.hidden{display:none;}
+.bv-loader-logo{
+  width:52px;height:52px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;
+  box-shadow:0 0 30px rgba(0,212,255,0.4);
+  animation:bv-pulse 1.5s ease-in-out infinite;
+}
+@keyframes bv-pulse{0%,100%{box-shadow:0 0 20px rgba(0,212,255,0.3)}50%{box-shadow:0 0 40px rgba(0,212,255,0.6)}}
+.bv-loader-bar{
+  width:160px;height:3px;
+  background:rgba(255,255,255,0.08);
+  border-radius:2px;overflow:hidden;
+}
+.bv-loader-bar::after{
+  content:'';display:block;height:100%;width:40%;
+  background:linear-gradient(90deg,var(--cyan),var(--purple));
+  border-radius:2px;
+  animation:bv-bar-slide 1.2s ease-in-out infinite;
+}
+@keyframes bv-bar-slide{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(350%)}
+}
+.bv-loader-txt{
+  font-size:0.8rem;color:var(--text-l);
+  font-family:'Syne',sans-serif;letter-spacing:1px;
+}
+[data-theme="light"] #bv-loading{background:#f5f7fa;}
 
 /* ============================================================ SEARCH ROW */
 .search-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
@@ -3204,7 +3278,18 @@ select option{background:#060d14;color:#e8f4ff;}
   <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
 </button>
 <div class="wa-tip">💬 Falar com suporte</div>
-<div class="toast" id="toast"><span id="t-msg">ok</span><button id="t-undo" style="display:none" onclick="desfazer()">Desfazer</button></div>
+<!-- ====================================================== -->
+<!-- LOADING SCREEN                                        -->
+<!-- ====================================================== -->
+<div id="bv-loading">
+  <div class="bv-loader-logo">🏛️</div>
+  <div class="bv-loader-bar"></div>
+  <div class="bv-loader-txt">carregando…</div>
+</div>
+
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+<!-- legacy toast (hidden) -->
+<div class="toast" id="toast" style="display:none!important"><span id="t-msg"></span><button id="t-undo" style="display:none" onclick="desfazer()">Desfazer</button></div>
 
 <!-- ============================================================ -->
 <!-- FIREBASE SDK (compat — funciona com scripts clássicos)      -->
@@ -3281,6 +3366,35 @@ try {
   _auth = null;
   _rtdb = null;
   setFbStatus('offline');
+}
+
+// ================================================================
+// FIREBASE AUTH STATE LISTENER — garante sincronização automática
+// ================================================================
+// Executado assim que Firebase Auth determina estado do usuário
+// Resolve o problema de dados não carregarem após login sem refresh
+if (_auth) {
+  _auth.onAuthStateChanged(function(user) {
+    // Só age se o sistema já inicializou (DOMContentLoaded já rodou)
+    if (!window._appPronto) return;
+    const sessao = lerSessao();
+    if (user && sessao && !_currentUserEmail) {
+      // Auth retornou usuário logado mas sistema não sabia → restaura
+      console.log('[Auth] Restaurando sessão via onAuthStateChanged:', user.email);
+      _currentUserEmail = sessao.email || user.email;
+      if (typeof atualizarAvatarMenu === 'function') atualizarAvatarMenu(_currentUserEmail);
+      if (typeof carregarPermissoesUsuario === 'function') {
+        carregarPermissoesUsuario(_currentUserEmail).then(() => {
+          if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
+          if (typeof revalidarRotaAtual === 'function') revalidarRotaAtual();
+        }).catch(() => {});
+      }
+      // Re-inicia escuta de reservas se não estiver ativa
+      if (!_unsubscribe && _db && typeof escutarReservas === 'function') {
+        escutarReservas();
+      }
+    }
+  });
 }
 
 // Helpers globais que o script principal usa via window._fb
@@ -3525,6 +3639,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window._appPronto = true;
 
+  // Oculta tela de loading após app inicializar
+  function ocultarLoading() {
+    const el = document.getElementById('bv-loading');
+    if (!el || el.classList.contains('hidden')) return;
+    el.classList.add('hiding');
+    setTimeout(() => el.classList.add('hidden'), 420);
+  }
+  // Oculta após 1.5s máximo (timeout de segurança)
+  setTimeout(ocultarLoading, 1500);
+  window._ocultarLoading = ocultarLoading;
+
   // Restaura sessão se já estava logado
   const _sessaoRestaurada = lerSessao();
   if (_sessaoRestaurada) {
@@ -3549,6 +3674,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (typeof aplicarRBACInterface === 'function') aplicarRBACInterface();
         if (typeof atualizarAvatarMenu === 'function') atualizarAvatarMenu(_emailRestaurado);
+        // Revalida rota após carregar permissões — redireciona silenciosamente se sem acesso
+        if (typeof revalidarRotaAtual === 'function') revalidarRotaAtual();
         var pendentes30 = verificarLembretes30Dias(false);
         if (pendentes30 && pendentes30.length > 0) {
           setTimeout(function() {
@@ -3597,6 +3724,7 @@ function showScreen(id) {
   document.getElementById('screen-'+id).classList.add('active');
   window.scrollTo({top: 0, behavior: 'instant'});
   if (id === 'admin') {
+    // Restore last tab (respects sessionStorage set by tabs)
     let tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
     // Retrocompat: se tab salvo era um sub-tab de Administração, redireciona
     const subTabs = ['checklist','whatsapp','seguranca','logs','mapa','online','sessoes','usuarios'];
@@ -3604,6 +3732,7 @@ function showScreen(id) {
       sessionStorage.setItem('vf_subtab', tabSalva);
       tabSalva = 'administracao';
     }
+    // Will be validated by RBAC after permissions load — goAdminTab handles this
     goAdminTab(tabSalva);
   }
   if (id === 'public') renderPubCal();
@@ -3848,6 +3977,8 @@ function doLogout(motivo) {
   const reason = motivo || 'LOGOUT';
   try { addLogSeguranca(reason, 'Sessão encerrada'); } catch(e) {}
   registrarLogAcesso(reason, _currentUserEmail || ADMIN_EMAIL);
+  // Para listener RTDB antes de encerrar
+  pararListenerSessaoRTDB(_currentUserEmail, _currentSessionId);
   encerrarSessaoFirebase(_currentSessionId);
   pararControleInatividade();
   salvarSessao(false);
@@ -4807,7 +4938,43 @@ function sBadge(s){const m={confirmada:'b-ok',pendente:'b-warn',cancelada:'b-err
 function pBadge(p){const m={pago:'b-ok',pendente:'b-warn',reembolsado:'b-info'};const l={pago:'💰 Pago',pendente:'⏳ Pendente',reembolsado:'↩ Reembolsado'};return`<span class="badge ${m[p]||''}">${l[p]||p}</span>`;}
 function openM(id){document.getElementById(id).classList.add('open');}
 function closeM(id){document.getElementById(id).classList.remove('open');}
-function toast(msg){const t=document.getElementById('toast');document.getElementById('t-msg').textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3600);}
+// ================================================================
+// TOAST SYSTEM v2 — typed, dedup, bottom-centered
+// ================================================================
+const _toastQueue = new Set();
+
+function toast(msg, type) {
+  if (!msg) return;
+  // Detect type from message prefix
+  if (!type) {
+    if      (msg.startsWith('✅') || msg.startsWith('🟢')) type = 'ok';
+    else if (msg.startsWith('❌') || msg.startsWith('🚨') || msg.startsWith('🔒')) type = 'err';
+    else if (msg.startsWith('⚠️') || msg.startsWith('⏰') || msg.startsWith('🔁')) type = 'warn';
+    else type = 'info';
+  }
+  // Deduplicate — don't show same message twice
+  const key = msg.slice(0, 60);
+  if (_toastQueue.has(key)) return;
+  _toastQueue.add(key);
+
+  const icons = { ok:'✅', err:'❌', warn:'⚠️', info:'ℹ️' };
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const el = document.createElement('div');
+  el.className = `bv-toast bv-toast-${type}`;
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `<span class="bv-toast-icon">${icons[type]||'ℹ️'}</span><span class="bv-toast-msg">${escapeHTML(msg.replace(/^[✅❌⚠️ℹ️🟢🚨🔒⏰🔁👋📧🗑️⏳]\s*/,''))}</span><button class="bv-toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  el.onclick = (e) => { if (!e.target.classList.contains('bv-toast-close')) el.remove(); };
+  container.appendChild(el);
+
+  // Auto-dismiss
+  const duration = type === 'err' ? 5000 : 3500;
+  setTimeout(() => {
+    el.classList.add('hiding');
+    setTimeout(() => { el.remove(); _toastQueue.delete(key); }, 280);
+  }, duration);
+}
 function abrirWhatsApp() {
   var url = 'https://wa.me/' + WA + '?text=' + encodeURIComponent('Olá! Gostaria de informações sobre a Bela Vista 🎉');
   var win = window.open(url, '_blank');
@@ -6770,31 +6937,84 @@ async function iniciarSessaoFirebase(email) {
 
     // Atualiza status online no RTDB se disponível
     atualizarStatusOnline(email, true);
-    // Ping a cada 30s
+    // Inicia listener RTDB para logout imediato por admin
+    iniciarListenerSessaoRTDB(email, _currentSessionId);
+    // Heartbeat a cada 30s
     if (_pingInterval) clearInterval(_pingInterval);
     _pingInterval = setInterval(pingSessionAtiva, 30000);
   } catch(e) { console.warn('Erro ao iniciar sessão Firebase:', e); }
 }
 
+// ================================================================
+// HEARTBEAT + REAL-TIME SESSION LISTENER
+// ================================================================
+let _sessionRTDBListener = null;
+
 async function pingSessionAtiva() {
   if (!_db || !_currentSessionId) return;
   try {
-    // Verifica primeiro se a sessão foi encerrada remotamente (por novo login em outro dispositivo)
+    // Check Firestore session status
     const doc = await _db.collection('sessoes_ativas').doc(_currentSessionId).get();
-    if (doc.exists && doc.data().status === 'offline' && doc.data().encerradoPor === 'novo_login') {
-      // Sessão foi encerrada por novo login em outro dispositivo — força logout
-      clearInterval(_pingInterval);
-      _pingInterval = null;
-      toast('⚠️ Sua sessão foi encerrada porque você entrou em outro dispositivo.');
-      setTimeout(() => doLogout('SESSAO_ENCERRADA_REMOTO'), 2000);
-      return;
+    if (doc.exists) {
+      const data = doc.data();
+      // Encerrado remotamente (novo login em outro device)
+      if (data.status === 'offline' && data.encerradoPor === 'novo_login') {
+        clearInterval(_pingInterval); _pingInterval = null;
+        toast('⚠️ Sua sessão foi encerrada porque você entrou em outro dispositivo.', 'warn');
+        setTimeout(() => doLogout('SESSAO_ENCERRADA_REMOTO'), 2000);
+        return;
+      }
+      // Encerrado pelo administrador via painel
+      if (data.status === 'offline' && data.encerradoPor === 'admin') {
+        clearInterval(_pingInterval); _pingInterval = null;
+        toast('🚨 Sua sessão foi encerrada pelo administrador.', 'err');
+        setTimeout(() => doLogout('SESSAO_ENCERRADA_ADMIN'), 2000);
+        return;
+      }
     }
+    // Update heartbeat
     await _db.collection('sessoes_ativas').doc(_currentSessionId).update({
       ultimo_ping: firebase.firestore.FieldValue.serverTimestamp(),
       ultimo_ping_iso: new Date().toISOString(),
       status: 'online'
     });
     atualizarStatusOnline(_currentUserEmail, true);
+  } catch(e) {}
+}
+
+// RTDB real-time listener: instant logout when session is killed
+function iniciarListenerSessaoRTDB(email, sessionId) {
+  if (!_rtdb || !email || !sessionId) return;
+  try {
+    const key = email.replace(/[.@]/g, '_');
+    const ref = _rtdb.ref('sessoes_controle/' + key + '/' + sessionId);
+    // Set initial active state
+    ref.set({ active: true, lastPing: firebase.database.ServerValue.TIMESTAMP });
+    // On disconnect: mark inactive
+    ref.onDisconnect().update({ active: false, lastPing: firebase.database.ServerValue.TIMESTAMP });
+    // Listen for forced logout
+    if (_sessionRTDBListener) _sessionRTDBListener();
+    _sessionRTDBListener = ref.on('value', (snap) => {
+      const val = snap.val();
+      if (val && val.active === false) {
+        // Remove listener to prevent loop
+        ref.off('value');
+        _sessionRTDBListener = null;
+        clearInterval(_pingInterval); _pingInterval = null;
+        toast('🚨 Sua sessão foi encerrada pelo administrador.', 'err');
+        setTimeout(() => doLogout('SESSAO_ENCERRADA_ADMIN'), 1500);
+      }
+    });
+  } catch(e) { console.warn('RTDB session listener error:', e); }
+}
+
+function pararListenerSessaoRTDB(email, sessionId) {
+  if (!_rtdb || !email || !sessionId) return;
+  try {
+    const key = email.replace(/[.@]/g, '_');
+    _rtdb.ref('sessoes_controle/' + key + '/' + sessionId).off('value');
+    _rtdb.ref('sessoes_controle/' + key + '/' + sessionId).remove();
+    _sessionRTDBListener = null;
   } catch(e) {}
 }
 
@@ -6911,11 +7131,20 @@ async function excluirTodasSessoes() {
 
 async function encerrarSessaoOnline(sessionId, email) {
   if (!_db || !sessionId) return;
-  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?\n\n(Mantém o histórico, apenas marca como offline)')) return;
+  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?\n\nO usuário será desconectado imediatamente.')) return;
   try {
-    await _db.collection('sessoes_ativas').doc(sessionId).update({ status: 'offline' });
-    registrarLogAcesso('SESSAO_ENCERRADA', email, 'Encerrada pelo administrador');
-    toast('✅ Sessão encerrada');
+    await _db.collection('sessoes_ativas').doc(sessionId).update({
+      status: 'offline', encerradoPor: 'admin', encerradoEm: new Date().toISOString()
+    });
+    // Força via RTDB
+    if (_rtdb && email) {
+      const key = email.replace(/[.@]/g, '_');
+      await _rtdb.ref('sessoes_controle/' + key + '/' + sessionId).update({
+        active: false, encerradoPor: 'admin', ts: firebase.database.ServerValue.TIMESTAMP
+      });
+    }
+    registrarLogAcesso('SESSAO_ENCERRADA_ADMIN', _currentUserEmail || ADMIN_EMAIL, 'Encerrou online: ' + email);
+    toast('✅ Sessão de ' + email + ' encerrada!');
     renderOnlineUsers();
   } catch(e) { toast('❌ Erro ao encerrar sessão'); }
 }
@@ -6975,13 +7204,27 @@ async function encerrarTodosOnline() {
 
 async function encerrarSessaoEspecifica(sessionId, email) {
   if (!_db) return;
-  if (!confirm('Encerrar esta sessão?')) return;
+  if (!confirm('Encerrar sessão de ' + (email || 'usuário') + '?\n\nO usuário será desconectado imediatamente.')) return;
   try {
-    await _db.collection('sessoes_ativas').doc(sessionId).update({ status: 'offline' });
-    registrarLogAcesso('SESSAO_ENCERRADA', email, 'Encerrada pelo administrador');
-    toast('✅ Sessão encerrada');
+    // 1. Marca Firestore como encerrado pelo admin
+    await _db.collection('sessoes_ativas').doc(sessionId).update({
+      status: 'offline',
+      encerradoPor: 'admin',
+      encerradoEm: new Date().toISOString()
+    });
+    // 2. Força logout via RTDB em tempo real (instantâneo)
+    if (_rtdb && email) {
+      const key = email.replace(/[.@]/g, '_');
+      await _rtdb.ref('sessoes_controle/' + key + '/' + sessionId).update({
+        active: false,
+        encerradoPor: 'admin',
+        ts: firebase.database.ServerValue.TIMESTAMP
+      });
+    }
+    registrarLogAcesso('SESSAO_ENCERRADA_ADMIN', _currentUserEmail || ADMIN_EMAIL, 'Encerrou sessão de: ' + email);
+    toast('✅ Sessão de ' + email + ' encerrada com sucesso!');
     carregarSessoes();
-  } catch(e) { toast('❌ Erro ao encerrar sessão'); }
+  } catch(e) { toast('❌ Erro ao encerrar sessão: ' + (e.message || '')); }
 }
 
 async function encerrarTodasSessoes() {
@@ -7602,18 +7845,47 @@ async function salvarPermissoes() {
 // Override de goAdminTab para verificar permissões + sincronizar mobile bar
 const _goAdminTabOriginal = goAdminTab;
 goAdminTab = function(tab) {
-  // Dashboard é sempre acessível para qualquer usuário logado
+  // Dashboard sempre acessível
   if (tab === 'dashboard') { _goAdminTabOriginal(tab); _syncMobBar(tab); return; }
-  // Só bloqueia se permissões já foram carregadas (_rbacPerms !== null)
-  if (_rbacPerms !== null && !temPermissao(tab)) {
-    toast('🚫 Você não tem acesso a este módulo');
+  // _rbacPerms === null: permissões ainda não carregadas (aguardando Firebase)
+  // Neste caso PERMITE temporariamente — revalidação acontece após carregamento
+  if (_rbacPerms === null) {
+    _goAdminTabOriginal(tab);
+    _syncMobBar(tab);
+    return;
+  }
+  // Permissões carregadas: valida acesso
+  if (!temPermissao(tab)) {
+    // Não mostra toast se foi redirecionamento automático (F5 restore)
+    if (!window._rbacSilentRedirect) {
+      toast('🚫 Você não tem acesso a este módulo', 'warn');
+    }
+    window._rbacSilentRedirect = false;
     _goAdminTabOriginal('dashboard');
     _syncMobBar('dashboard');
     return;
   }
+  window._rbacSilentRedirect = false;
   _goAdminTabOriginal(tab);
   _syncMobBar(tab);
 };
+
+// Revalidação de rota após permissões carregarem (F5 restore)
+function revalidarRotaAtual() {
+  try {
+    const tabAtual = sessionStorage.getItem('vf_tab') || 'dashboard';
+    if (tabAtual === 'dashboard') return;
+    const subTabs = ['checklist','whatsapp','seguranca','logs','mapa','online','sessoes','usuarios'];
+    const tabFinal = subTabs.includes(tabAtual) ? 'administracao' : tabAtual;
+    if (_rbacPerms !== null && !temPermissao(tabFinal)) {
+      // Sem permissão — redireciona silenciosamente para dashboard
+      window._rbacSilentRedirect = true;
+      goAdminTab('dashboard');
+      sessionStorage.removeItem('vf_tab');
+      sessionStorage.removeItem('vf_subtab');
+    }
+  } catch(e) {}
+}
 
 // Override de goSubTab para verificar permissões de sub-tabs
 const _goSubTabOriginal = goSubTab;
@@ -7643,6 +7915,8 @@ const _doLoginRBACHook = async function(email) {
   await carregarPermissoesUsuario(email);
   aplicarRBACInterface();
   atualizarAvatarMenu(email);
+  // Revalida rota após carregar permissões (F5 + login)
+  if (typeof revalidarRotaAtual === 'function') revalidarRotaAtual();
 };
 
 // Também atualizar ADMIN_EMAIL para fabiocds@yahoo.com como principal
