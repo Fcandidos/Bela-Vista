@@ -4601,12 +4601,16 @@ function renderDashboard() {
        <div class="metric-val" style="${pendentes>0?'color:var(--warn)':''}">${pendentes}</div>
        <div class="metric-sub ${pendentes>0?'warn':''}">${pendentes>0?'⚠️ Requer atenção':'✅ Em dia'}</div>
      </div>`;
-  // Chart
+  // Chart — usa a data do EVENTO (primeira data da reserva), não a data de criação
   const ano = new Date().getFullYear();
   const rec = new Array(12).fill(0);
   reservas.filter(r=>r.status!=='cancelada').forEach(r=>{
-    const ref = r.criadoEm || (allDatasReserva(r)[0]) || '';
-    if(ref.startsWith(String(ano))) rec[parseInt(ref.split('-')[1]||1)-1]+=(Number(r.total)||0);
+    // Pega a primeira data do evento (quando o evento acontece, não quando foi cadastrado)
+    const dataEvento = allDatasReserva(r)[0] || '';
+    if(dataEvento.startsWith(String(ano))) {
+      const mes = parseInt(dataEvento.split('-')[1]||1) - 1;
+      rec[mes] += (Number(r.total)||0);
+    }
   });
   renderBarChartMoney('dash-bars','dash-bar-labels',rec,MC,150);
   // Próximos — compara apenas as datas (sem hora) para evitar bug de fuso
@@ -4685,20 +4689,32 @@ function renderRelatorios() {
     // Fim da semana = sábado (23:59:59)
     const fimSemana=new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate()+6); fimSemana.setHours(23,59,59,999);
     list=ativas.filter(r=>allDatasReserva(r).some(ds=>{const d=new Date(ds+'T00:00:00');return d>=inicioSemana&&d<=fimSemana;}));
-    list.forEach(r=>{allDatasReserva(r).forEach(ds=>{const d=new Date(ds+'T00:00:00');if(d>=inicioSemana&&d<=fimSemana)vals[d.getDay()]+=r.total/allDatasReserva(r).length;});});
+    list.forEach(r=>{
+      // Conta o total UMA VEZ no dia da primeira data do evento que cai na semana
+      const ds=allDatasReserva(r).find(ds=>{const d=new Date(ds+'T00:00:00');return d>=inicioSemana&&d<=fimSemana;});
+      if(ds){const d=new Date(ds+'T00:00:00');vals[d.getDay()]+=(Number(r.total)||0);}
+    });
     document.getElementById('rel-chart-title').textContent='Receita — Esta semana';
     document.getElementById('rel-table-title').textContent='Eventos — Esta semana';
   } else if(periodoRel==='mensal'){
     labels=['Sem 1','Sem 2','Sem 3','Sem 4'];vals=new Array(4).fill(0);
     const mAtual=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
     list=ativas.filter(r=>allDatasReserva(r).some(d=>d.startsWith(mAtual)));
-    list.forEach(r=>{allDatasReserva(r).filter(d=>d.startsWith(mAtual)).forEach(d=>{const day=parseInt(d.split('-')[2]);vals[Math.min(Math.floor((day-1)/7),3)]+=r.total/allDatasReserva(r).length;});});
+    list.forEach(r=>{
+      // Conta o total UMA VEZ na semana da primeira data do evento no mês atual
+      const d=allDatasReserva(r).find(d=>d.startsWith(mAtual));
+      if(d){const day=parseInt(d.split('-')[2]);vals[Math.min(Math.floor((day-1)/7),3)]+=(Number(r.total)||0);}
+    });
     document.getElementById('rel-chart-title').textContent='Receita — Este mês';
     document.getElementById('rel-table-title').textContent='Eventos — Este mês';
   } else {
     labels=MC;vals=new Array(12).fill(0);
     list=ativas.filter(r=>allDatasReserva(r).some(d=>d.startsWith(String(hoje.getFullYear()))));
-    list.forEach(r=>{allDatasReserva(r).filter(d=>d.startsWith(String(hoje.getFullYear()))).forEach(d=>{vals[parseInt(d.split('-')[1])-1]+=r.total/allDatasReserva(r).length;});});
+    // Conta o valor total UMA VEZ no mês da primeira data do evento
+    list.forEach(r=>{
+      const dataEvento=allDatasReserva(r).find(d=>d.startsWith(String(hoje.getFullYear())));
+      if(dataEvento) vals[parseInt(dataEvento.split('-')[1])-1]+=(Number(r.total)||0);
+    });
     document.getElementById('rel-chart-title').textContent='Receita — Este ano';
     document.getElementById('rel-table-title').textContent='Eventos — Este ano';
   }
@@ -5435,10 +5451,10 @@ function renderFinanceiro() {
   const fmtR = v => 'R$ ' + fmtK(Math.abs(v));
   const MESES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  // Receita: reservas não canceladas no período (usa criadoEm ou data)
+  // Receita: reservas não canceladas no período — usa data do EVENTO, não criação
   const reservasPeriodo = reservas.filter(r => {
-    const ref = r.criadoEm || r.data || '';
-    return ref.startsWith(prefixo) && r.status !== 'cancelada';
+    const dataEvento = (Array.isArray(r.datas) && r.datas.length > 0 ? r.datas[0] : r.data) || '';
+    return dataEvento.startsWith(prefixo) && r.status !== 'cancelada';
   });
   const receitaTotal = reservasPeriodo.reduce((s,r) => s + (Number(r.total)||0), 0);
 
@@ -5509,8 +5525,14 @@ function renderFinanceiro() {
   // ── Gráfico 12 meses ──
   const mesesRec  = new Array(12).fill(0);
   const mesesDesp = new Array(12).fill(0);
-  reservas.filter(r => (r.criadoEm||r.data||'').startsWith(ano) && r.status !== 'cancelada')
-    .forEach(r => { const m = parseInt((r.criadoEm||r.data||'').split('-')[1]||1)-1; mesesRec[m] += Number(r.total)||0; });
+  reservas.filter(r => r.status !== 'cancelada').forEach(r => {
+    // Usa a primeira data do EVENTO para distribuir no mês correto
+    const dataEvento = (Array.isArray(r.datas) && r.datas.length > 0 ? r.datas[0] : r.data) || '';
+    if(dataEvento.startsWith(ano)) {
+      const m = parseInt(dataEvento.split('-')[1]||1)-1;
+      mesesRec[m] += Number(r.total)||0;
+    }
+  });
   despesas.filter(d => (d.data||'').startsWith(ano))
     .forEach(d => { const m = parseInt((d.data||'').split('-')[1]||1)-1; mesesDesp[m] += Number(d.valor)||0; });
   const mesesLuc = mesesRec.map((r,i) => r - mesesDesp[i]);
