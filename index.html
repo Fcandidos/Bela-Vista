@@ -3802,7 +3802,8 @@ async function doLogin() {
     return;
   }
 
-  const emailSanitized = email.replace(/[<>"'&]/g, '');
+  // Sempre normaliza email para lowercase — evita inconsistência com Firestore
+  const emailSanitized = email.replace(/[<>"'&]/g, '').toLowerCase();
 
   // ── Bloco de login ──────────────────────────────────────────────
   // 1. Tenta Firebase Auth (suporta senhas redefinidas pelo link)
@@ -7735,40 +7736,79 @@ async function carregarPermissoesUsuario(email) {
     return;
   }
   try {
-    const snap = await _db.collection('usuarios').where('email', '==', email.toLowerCase()).limit(1).get();
+    // Busca case-insensitive: tenta email exato primeiro, depois lowercase, depois uppercase inicial
+    let snap = await _db.collection('usuarios').where('email', '==', email).limit(1).get();
+
+    // Se não achou com email exato, tenta lowercase
+    if (snap.empty) {
+      snap = await _db.collection('usuarios').where('email', '==', email.toLowerCase()).limit(1).get();
+    }
+    // Se ainda não achou, tenta com primeira letra maiúscula (ex: Robsontxs@yahoo.com.br)
+    if (snap.empty) {
+      const emailCap = email.charAt(0).toUpperCase() + email.slice(1).toLowerCase();
+      snap = await _db.collection('usuarios').where('email', '==', emailCap).limit(1).get();
+    }
+    // Busca por todos os documentos e filtra manualmente (fallback robusto)
+    if (snap.empty) {
+      const todos = await _db.collection('usuarios').get();
+      const docEncontrado = todos.docs.find(d =>
+        (d.data().email || '').toLowerCase() === email.toLowerCase()
+      );
+      if (docEncontrado) {
+        _rbacUsuarioDocId = docEncontrado.id;
+        const data = docEncontrado.data();
+        _rbacPerms = Array.isArray(data.permissoes) ? data.permissoes : RBAC_PERFIS.total;
+        // Normaliza email no Firestore para lowercase (corrige de uma vez)
+        try { await docEncontrado.ref.update({ email: email.toLowerCase() }); } catch(e) {}
+        aplicarRBACInterface();
+        return;
+      }
+    }
+
     if (!snap.empty) {
       const data = snap.docs[0].data();
       _rbacUsuarioDocId = snap.docs[0].id;
       _rbacPerms = Array.isArray(data.permissoes) ? data.permissoes : RBAC_PERFIS.total;
+      // Normaliza email para lowercase no Firestore se necessário
+      if (data.email !== email.toLowerCase()) {
+        try { await snap.docs[0].ref.update({ email: email.toLowerCase() }); } catch(e) {}
+      }
     } else {
-      _rbacPerms = [];
+      console.warn('RBAC: usuário não encontrado no Firestore:', email);
+      _rbacPerms = []; // usuário não cadastrado = sem acesso
     }
   } catch(e) {
     console.warn('RBAC: erro ao carregar permissões', e);
-    _rbacPerms = [];
+    _rbacPerms = []; // erro de rede = sem acesso por segurança
   }
   aplicarRBACInterface();
 }
 
 // Aplica visibilidade dos menus e sub-menus conforme permissões
 function aplicarRBACInterface() {
-  if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return; // admin: não filtra nada
+  if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return;
 
-  // Menus principais
+  // Menus principais (desktop top nav)
   document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
-    const tab = btn.dataset.tab;
-    const visivel = temPermissao(tab);
-    btn.style.display = visivel ? '' : 'none';
+    btn.style.display = temPermissao(btn.dataset.tab) ? '' : 'none';
   });
-
+  // Mobile bottom bar
+  document.querySelectorAll('#mob-bottom-bar .mob-bar-btn[data-tab]').forEach(btn => {
+    if (btn.dataset.tab) btn.style.display = temPermissao(btn.dataset.tab) ? '' : 'none';
+  });
+  // Mobile side rail (landscape)
+  document.querySelectorAll('#mob-side-rail .mob-rail-btn[data-tab]').forEach(btn => {
+    if (btn.dataset.tab) btn.style.display = temPermissao(btn.dataset.tab) ? '' : 'none';
+  });
+  // More panel items
+  document.querySelectorAll('#mob-more-panel .mob-more-item[data-tab]').forEach(item => {
+    if (item.dataset.tab) item.style.display = temPermissao(item.dataset.tab) ? '' : 'none';
+  });
   // Sub-menus de Administração
   document.querySelectorAll('.adm-sub-btn').forEach(btn => {
     const onclick = btn.getAttribute('onclick') || '';
     const match = onclick.match(/goSubTab\('([^']+)'\)/);
-    if (match) {
-      const sub = match[1];
-      btn.style.display = temPermissao(sub) ? '' : 'none';
-    }
+    if (match) btn.style.display = temPermissao(match[1]) ? '' : 'none';
   });
 }
 
