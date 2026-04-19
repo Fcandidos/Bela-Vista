@@ -3274,6 +3274,97 @@ select option{background:#060d14;color:#e8f4ff;}
 
     </div><!-- /tab-administracao -->
 
+    <!-- ===== BELA — Assistente de Voz ===== -->
+    <div id="tab-bela" class="admin-tab-content">
+      <div class="bela-container">
+
+        <!-- Header -->
+        <div class="bela-header">
+          <div class="bela-title-wrap">
+            <h2 class="bela-title">Bela, quanto faturei?</h2>
+            <p class="bela-subtitle">Assistente de voz inteligente · Diga <strong>"Bela"</strong> para começar</p>
+          </div>
+          <div class="bela-status-pill" id="bela-status-pill">
+            <span class="bela-status-dot" id="bela-status-dot"></span>
+            <span id="bela-status-txt">Aguardando</span>
+          </div>
+        </div>
+
+        <!-- Central nucleus -->
+        <div class="bela-stage">
+          <div class="bela-nucleus-wrap" id="bela-nucleus-wrap" onclick="belaToggle()">
+            <div class="bela-ring bela-ring-1"></div>
+            <div class="bela-ring bela-ring-2"></div>
+            <div class="bela-ring bela-ring-3"></div>
+            <div class="bela-orbit bela-orbit-1"><span class="bela-particle"></span></div>
+            <div class="bela-orbit bela-orbit-2"><span class="bela-particle p2"></span></div>
+            <div class="bela-orbit bela-orbit-3"><span class="bela-particle p3"></span></div>
+            <div class="bela-orbit bela-orbit-4"><span class="bela-particle p4"></span></div>
+            <div class="bela-orbit bela-orbit-5"><span class="bela-particle p5"></span></div>
+            <div class="bela-wave-ring bw1" id="bela-wave-1"></div>
+            <div class="bela-wave-ring bw2" id="bela-wave-2"></div>
+            <div class="bela-wave-ring bw3" id="bela-wave-3"></div>
+            <div class="bela-core" id="bela-core">
+              <div class="bela-core-inner">
+                <div class="bela-core-glow"></div>
+                <svg class="bela-core-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <radialGradient id="bglow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#ffcc44" stop-opacity="1"/>
+                      <stop offset="35%" stop-color="#ff8800" stop-opacity="0.85"/>
+                      <stop offset="70%" stop-color="#cc4400" stop-opacity="0.5"/>
+                      <stop offset="100%" stop-color="#220000" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="bcoreglow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#fff8e0" stop-opacity="1"/>
+                      <stop offset="60%" stop-color="#ffcc44" stop-opacity="0.9"/>
+                      <stop offset="100%" stop-color="#ff6600" stop-opacity="0"/>
+                    </radialGradient>
+                    <filter id="bblur"><feGaussianBlur stdDeviation="3"/></filter>
+                    <filter id="bglow2">
+                      <feGaussianBlur stdDeviation="6" result="blur"/>
+                      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                  </defs>
+                  <circle cx="60" cy="60" r="54" fill="url(#bglow)" opacity="0.55"/>
+                  <g opacity="0.6" filter="url(#bblur)">
+                    <line x1="60" y1="6" x2="60" y2="22" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="60" y1="98" x2="60" y2="114" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="6" y1="60" x2="22" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="98" y1="60" x2="114" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="18" y1="18" x2="29" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="91" y1="91" x2="102" y2="102" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="102" y1="18" x2="91" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="18" y1="102" x2="29" y2="91" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                  </g>
+                  <circle cx="60" cy="60" r="36" fill="url(#bglow)" opacity="0.7"/>
+                  <circle cx="60" cy="60" r="22" fill="url(#bcoreglow)" filter="url(#bglow2)"/>
+                  <circle cx="60" cy="60" r="10" fill="#fffbe0" opacity="0.95"/>
+                  <circle cx="57" cy="57" r="4" fill="#ffffff" opacity="0.8"/>
+                </svg>
+              </div>
+            </div>
+            <div class="bela-click-hint" id="bela-click-hint">Clique para ativar</div>
+          </div>
+          <div class="bela-transcript" id="bela-transcript"></div>
+        </div>
+
+        <!-- Response cards -->
+        <div class="bela-cards" id="bela-cards"></div>
+
+        <!-- Suggestion chips -->
+        <div class="bela-chips">
+          <button class="bela-chip" onclick="belaAskText('quanto faturei esse mês')">💰 Faturamento este mês</button>
+          <button class="bela-chip" onclick="belaAskText('quanto faturei no mês passado')">📅 Mês passado</button>
+          <button class="bela-chip" onclick="belaAskText('quais são minhas próximas reservas')">📋 Próximas reservas</button>
+          <button class="bela-chip" onclick="belaAskText('quantas reservas tenho essa semana')">📆 Esta semana</button>
+          <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
+          <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
+        </div>
+
+      </div>
+    </div><!-- /tab-bela -->
+
   </div><!-- /admin-body -->
 </div>
 
@@ -3313,128 +3404,8 @@ select option{background:#060d14;color:#e8f4ff;}
   </div>
 </div>
 
-<!-- ===== BELA — Assistente de Voz ===== -->
-<div id="tab-bela" class="admin-tab-content">
-  <div class="bela-container">
-
-    <!-- Header -->
-    <div class="bela-header">
-      <div class="bela-title-wrap">
-        <h2 class="bela-title">Bela, quanto faturei?</h2>
-        <p class="bela-subtitle">Assistente de voz inteligente · Diga <strong>"Bela"</strong> para começar</p>
-      </div>
-      <div class="bela-status-pill" id="bela-status-pill">
-        <span class="bela-status-dot" id="bela-status-dot"></span>
-        <span id="bela-status-txt">Aguardando</span>
-      </div>
-    </div>
-
-    <!-- Central nucleus -->
-    <div class="bela-stage">
-      <div class="bela-nucleus-wrap" id="bela-nucleus-wrap" onclick="belaToggle()">
-
-        <!-- Outer orbit rings -->
-        <div class="bela-ring bela-ring-1"></div>
-        <div class="bela-ring bela-ring-2"></div>
-        <div class="bela-ring bela-ring-3"></div>
-
-        <!-- Particle orbits -->
-        <div class="bela-orbit bela-orbit-1">
-          <span class="bela-particle"></span>
-        </div>
-        <div class="bela-orbit bela-orbit-2">
-          <span class="bela-particle p2"></span>
-        </div>
-        <div class="bela-orbit bela-orbit-3">
-          <span class="bela-particle p3"></span>
-        </div>
-        <div class="bela-orbit bela-orbit-4">
-          <span class="bela-particle p4"></span>
-        </div>
-        <div class="bela-orbit bela-orbit-5">
-          <span class="bela-particle p5"></span>
-        </div>
-
-        <!-- Audio wave rings (visible when speaking/listening) -->
-        <div class="bela-wave-ring bw1" id="bela-wave-1"></div>
-        <div class="bela-wave-ring bw2" id="bela-wave-2"></div>
-        <div class="bela-wave-ring bw3" id="bela-wave-3"></div>
-
-        <!-- Core glow -->
-        <div class="bela-core" id="bela-core">
-          <div class="bela-core-inner">
-            <div class="bela-core-glow"></div>
-            <!-- Star/sun SVG inspired by provided image -->
-            <svg class="bela-core-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <radialGradient id="bglow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#ffcc44" stop-opacity="1"/>
-                  <stop offset="35%" stop-color="#ff8800" stop-opacity="0.85"/>
-                  <stop offset="70%" stop-color="#cc4400" stop-opacity="0.5"/>
-                  <stop offset="100%" stop-color="#220000" stop-opacity="0"/>
-                </radialGradient>
-                <radialGradient id="bcoreglow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#fff8e0" stop-opacity="1"/>
-                  <stop offset="60%" stop-color="#ffcc44" stop-opacity="0.9"/>
-                  <stop offset="100%" stop-color="#ff6600" stop-opacity="0"/>
-                </radialGradient>
-                <filter id="bblur">
-                  <feGaussianBlur stdDeviation="3"/>
-                </filter>
-                <filter id="bglow2">
-                  <feGaussianBlur stdDeviation="6" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
-              <!-- Outer corona halo -->
-              <circle cx="60" cy="60" r="54" fill="url(#bglow)" opacity="0.55"/>
-              <!-- Corona rays -->
-              <g opacity="0.6" filter="url(#bblur)">
-                <line x1="60" y1="6" x2="60" y2="22" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                <line x1="60" y1="98" x2="60" y2="114" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                <line x1="6" y1="60" x2="22" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                <line x1="98" y1="60" x2="114" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                <line x1="18" y1="18" x2="29" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="91" y1="91" x2="102" y2="102" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="102" y1="18" x2="91" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="18" y1="102" x2="29" y2="91" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-              </g>
-              <!-- Mid glow -->
-              <circle cx="60" cy="60" r="36" fill="url(#bglow)" opacity="0.7"/>
-              <!-- Core sphere -->
-              <circle cx="60" cy="60" r="22" fill="url(#bcoreglow)" filter="url(#bglow2)"/>
-              <!-- Bright center -->
-              <circle cx="60" cy="60" r="10" fill="#fffbe0" opacity="0.95"/>
-              <circle cx="57" cy="57" r="4" fill="#ffffff" opacity="0.8"/>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Click label -->
-        <div class="bela-click-hint" id="bela-click-hint">Clique para ativar</div>
-      </div>
-
-      <!-- Transcript / heard text -->
-      <div class="bela-transcript" id="bela-transcript"></div>
-    </div>
-
-    <!-- Response cards -->
-    <div class="bela-cards" id="bela-cards"></div>
-
-    <!-- Suggestion chips -->
-    <div class="bela-chips">
-      <button class="bela-chip" onclick="belaAskText('quanto faturei esse mês')">💰 Faturamento este mês</button>
-      <button class="bela-chip" onclick="belaAskText('quanto faturei no mês passado')">📅 Mês passado</button>
-      <button class="bela-chip" onclick="belaAskText('quais são minhas próximas reservas')">📋 Próximas reservas</button>
-      <button class="bela-chip" onclick="belaAskText('quantas reservas tenho essa semana')">📆 Esta semana</button>
-      <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
-      <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
-    </div>
-
-  </div>
-</div>
-
 <!-- ====================================================== -->
+<!-- MODAL: Nova / Editar Reserva -->
 <!-- ====================================================== -->
 <div class="modal-bg" id="m-reserva">
   <div class="modal">
