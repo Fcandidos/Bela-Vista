@@ -2299,6 +2299,62 @@ select option{background:#060d14;color:#e8f4ff;}
 [data-theme="light"] .bela-card-list li { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.07); color: #2d3748; }
 [data-theme="light"] .bela-chip { background: rgba(255,255,255,0.9); color: #4a5568; border-color: rgba(0,0,0,0.1); }
 [data-theme="light"] .bela-chip:hover { background: rgba(0,153,204,0.08); color: #0077aa; }
+
+/* Voice panel */
+.bela-voice-panel {
+  margin-top: 28px;
+  border: 1px solid rgba(0,212,255,0.12);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+}
+.bela-voice-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  font-size: 0.8rem;
+  color: var(--text-l);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.bela-voice-toggle-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  color: var(--cyan);
+  cursor: pointer;
+  transition: all .2s;
+}
+.bela-voice-toggle-btn:hover { background: rgba(0,212,255,0.08); }
+.bvt-open { display: none; }
+.bela-voice-panel.open .bvt-closed { display: none; }
+.bela-voice-panel.open .bvt-open   { display: inline; }
+
+.bela-voice-body {
+  display: none;
+  padding: 0 18px 18px;
+  flex-direction: column;
+  gap: 14px;
+}
+.bela-voice-panel.open .bela-voice-body { display: flex; }
+
+.bela-voice-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.bela-voice-row label {
+  font-size: 0.78rem;
+  color: var(--text-l);
+  min-width: 90px;
+  font-weight: 600;
+}
+[data-theme="light"] .bela-voice-panel { background: rgba(255,255,255,0.7); border-color: rgba(0,153,204,0.15); }
+[data-theme="light"] .bela-voice-panel-title { color: #4a5568; }
+[data-theme="light"] .bela-voice-row label { color: #718096; }
 </style>
 </head>
 <body>
@@ -3360,6 +3416,48 @@ select option{background:#060d14;color:#e8f4ff;}
           <button class="bela-chip" onclick="belaAskText('quantas reservas tenho essa semana')">📆 Esta semana</button>
           <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
           <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
+          <button class="bela-chip" onclick="belaAskText('resumo geral')">📊 Resumo geral</button>
+        </div>
+
+        <!-- Voice settings panel -->
+        <div class="bela-voice-panel">
+          <div class="bela-voice-panel-title">
+            <span>🎛️ Configurações de Voz</span>
+            <button class="bela-voice-toggle-btn" onclick="this.closest('.bela-voice-panel').classList.toggle('open')">
+              <span class="bvt-closed">▼ Ajustar</span>
+              <span class="bvt-open">▲ Fechar</span>
+            </button>
+          </div>
+          <div class="bela-voice-body">
+            <div class="bela-voice-row">
+              <label>🗣️ Voz</label>
+              <div style="flex:1;min-width:0">
+                <select id="bela-voice-select" onchange="belaChangeVoice(this.value)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:0.8rem;outline:none">
+                  <option>Carregando vozes…</option>
+                </select>
+                <div id="bela-voice-info" style="font-size:0.7rem;color:var(--text-l);margin-top:4px;padding-left:2px"></div>
+              </div>
+            </div>
+            <div class="bela-voice-row">
+              <label>⚡ Velocidade</label>
+              <div style="flex:1;display:flex;align-items:center;gap:10px">
+                <input type="range" min="0.6" max="1.8" step="0.05" value="1.05" oninput="belaChangeRate(this.value)" style="flex:1;accent-color:var(--cyan)">
+                <span id="bela-rate-val" style="font-size:0.78rem;color:var(--cyan);min-width:32px">1.05x</span>
+              </div>
+            </div>
+            <div class="bela-voice-row">
+              <label>🎵 Tom</label>
+              <div style="flex:1;display:flex;align-items:center;gap:10px">
+                <input type="range" min="0.5" max="2.0" step="0.05" value="1.1" oninput="belaChangePitch(this.value)" style="flex:1;accent-color:var(--purple)">
+                <span id="bela-pitch-val" style="font-size:0.78rem;color:var(--purple);min-width:32px">1.1</span>
+              </div>
+            </div>
+            <div style="margin-top:6px">
+              <button class="bela-chip" onclick="belaChangeVoice(document.getElementById('bela-voice-select').value)" style="font-size:0.75rem;padding:6px 14px">
+                🔊 Testar voz selecionada
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -8190,31 +8288,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Definição de todos os módulos e permissões do sistema
 const RBAC_MODULOS = [
-  { id: 'dashboard',      label: '📊 Dashboard',      tab: 'dashboard',      sub: null },
-  { id: 'reservas',       label: '📋 Reservas',        tab: 'reservas',       sub: null },
-  { id: 'calendario',     label: '📅 Calendário',      tab: 'calendario',     sub: null },
-  { id: 'relatorios',     label: '💰 Relatórios',      tab: 'relatorios',     sub: null },
-  { id: 'despesas',       label: '💸 Despesas',         tab: 'despesas',       sub: null },
-  { id: 'financeiro',     label: '📈 Financeiro',       tab: 'financeiro',     sub: null },
-  { id: 'administracao',  label: '⚙️ Administração',   tab: 'administracao',  sub: null },
-  { id: 'checklist',      label: '✅ Checklist',        tab: 'administracao',  sub: 'checklist' },
-  { id: 'whatsapp',       label: '📲 WhatsApp',         tab: 'administracao',  sub: 'whatsapp' },
-  { id: 'seguranca',      label: '🔐 Segurança',        tab: 'administracao',  sub: 'seguranca' },
-  { id: 'logs',           label: '📜 Logs',             tab: 'administracao',  sub: 'logs' },
-  { id: 'mapa',           label: '🗺️ Mapa',             tab: 'administracao',  sub: 'mapa' },
-  { id: 'online',         label: '🟢 Online',           tab: 'administracao',  sub: 'online' },
-  { id: 'sessoes',        label: '🔗 Sessões',          tab: 'administracao',  sub: 'sessoes' },
-  { id: 'usuarios',       label: '👥 Usuários',         tab: 'administracao',  sub: 'usuarios' },
+  { id: 'dashboard',      label: '📊 Dashboard',           tab: 'dashboard',      sub: null },
+  { id: 'reservas',       label: '📋 Reservas',             tab: 'reservas',       sub: null },
+  { id: 'calendario',     label: '📅 Calendário',           tab: 'calendario',     sub: null },
+  { id: 'relatorios',     label: '💰 Relatórios',           tab: 'relatorios',     sub: null },
+  { id: 'despesas',       label: '💸 Despesas',             tab: 'despesas',       sub: null },
+  { id: 'financeiro',     label: '📈 Financeiro',           tab: 'financeiro',     sub: null },
+  { id: 'bela',           label: '✨ Bela — Assistente IA', tab: 'bela',           sub: null },
+  { id: 'administracao',  label: '⚙️ Administração',       tab: 'administracao',  sub: null },
+  { id: 'checklist',      label: '✅ Checklist',            tab: 'administracao',  sub: 'checklist' },
+  { id: 'whatsapp',       label: '📲 WhatsApp',             tab: 'administracao',  sub: 'whatsapp' },
+  { id: 'seguranca',      label: '🔐 Segurança',            tab: 'administracao',  sub: 'seguranca' },
+  { id: 'logs',           label: '📜 Logs',                 tab: 'administracao',  sub: 'logs' },
+  { id: 'mapa',           label: '🗺️ Mapa',                 tab: 'administracao',  sub: 'mapa' },
+  { id: 'online',         label: '🟢 Online',               tab: 'administracao',  sub: 'online' },
+  { id: 'sessoes',        label: '🔗 Sessões',              tab: 'administracao',  sub: 'sessoes' },
+  { id: 'usuarios',       label: '👥 Usuários',             tab: 'administracao',  sub: 'usuarios' },
 ];
 
 // Perfis rápidos
 const RBAC_PERFIS = {
-  total:         RBAC_MODULOS.map(m => m.id),
-  operacional:   ['dashboard','reservas','calendario','checklist','whatsapp'],
-  financeiro:    ['dashboard','reservas','relatorios','despesas','financeiro'],
-  supervisor:    ['dashboard','reservas','calendario','relatorios','despesas','financeiro'],
+  total:           RBAC_MODULOS.map(m => m.id),
+  operacional:     ['dashboard','reservas','calendario','checklist','whatsapp'],
+  financeiro:      ['dashboard','reservas','relatorios','despesas','financeiro','bela'],
+  supervisor:      ['dashboard','reservas','calendario','relatorios','despesas','financeiro','bela'],
   somente_leitura: ['dashboard','reservas','calendario','relatorios'],
-  nenhum:        []
+  nenhum:          []
 };
 
 // Permissões do usuário atual em memória
@@ -8328,35 +8427,52 @@ function abrirModalPermissoes(docId, email, permissoesAtuais) {
   const cont = document.getElementById('perm-checkboxes');
   const perms = Array.isArray(permissoesAtuais) ? permissoesAtuais : RBAC_PERFIS.total;
 
-  // Separa módulos principais dos sub-tabs de administração
-  const principais = RBAC_MODULOS.filter(m => m.sub === null);
+  // Separa módulos: principais tabs (exceto administracao e bela), bela, sub-tabs de administração
+  const principais = RBAC_MODULOS.filter(m => m.sub === null && m.id !== 'administracao' && m.id !== 'bela');
+  const moduloBela = RBAC_MODULOS.find(m => m.id === 'bela');
   const subAdm     = RBAC_MODULOS.filter(m => m.sub !== null);
+  const moduloAdm  = RBAC_MODULOS.find(m => m.id === 'administracao');
 
-  const mkCheck = (m, indent) => {
+  const mkCheck = (m, indent, highlight) => {
     const checked = perms.includes(m.id) ? 'checked' : '';
+    const extraStyle = highlight
+      ? 'background:linear-gradient(135deg,rgba(255,170,0,0.08),rgba(0,212,255,0.05));border-color:rgba(255,170,0,0.3);'
+      : '';
     return `<label style="
       display:flex;align-items:center;gap:10px;padding:9px 12px;
       border-radius:10px;border:1px solid var(--border);background:var(--surface);
       cursor:pointer;transition:border-color 0.15s;font-size:0.82rem;
       ${indent ? 'margin-left:16px;font-size:0.78rem;opacity:0.92;' : 'font-weight:600;'}
-    " onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      ${extraStyle}
+    " onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='${highlight ? 'rgba(255,170,0,0.3)' : 'var(--border)'}'">
       <input type="checkbox" id="perm_${m.id}" value="${m.id}" ${checked}
         style="width:16px;height:16px;accent-color:var(--cyan);cursor:pointer;flex-shrink:0">
       ${m.label}
     </label>`;
   };
 
-  // Renderiza: módulos principais em grid 2 colunas, sub-tabs de Adm agrupados abaixo
+  // Grid módulos principais
   const mainGrid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-    ${principais.map(m => mkCheck(m, false)).join('')}
+    ${principais.map(m => mkCheck(m, false, false)).join('')}
   </div>`;
+
+  // Bela — seção especial
+  const belaSection = moduloBela ? `
+    <div style="margin-bottom:12px">
+      <div style="font-size:0.7rem;font-weight:700;color:rgba(255,170,0,0.8);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">✨ Assistente de Voz IA</div>
+      ${mkCheck(moduloBela, false, true)}
+    </div>` : '';
+
+  // Administração + sub-tabs
+  const admSection = moduloAdm ? `
+    <div style="margin-bottom:8px">${mkCheck(moduloAdm, false, false)}</div>` : '';
 
   const subTitle = `<div style="font-size:0.7rem;font-weight:700;color:var(--text-l);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">📂 Sub-módulos de Administração</div>`;
   const subGrid  = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-    ${subAdm.map(m => mkCheck(m, true)).join('')}
+    ${subAdm.map(m => mkCheck(m, true, false)).join('')}
   </div>`;
 
-  cont.innerHTML = mainGrid + subTitle + subGrid;
+  cont.innerHTML = mainGrid + belaSection + admSection + subTitle + subGrid;
   openM('m-permissoes');
 }
 
@@ -8828,211 +8944,266 @@ function alterarPermissoesComSeguranca(docId) {
 (function() {
 'use strict';
 
-// ── State ──────────────────────────────────────────────────────
-let belaAtivo       = false;   // mic on/off
-let belaOuvindo     = false;   // currently capturing speech
-let belaFalando     = false;   // currently speaking
-let belaRecog       = null;    // SpeechRecognition instance
-let belaSynth       = window.speechSynthesis;
-let belaVoicePT     = null;
-let belaInitDone    = false;
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let belaAtivo        = false;
+let belaOuvindo      = false;
+let belaFalando      = false;
+let belaRecog        = null;
+let belaSynth        = window.speechSynthesis;
+let belaVoices       = [];
+let belaVoiceIdx     = -1;
+let belaRate         = 1.05;
+let belaPitch        = 1.1;
+let belaInitDone     = false;
+let belaContextAtivo = false; // após wake word, fica em contexto por 12s
+let belaContextTimer = null;
 
-// ── DOM helpers ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// DOM HELPERS
+// ══════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 
 function belaSetStatus(state, txt) {
   const pill = $('bela-status-pill');
-  const dot  = $('bela-status-dot');
-  const el   = $('bela-status-txt');
   if (!pill) return;
-  pill.className = 'bela-status-pill ' + (state || '');
+  pill.className = 'bela-status-pill' + (state ? ' ' + state : '');
+  const el = $('bela-status-txt');
   if (el) el.textContent = txt || 'Aguardando';
 }
 
 function belaSetTranscript(txt) {
   const el = $('bela-transcript');
   if (!el) return;
-  if (txt) { el.textContent = txt; el.classList.add('visible'); }
-  else     { el.textContent = ''; el.classList.remove('visible'); }
+  if (txt) { el.innerHTML = txt; el.classList.add('visible'); }
+  else     { el.innerHTML = ''; el.classList.remove('visible'); }
 }
 
 function belaNucleusState(state) {
-  // state: '' | 'active' | 'speaking'
   const wrap = $('bela-nucleus-wrap');
-  const hint = $('bela-click-hint');
   if (!wrap) return;
   wrap.className = 'bela-nucleus-wrap' + (state ? ' ' + state : '');
+  const hint = $('bela-click-hint');
   if (hint) hint.style.display = state ? 'none' : '';
 }
 
-// ── Voice init ─────────────────────────────────────────────────
-function belaInitVoice() {
-  if (belaInitDone) return;
-  belaInitDone = true;
+// ══════════════════════════════════════════════════════════════
+// VOICE INIT & SELECTOR
+// ══════════════════════════════════════════════════════════════
+function belaLoadVoices() {
+  const all = belaSynth.getVoices();
+  // Prefer PT voices first, then all others
+  const pt  = all.filter(v => v.lang.startsWith('pt'));
+  const rest = all.filter(v => !v.lang.startsWith('pt'));
+  belaVoices = [...pt, ...rest];
 
-  // Pick best PT-BR voice
-  function pickVoice() {
-    const voices = belaSynth.getVoices();
-    belaVoicePT = voices.find(v => v.lang === 'pt-BR')
-               || voices.find(v => v.lang.startsWith('pt'))
-               || null;
-  }
-  pickVoice();
-  if (belaSynth.onvoiceschanged !== undefined) {
-    belaSynth.onvoiceschanged = pickVoice;
-  }
+  const sel = $('bela-voice-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  belaVoices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' ☁️');
+    if (v.lang === 'pt-BR') opt.style.fontWeight = '700';
+    sel.appendChild(opt);
+  });
+  // Default: pick best female PT-BR
+  const femIdx = belaVoices.findIndex(v =>
+    v.lang === 'pt-BR' && /luciana|vitoria|edith|luana|ana|female/i.test(v.name)
+  );
+  const ptIdx = belaVoices.findIndex(v => v.lang === 'pt-BR');
+  belaVoiceIdx = femIdx >= 0 ? femIdx : (ptIdx >= 0 ? ptIdx : 0);
+  sel.value = belaVoiceIdx;
+  belaRenderVoiceInfo();
 }
 
-// ── Speech Synthesis ───────────────────────────────────────────
+function belaRenderVoiceInfo() {
+  const v = belaVoices[belaVoiceIdx];
+  const info = $('bela-voice-info');
+  if (!info || !v) return;
+  info.textContent = v ? v.lang + (v.localService ? ' · Local' : ' · Online') : '';
+}
+
+window.belaChangeVoice = function(idx) {
+  belaVoiceIdx = parseInt(idx);
+  belaRenderVoiceInfo();
+  // Preview
+  belaSpeak('Olá! Esta é minha voz. Ficou boa?');
+};
+
+window.belaChangeRate = function(val) {
+  belaRate = parseFloat(val);
+  const el = $('bela-rate-val');
+  if (el) el.textContent = val + 'x';
+};
+
+window.belaChangePitch = function(val) {
+  belaPitch = parseFloat(val);
+  const el = $('bela-pitch-val');
+  if (el) el.textContent = val;
+};
+
+// ══════════════════════════════════════════════════════════════
+// SPEECH SYNTHESIS
+// ══════════════════════════════════════════════════════════════
 function belaSpeak(text, onEnd) {
   if (!belaSynth) { if (onEnd) onEnd(); return; }
   belaSynth.cancel();
   belaFalando = true;
   belaNucleusState('speaking');
-  belaSetStatus('speaking', 'Bela está falando…');
+  belaSetStatus('speaking', '✨ Bela falando…');
 
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'pt-BR';
-  utt.rate = 1.0;
-  utt.pitch = 1.05;
-  if (belaVoicePT) utt.voice = belaVoicePT;
+  utt.lang  = 'pt-BR';
+  utt.rate  = belaRate;
+  utt.pitch = belaPitch;
+  if (belaVoices[belaVoiceIdx]) utt.voice = belaVoices[belaVoiceIdx];
 
-  utt.onend = utt.onerror = () => {
+  const finish = () => {
     belaFalando = false;
     if (belaAtivo) {
       belaNucleusState('active');
-      belaSetStatus('listening', 'Ouvindo…');
+      belaSetStatus('listening', '🎙️ Ouvindo… diga "Bela"');
+      if (!belaOuvindo) belaStartRecognition();
     } else {
       belaNucleusState('');
       belaSetStatus('', 'Aguardando');
     }
     if (onEnd) onEnd();
   };
+  utt.onend   = finish;
+  utt.onerror = finish;
+
+  // Chrome bug: long utterances sometimes don't fire onend
+  const len = text.length;
+  const safeguard = setTimeout(() => { if (belaFalando) finish(); }, Math.max(len * 80, 3000));
+  utt.onend = () => { clearTimeout(safeguard); finish(); };
 
   belaSynth.speak(utt);
 }
 
-// ── Show response card ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// RESPONSE CARDS
+// ══════════════════════════════════════════════════════════════
 function belaShowCard(icon, question, answerHTML, subtext, listItems) {
   const container = $('bela-cards');
   if (!container) return;
-
-  // Keep max 4 cards
-  while (container.children.length >= 4) {
-    container.removeChild(container.firstChild);
-  }
+  while (container.children.length >= 5) container.removeChild(container.firstChild);
 
   const card = document.createElement('div');
   card.className = 'bela-card';
-
   let listHTML = '';
   if (listItems && listItems.length) {
     listHTML = '<ul class="bela-card-list">' +
-      listItems.map(item =>
-        `<li><span style="font-weight:600">${item.name}</span><span>${item.detail}</span></li>`
-      ).join('') + '</ul>';
+      listItems.map(it => `<li><span style="font-weight:600;color:var(--text)">${it.name}</span><span>${it.detail}</span></li>`).join('') +
+      '</ul>';
   }
-
   card.innerHTML = `
     <div class="bela-card-q">${icon} ${question}</div>
     <div class="bela-card-answer">${answerHTML}</div>
     ${subtext ? `<div class="bela-card-sub">${subtext}</div>` : ''}
     ${listHTML}
   `;
-
   container.appendChild(card);
-  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
 
-// ── Firestore queries ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// DATA HELPERS
+// ══════════════════════════════════════════════════════════════
 function fmtBRL(v) {
-  return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  return Number(v||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 
-function getMesAno(offsetMeses) {
+// Returns yyyy-mm prefix for offset months from today
+function getMesPrefix(offsetMeses) {
   const d = new Date();
   d.setDate(1);
   d.setMonth(d.getMonth() + offsetMeses);
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2,'0');
-  return { y, m, prefix: `${y}-${m}` };
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return { prefix: y + '-' + m, y, m };
 }
 
 function getNomeMes(y, m) {
   const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  return `${nomes[parseInt(m)-1]} de ${y}`;
+  return nomes[parseInt(m) - 1] + ' de ' + y;
 }
 
 function semanaAtual() {
   const hoje = new Date();
   const dom  = new Date(hoje); dom.setDate(hoje.getDate() - hoje.getDay());
   const sab  = new Date(dom);  sab.setDate(dom.getDate() + 6);
-  const str  = d => d.toISOString().split('T')[0];
+  const str  = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   return { ini: str(dom), fim: str(sab) };
 }
 
-// Reads from global `reservas` + `despesas` (already loaded by the app)
-function belaGetReservas()  { return (window.reservas  || []); }
-function belaGetDespesas()  { return (window.despesas  || []); }
+function belaGetReservas() { return window.reservas  || []; }
+function belaGetDespesas()  { return window.despesas  || []; }
 
-// Helper: all event dates of a reservation
+// All event dates of a reservation — checks every possible field
 function belaDatasReserva(r) {
-  const datas = [];
-  if (r.data_reserva)  datas.push(r.data_reserva);
-  if (r.datas && Array.isArray(r.datas)) {
-    r.datas.forEach(d => { if (d && !datas.includes(d)) datas.push(d); });
-  }
-  if (r.data && !datas.includes(r.data)) datas.push(r.data);
-  return datas;
+  const seen = new Set();
+  const add  = d => { if (d && typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) seen.add(d.substring(0,10)); };
+  add(r.data_reserva);
+  add(r.data);
+  add(r.criadoEm);
+  if (Array.isArray(r.datas)) r.datas.forEach(add);
+  // also check data_evento if present
+  add(r.data_evento);
+  return [...seen];
 }
 
-// ── Q1: Faturamento este mês ───────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// QUERIES
+// ══════════════════════════════════════════════════════════════
 function belaFaturamentoMes(offsetMeses) {
-  const { prefix, y, m } = getMesAno(offsetMeses);
+  const { prefix, y, m } = getMesPrefix(offsetMeses);
   const nome = getNomeMes(y, m);
-  const reservas = belaGetReservas().filter(r => r.status !== 'cancelada');
 
-  let total = 0, qtd = 0;
-  reservas.forEach(r => {
+  const todas = belaGetReservas().filter(r => r.status !== 'cancelada');
+  let total = 0, qtd = 0, pagas = 0;
+
+  todas.forEach(r => {
     const datas = belaDatasReserva(r);
-    if (datas.some(d => d && d.startsWith(prefix))) {
-      // paid: full value; pending: signal only
-      if (r.pagamento === 'pago') {
-        total += Number(r.total) || 0;
-      } else {
-        total += Number(r.sinal) || 0;
-      }
-      qtd++;
+    const bate  = datas.some(d => d.startsWith(prefix));
+    if (!bate) return;
+    qtd++;
+    const val = Number(r.total) || 0;
+    const sinal = Number(r.sinal) || 0;
+    if (r.pagamento === 'pago' || r.pagamento === 'confirmado') {
+      total += val;
+      pagas++;
+    } else {
+      // pendente: conta o sinal já recebido
+      total += sinal;
     }
   });
 
-  const label = offsetMeses === 0 ? 'este mês' : 'no mês passado';
-  const speech = `${label === 'este mês' ? 'Este mês' : 'No mês passado'}, em ${nome}, você faturou ${fmtBRL(total)}, com ${qtd} reserva${qtd !== 1 ? 's' : ''}.`;
+  const label = offsetMeses === 0 ? 'Este mês' : 'No mês passado';
+  const speech = `${label}, em ${nome}, você faturou ${fmtBRL(total)}, com ${qtd} reserva${qtd !== 1 ? 's' : ''}, sendo ${pagas} paga${pagas !== 1 ? 's' : ''}.`;
 
-  belaShowCard(
-    '💰',
-    `Faturamento — ${nome}`,
-    `<span class="highlight">${fmtBRL(total)}</span>`,
-    `${qtd} reserva${qtd !== 1 ? 's' : ''} no período`
-  );
-  belaSpeak(speech);
+  belaShowCard('💰', 'Faturamento — ' + nome,
+    '<span class="highlight">' + fmtBRL(total) + '</span>',
+    qtd + ' reserva' + (qtd !== 1 ? 's' : '') + ' · ' + pagas + ' paga' + (pagas !== 1 ? 's' : ''));
   belaSetTranscript('');
+  belaSpeak(speech);
 }
 
-// ── Q2: Próximas reservas ──────────────────────────────────────
 function belaProximasReservas() {
-  const hoje = new Date().toISOString().split('T')[0];
-  const reservas = belaGetReservas().filter(r => r.status !== 'cancelada');
+  const hoje = new Date();
+  const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
 
   const proximas = [];
-  reservas.forEach(r => {
+  belaGetReservas().filter(r => r.status !== 'cancelada').forEach(r => {
     belaDatasReserva(r).forEach(d => {
-      if (d >= hoje) proximas.push({ ...r, _d: d });
+      if (d >= hojeStr) proximas.push({ ...r, _d: d });
     });
   });
   proximas.sort((a,b) => a._d.localeCompare(b._d));
-  const top3 = proximas.slice(0,3);
+  const top3 = proximas.slice(0, 3);
 
   if (!top3.length) {
     belaShowCard('📋', 'Próximas Reservas', 'Nenhuma reserva futura encontrada.', '');
@@ -9042,262 +9213,288 @@ function belaProximasReservas() {
 
   const listItems = top3.map(r => ({
     name: r.nome || '—',
-    detail: r._d ? r._d.split('-').reverse().join('/') : '—'
+    detail: r._d.split('-').reverse().join('/') + (r.tipo ? ' · ' + r.tipo : '')
   }));
 
   const nomes = top3.map(r => r.nome).join(', ');
-  const speech = `Suas próximas reservas são: ${nomes}.`;
-
-  belaShowCard('📋', 'Próximas Reservas', `${top3.length} reserva${top3.length>1?'s':''} futuras`, '', listItems);
-  belaSpeak(speech);
+  belaShowCard('📋', 'Próximas ' + top3.length + ' Reservas',
+    top3.length + ' reserva' + (top3.length > 1 ? 's' : '') + ' agendada' + (top3.length > 1 ? 's' : ''),
+    '', listItems);
   belaSetTranscript('');
+  belaSpeak('Suas próximas reservas são: ' + nomes + '.');
 }
 
-// ── Q3: Reservas desta semana ──────────────────────────────────
 function belaReservasSemana() {
   const { ini, fim } = semanaAtual();
-  const reservas = belaGetReservas().filter(r => r.status !== 'cancelada');
-  const count = reservas.filter(r =>
-    belaDatasReserva(r).some(d => d >= ini && d <= fim)
-  ).length;
+  const count = belaGetReservas()
+    .filter(r => r.status !== 'cancelada')
+    .filter(r => belaDatasReserva(r).some(d => d >= ini && d <= fim))
+    .length;
 
-  const speech = `Esta semana você tem ${count} reserva${count !== 1 ? 's' : ''}.`;
   belaShowCard('📆', 'Reservas desta Semana',
-    `<span class="highlight">${count}</span> reserva${count !== 1 ? 's' : ''}`,
-    `Período: ${ini.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`
-  );
-  belaSpeak(speech);
+    '<span class="highlight">' + count + '</span> reserva' + (count !== 1 ? 's' : ''),
+    ini.split('-').reverse().join('/') + ' a ' + fim.split('-').reverse().join('/'));
   belaSetTranscript('');
+  belaSpeak('Esta semana você tem ' + count + ' reserva' + (count !== 1 ? 's' : '') + '.');
 }
 
-// ── Q4: Despesas do mês ────────────────────────────────────────
 function belaDespesasMes() {
-  const { prefix, y, m } = getMesAno(0);
+  const { prefix, y, m } = getMesPrefix(0);
   const nome = getNomeMes(y, m);
-  const despesas = belaGetDespesas();
-
   let total = 0, qtd = 0;
-  despesas.forEach(d => {
-    if (d.data && d.data.startsWith(prefix)) {
-      total += Number(d.valor) || 0;
-      qtd++;
-    }
+  belaGetDespesas().forEach(d => {
+    if (d.data && d.data.startsWith(prefix)) { total += Number(d.valor)||0; qtd++; }
   });
 
-  const speech = `As despesas de ${nome} somam ${fmtBRL(total)}, com ${qtd} lançamento${qtd !== 1 ? 's' : ''}.`;
-  belaShowCard('💸', `Despesas — ${nome}`,
-    `<span class="highlight" style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${fmtBRL(total)}</span>`,
-    `${qtd} lançamento${qtd !== 1 ? 's' : ''} registrado${qtd !== 1 ? 's' : ''}`
-  );
-  belaSpeak(speech);
+  belaShowCard('💸', 'Despesas — ' + nome,
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">' + fmtBRL(total) + '</span>',
+    qtd + ' lançamento' + (qtd !== 1 ? 's' : ''));
   belaSetTranscript('');
+  belaSpeak('As despesas de ' + nome + ' somam ' + fmtBRL(total) + ', com ' + qtd + ' lançamento' + (qtd !== 1 ? 's' : '') + '.');
 }
 
-// ── Q5: Melhor mês ─────────────────────────────────────────────
 function belaMelhorMes() {
-  const reservas = belaGetReservas().filter(r => r.status !== 'cancelada');
   const totais = {};
-
-  reservas.forEach(r => {
+  belaGetReservas().filter(r => r.status !== 'cancelada').forEach(r => {
     const datas = belaDatasReserva(r);
     if (!datas.length) return;
-    const prefix = datas[0].substring(0, 7); // yyyy-mm
-    if (!totais[prefix]) totais[prefix] = 0;
-    totais[prefix] += Number(r.total) || 0;
+    // Use earliest event date
+    const sorted = [...datas].sort();
+    const pref = sorted[0].substring(0, 7);
+    if (!totais[pref]) totais[pref] = 0;
+    totais[pref] += Number(r.total) || 0;
   });
 
   const entries = Object.entries(totais);
   if (!entries.length) {
-    belaShowCard('🏆', 'Melhor Mês', 'Nenhum dado encontrado.', '');
+    belaShowCard('🏆', 'Melhor Mês', 'Dados insuficientes.', '');
     belaSpeak('Não encontrei dados suficientes para calcular o melhor mês.');
     return;
   }
-
   entries.sort((a,b) => b[1] - a[1]);
-  const [bestKey, bestVal] = entries[0];
-  const [y, m] = bestKey.split('-');
-  const nome = getNomeMes(y, m);
+  const [key, val] = entries[0];
+  const [y, mo] = key.split('-');
+  const nome = getNomeMes(y, mo);
 
-  const speech = `Seu melhor mês foi ${nome}, com ${fmtBRL(bestVal)} em faturamento.`;
-  belaShowCard('🏆', 'Melhor Mês de Todos',
-    `<span class="highlight">${nome}</span>`,
-    `Faturamento: ${fmtBRL(bestVal)}`
-  );
-  belaSpeak(speech);
+  belaShowCard('🏆', 'Melhor Mês Histórico',
+    '<span class="highlight">' + nome + '</span>',
+    'Receita: ' + fmtBRL(val));
   belaSetTranscript('');
+  belaSpeak('Seu melhor mês foi ' + nome + ', com ' + fmtBRL(val) + ' em faturamento.');
 }
 
-// ── NLP: match spoken command ──────────────────────────────────
-function belaInterpret(text) {
-  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function belaResumoGeral() {
+  const ativas = belaGetReservas().filter(r => r.status !== 'cancelada');
+  const recebido = ativas.filter(r => r.pagamento === 'pago').reduce((s,r) => s+(Number(r.total)||0), 0);
+  const pendentes = ativas.filter(r => r.pagamento !== 'pago').length;
+  const total = ativas.reduce((s,r) => s+(Number(r.total)||0), 0);
 
-  if (/faturei.*(esse|este|atual)\s*mes|quanto.*mes|receita.*mes/.test(t))
+  belaShowCard('📊', 'Resumo Geral',
+    '<span class="highlight">' + fmtBRL(recebido) + '</span>',
+    'Já recebido · ' + pendentes + ' pendente' + (pendentes !== 1 ? 's' : '') + ' · Previsto: ' + fmtBRL(total));
+  belaSetTranscript('');
+  belaSpeak('No geral, você já recebeu ' + fmtBRL(recebido) + ' e tem ' + pendentes + ' reserva' + (pendentes !== 1 ? 's' : '') + ' pendente' + (pendentes !== 1 ? 's' : '') + ' de pagamento.');
+}
+
+// ══════════════════════════════════════════════════════════════
+// NLP — interpret spoken text
+// ══════════════════════════════════════════════════════════════
+function belaInterpret(rawText) {
+  const t = rawText.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ');
+
+  if (/faturei.*(esse|este|atual|esse|neste|no)\s*mes|quanto.*mes|receita.*mes|faturamento\s*(do|deste|neste)?\s*mes/.test(t))
     return () => belaFaturamentoMes(0);
-  if (/faturei.*mes\s*(passado|anterior)|mes\s*passado/.test(t))
+  if (/faturei.*mes\s*(passado|anterior)|mes\s*(passado|anterior)|mês passado/.test(t))
     return () => belaFaturamentoMes(-1);
-  if (/proxima[s]?\s*reserva|reserva[s]?\s*futura/.test(t))
+  if (/proxim\w*\s*reserv|reserv\w*\s*futur|agenda|prox\w*/.test(t))
     return () => belaProximasReservas();
-  if (/reserva[s]?.*semana|semana.*reserva/.test(t))
+  if (/semana|semanal/.test(t) && /reserv/.test(t))
     return () => belaReservasSemana();
-  if (/despesa[s]?.*mes|gasto[s]?.*mes|custo.*mes/.test(t))
+  if (/despesa|gasto|custo/.test(t))
     return () => belaDespesasMes();
-  if (/melhor\s*mes|mes\s*melhor|maior.*faturamento|mais.*faturei/.test(t))
+  if (/melhor|record|maior|mais.*fatur/.test(t))
     return () => belaMelhorMes();
-
-  // Wake word only — greet
-  if (/^bela\s*(bom\s*dia|boa\s*tarde|boa\s*noite|oi|ola|tudo|como)/.test(t)) {
+  if (/resumo|geral|total|overview/.test(t))
+    return () => belaResumoGeral();
+  if (/(bom\s*dia|boa\s*tarde|boa\s*noite|oi|ola|tudo\s*bem|como\s*(vai|esta)|ola|hey)/.test(t)) {
     return () => {
       const h = new Date().getHours();
-      const sauda = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-      belaShowCard('👋', 'Saudação', `${sauda}! Estou pronta para ajudar.`,
-        'Pergunte sobre faturamento, reservas ou despesas.');
-      belaSpeak(`${sauda}! Estou aqui, pronta para ajudar. Pode perguntar sobre faturamento, reservas ou despesas.`);
+      const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+      belaShowCard('👋', 'Olá!', s + '! Estou pronta para ajudar.',
+        'Pergunte sobre faturamento, reservas, despesas ou meu melhor mês.');
+      belaSpeak(s + '! Estou aqui. Pode perguntar sobre faturamento deste mês, próximas reservas, despesas ou seu melhor mês histórico.');
     };
   }
-  if (/faturamento\s*mensal|faturamento\s*do\s*mes/.test(t))
-    return () => belaFaturamentoMes(0);
-
   return null;
 }
 
-// ── Check for wake word ────────────────────────────────────────
 function belaHasWakeWord(text) {
   return /\bbela\b/.test(text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 }
 
-// ── Public: ask by text (from chip buttons) ────────────────────
+// Keep context active for 12s after wake word (like Jarvis)
+function belaRefreshContext() {
+  belaContextAtivo = true;
+  clearTimeout(belaContextTimer);
+  belaContextTimer = setTimeout(() => {
+    belaContextAtivo = false;
+  }, 12000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHIP BUTTONS (no voice required)
+// ══════════════════════════════════════════════════════════════
 window.belaAskText = function(text) {
   if (belaFalando) belaSynth.cancel();
   belaSetTranscript('🎤 ' + text);
-  belaSetStatus('thinking', 'Consultando…');
-
+  belaSetStatus('thinking', '⚡ Consultando…');
+  belaNucleusState('active');
   setTimeout(() => {
     const fn = belaInterpret(text);
-    if (fn) {
-      belaSetStatus('speaking', 'Respondendo…');
-      fn();
-    } else {
+    if (fn) fn();
+    else {
       belaShowCard('🤔', 'Pergunta', 'Não entendi. Tente reformular.', '');
-      belaSpeak('Desculpe, não entendi. Tente perguntar de outra forma.');
+      belaSpeak('Desculpe, não entendi essa pergunta.');
     }
-    belaSetTranscript('');
-  }, 300);
+  }, 200);
 };
 
-// ── Speech Recognition ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// SPEECH RECOGNITION
+// ══════════════════════════════════════════════════════════════
 function belaStartRecognition() {
+  if (belaOuvindo || belaFalando) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    belaSetStatus('', 'Microfone não suportado neste navegador');
-    belaSpeak('Reconhecimento de voz não suportado neste navegador. Use os botões de atalho abaixo.');
-    return;
-  }
+  if (!SR) return;
+
+  try { if (belaRecog) belaRecog.abort(); } catch(e) {}
 
   belaRecog = new SR();
   belaRecog.lang = 'pt-BR';
   belaRecog.continuous = false;
   belaRecog.interimResults = true;
+  belaRecog.maxAlternatives = 3;
 
   belaRecog.onstart = () => {
     belaOuvindo = true;
-    belaNucleusState('active');
-    belaSetStatus('listening', 'Ouvindo…');
-    belaSetTranscript('');
+    if (!belaFalando) {
+      belaNucleusState('active');
+      belaSetStatus('listening', '🎙️ Ouvindo…');
+    }
   };
 
   belaRecog.onresult = (e) => {
     let interim = '', final = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += t;
-      else interim += t;
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
     }
-    belaSetTranscript('🎤 ' + (final || interim));
 
-    if (final) {
-      belaOuvindo = false;
-      if (!belaHasWakeWord(final)) {
-        // Still listening — no wake word
-        belaSetTranscript('💬 Diga "Bela" seguido da pergunta');
-        setTimeout(() => belaSetTranscript(''), 2500);
-        if (belaAtivo) belaStartRecognition();
-        return;
-      }
+    if (interim) belaSetTranscript('🎤 <em style="opacity:.6">' + interim + '</em>');
 
-      belaSetStatus('thinking', 'Processando…');
-      const fn = belaInterpret(final);
-      if (fn) {
-        belaSetStatus('speaking', 'Respondendo…');
-        fn();
-      } else {
-        // No specific command — generic acknowledgement
-        belaShowCard('🤔', 'Não entendi',
-          'Tente perguntar sobre faturamento, reservas ou despesas.', '');
-        belaSpeak('Não entendi a pergunta. Tente: quanto faturei esse mês, quais são minhas próximas reservas, ou qual foi meu melhor mês.');
-      }
+    if (!final) return;
+    belaOuvindo = false;
+    belaSetTranscript('🎤 ' + final);
+
+    const hasWake = belaHasWakeWord(final);
+
+    if (!hasWake && !belaContextAtivo) {
+      // No wake word and no active context — ignore silently, just restart
+      setTimeout(() => { if (belaAtivo && !belaFalando) belaStartRecognition(); }, 200);
+      setTimeout(() => belaSetTranscript(''), 1500);
+      return;
+    }
+
+    if (hasWake) belaRefreshContext();
+
+    belaSetStatus('thinking', '⚡ Processando…');
+    const fn = belaInterpret(final);
+    if (fn) {
+      fn();
+    } else if (hasWake) {
+      // Wake word heard but no command — prompt
+      belaShowCard('👂', 'Estou ouvindo…', 'Pode falar sua pergunta.', 'Ex: "quanto faturei esse mês?"');
+      belaSpeak('Estou aqui! Pode perguntar sobre faturamento, reservas, despesas ou seu melhor mês.');
+    } else {
+      // In context but no command
+      belaSpeak('Não entendi. Pode repetir?');
     }
   };
 
   belaRecog.onerror = (e) => {
     belaOuvindo = false;
-    if (e.error === 'no-speech' && belaAtivo) {
-      belaStartRecognition(); // restart silently
-    } else if (e.error !== 'aborted') {
-      belaSetStatus('', 'Erro no microfone: ' + e.error);
+    if (e.error === 'no-speech') {
+      if (belaAtivo && !belaFalando) setTimeout(() => belaStartRecognition(), 100);
+    } else if (e.error === 'not-allowed') {
+      belaSetStatus('', '🚫 Microfone bloqueado — verifique as permissões');
       belaNucleusState('');
+      belaAtivo = false;
     }
   };
 
   belaRecog.onend = () => {
     belaOuvindo = false;
     if (belaAtivo && !belaFalando) {
-      setTimeout(() => { if (belaAtivo && !belaFalando) belaStartRecognition(); }, 300);
+      setTimeout(() => { if (belaAtivo && !belaFalando && !belaOuvindo) belaStartRecognition(); }, 150);
     }
   };
 
-  belaRecog.start();
+  try { belaRecog.start(); } catch(e) { belaOuvindo = false; }
 }
 
 function belaStopRecognition() {
-  if (belaRecog) {
-    try { belaRecog.abort(); } catch(e) {}
-    belaRecog = null;
-  }
+  belaContextAtivo = false;
+  clearTimeout(belaContextTimer);
+  if (belaRecog) { try { belaRecog.abort(); } catch(e) {} belaRecog = null; }
   belaOuvindo = false;
 }
 
-// ── Toggle ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// TOGGLE (click nucleus)
+// ══════════════════════════════════════════════════════════════
 window.belaToggle = function() {
-  belaInitVoice();
-
-  if (belaFalando) {
-    belaSynth.cancel();
-    belaFalando = false;
+  // Init voices on first interaction
+  if (!belaInitDone) {
+    belaInitDone = true;
+    if (belaSynth.getVoices().length) belaLoadVoices();
+    if (belaSynth.onvoiceschanged !== undefined) belaSynth.onvoiceschanged = belaLoadVoices;
+    else setTimeout(belaLoadVoices, 500);
   }
 
+  if (belaFalando) belaSynth.cancel();
+
   if (belaAtivo) {
-    // Deactivate
     belaAtivo = false;
     belaStopRecognition();
     belaNucleusState('');
     belaSetStatus('', 'Aguardando');
     belaSetTranscript('');
-    $('bela-click-hint') && ($('bela-click-hint').textContent = 'Clique para ativar');
   } else {
-    // Activate
     belaAtivo = true;
-    $('bela-click-hint') && ($('bela-click-hint').textContent = 'Clique para desativar');
-    belaSpeak('Olá! Sou a Bela, sua assistente financeira. Como posso ajudar?', () => {
+    belaNucleusState('active');
+    belaSetStatus('listening', '🎙️ Ouvindo… diga "Bela"');
+    belaSpeak('Olá! Sou a Bela, sua assistente financeira inteligente. Diga Bela seguido da sua pergunta, como: Bela, quanto faturei esse mês?', () => {
       if (belaAtivo) belaStartRecognition();
     });
   }
 };
 
-// ── Stop Bela when leaving the tab ────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// STOP WHEN LEAVING TAB
+// ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
-  // Hook into goAdminTab to stop bela when navigating away
-  const origGoAdminTab = window.goAdminTab;
-  if (typeof origGoAdminTab === 'function') {
+  // Init voices early
+  if (belaSynth) {
+    if (belaSynth.getVoices().length) belaLoadVoices();
+    if (belaSynth.onvoiceschanged !== undefined) belaSynth.onvoiceschanged = belaLoadVoices;
+    else setTimeout(belaLoadVoices, 500);
+  }
+
+  // Hook goAdminTab
+  const orig = window.goAdminTab;
+  if (typeof orig === 'function') {
     window.goAdminTab = function(tab) {
       if (tab !== 'bela' && belaAtivo) {
         belaAtivo = false;
@@ -9306,7 +9503,7 @@ document.addEventListener('DOMContentLoaded', function() {
         belaNucleusState('');
         belaSetStatus('', 'Aguardando');
       }
-      return origGoAdminTab.apply(this, arguments);
+      return orig.apply(this, arguments);
     };
   }
 });
