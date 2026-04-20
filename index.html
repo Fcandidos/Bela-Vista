@@ -4259,6 +4259,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     showScreen('admin');
     atualizarAvatarMenu(_emailRestaurado);
+    // Ativa escuta global da Bela automaticamente após login
+    setTimeout(function() {
+      try {
+        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+          window.belaToggleGlobal(true); // silencioso — sem frase de ativação
+        }
+      } catch(e) {}
+    }, 1800);
     setTimeout(async function() {
       try {
         await iniciarSessaoFirebase(_emailRestaurado);
@@ -4466,6 +4474,14 @@ async function doLogin() {
       } catch(e) {}
     }, 500);
     toast('✅ Bem-vindo!');
+    // Ativa escuta global da Bela automaticamente após login
+    setTimeout(function() {
+      try {
+        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+          window.belaToggleGlobal(true); // silencioso — sem frase de ativação
+        }
+      } catch(e) {}
+    }, 1800);
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
       if (pendentes30 && pendentes30.length > 0) {
@@ -8957,7 +8973,7 @@ function alterarPermissoesComSeguranca(docId) {
 </script>
 
 <!-- ============================================================
-     BELA — Assistente de Voz · Sempre Ativa · NLP Completo
+     BELA — Assistente de Voz · v4 · Sem loop · Memória
 ============================================================ -->
 <script>
 (function() {
@@ -8966,37 +8982,68 @@ function alterarPermissoesComSeguranca(docId) {
 // ══════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════
-let belaAtivo        = false;   // aba bela aberta ou usuário ativou manualmente
-let belaGlobalAtivo  = false;   // microfone global (sempre ouvindo em qualquer aba)
-let belaOuvindo      = false;
-let belaFalando      = false;
-let belaRecog        = null;
-let belaSynth        = window.speechSynthesis;
-let belaVoices       = [];
-let belaVoiceIdx     = -1;
-let belaRate         = 1.05;
-let belaPitch        = 1.1;
-let belaInitDone     = false;
+let belaAtivo       = false;
+let belaGlobalAtivo = false;
+let belaOuvindo     = false;
+let belaFalando     = false;
+let belaRecog       = null;
+let belaSynth       = window.speechSynthesis;
+let belaVoices      = [];
+let belaVoiceIdx    = -1;
+let belaRate        = 1.05;
+let belaPitch       = 1.1;
+let belaInitDone    = false;
 let belaContextAtivo = false;
 let belaContextTimer = null;
-let belaRespondendo  = false;
+let belaProcessando  = false; // bloqueia novo processamento até fala terminar
+let belaSpeakTimeout = null;  // guarda timeout do silêncio pós-fala
+
+// ── MEMÓRIA de conversa (últimas 50 interações) ──────────────
+const belaMemoria = {
+  historico: [],  // [{q, r, ts}]
+  aprendizado: {}, // {padrao: count}
+  carregar() {
+    try {
+      const h = localStorage.getItem('bela_historico');
+      if (h) this.historico = JSON.parse(h).slice(-50);
+      const a = localStorage.getItem('bela_aprendizado');
+      if (a) this.aprendizado = JSON.parse(a);
+    } catch(e){}
+  },
+  salvar() {
+    try {
+      localStorage.setItem('bela_historico', JSON.stringify(this.historico.slice(-50)));
+      localStorage.setItem('bela_aprendizado', JSON.stringify(this.aprendizado));
+    } catch(e){}
+  },
+  registrar(pergunta, resposta) {
+    const ts = new Date().toLocaleString('pt-BR');
+    this.historico.push({ q: pergunta, r: resposta, ts });
+    if (this.historico.length > 50) this.historico.shift();
+    // Aprende padrões mais usados
+    const palavras = normTxt(pergunta).split(' ').filter(p => p.length > 3);
+    palavras.forEach(p => { this.aprendizado[p] = (this.aprendizado[p]||0) + 1; });
+    this.salvar();
+  },
+  ultimaPergunta() {
+    return this.historico.length ? this.historico[this.historico.length-1] : null;
+  },
+  maisUsadas() {
+    return Object.entries(this.aprendizado)
+      .sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+  }
+};
 
 // ══════════════════════════════════════════════════════════════
-// MESES — reconhece qualquer variação
+// MESES
 // ══════════════════════════════════════════════════════════════
 const MESES_MAP = {
-  'janeiro':1,'jan':1,'01':1,
-  'fevereiro':2,'fev':2,'02':2,
-  'marco':3,'março':3,'mar':3,'03':3,
-  'abril':4,'abr':4,'04':4,
-  'maio':5,'mai':5,'05':5,
-  'junho':6,'jun':6,'06':6,
-  'julho':7,'jul':7,'07':7,
-  'agosto':8,'ago':8,'08':8,
-  'setembro':9,'set':9,'09':9,
-  'outubro':10,'out':10,'10':10,
-  'novembro':11,'nov':11,'11':11,
-  'dezembro':12,'dez':12,'12':12
+  'janeiro':1,'jan':1, 'fevereiro':2,'fev':2,
+  'marco':3,'mar':3,   'abril':4,'abr':4,
+  'maio':5,'mai':5,    'junho':6,'jun':6,
+  'julho':7,'jul':7,   'agosto':8,'ago':8,
+  'setembro':9,'set':9,'outubro':10,'out':10,
+  'novembro':11,'nov':11,'dezembro':12,'dez':12
 };
 const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -9007,508 +9054,458 @@ function normTxt(s) {
     .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 }
 
-// Extrai mês/ano de texto livre — retorna {m, y, prefix} ou null
+function mkPrefix(y, m) {
+  return { y, m, prefix: y+'-'+String(m).padStart(2,'0'),
+           nome: MESES_NOME[m-1]+' de '+y };
+}
+
 function extrairMesAno(t) {
   const hoje = new Date();
-  // "mês passado" / "mês anterior"
   if (/mes\s*(passado|anterior)/.test(t)) {
     const d = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
     return mkPrefix(d.getFullYear(), d.getMonth()+1);
   }
-  // "esse mês" / "este mês" / "mês atual"
-  if (/esse\s*mes|este\s*mes|mes\s*atual|mes\s*corrente/.test(t)) {
+  if (/esse\s*mes|este\s*mes|mes\s*atual|mes\s*corrente/.test(t))
     return mkPrefix(hoje.getFullYear(), hoje.getMonth()+1);
-  }
-  // Nome do mês + opcionalmente ano
+
   for (const [nome, num] of Object.entries(MESES_MAP)) {
-    const re = new RegExp('\\b' + nome + '\\b');
-    if (re.test(t)) {
-      // tenta capturar ano junto: "janeiro 2025", "jan/25", "01/2024"
-      const anoMatch = t.match(/\b(20\d{2}|2\d)\b/);
+    if (new RegExp('\\b'+nome+'\\b').test(t)) {
+      const am = t.match(/\b(20\d{2})\b/);
       let ano = hoje.getFullYear();
-      if (anoMatch) {
-        ano = parseInt(anoMatch[1]);
-        if (ano < 100) ano += 2000;
-      }
+      if (am) ano = parseInt(am[1]);
       return mkPrefix(ano, num);
     }
   }
-  return null; // sem mês específico → mês atual
-}
-
-function mkPrefix(y, m) {
-  const prefix = y + '-' + String(m).padStart(2,'0');
-  return { y, m, prefix, nome: MESES_NOME[m-1] + ' de ' + y };
+  return mkPrefix(hoje.getFullYear(), hoje.getMonth()+1);
 }
 
 // ══════════════════════════════════════════════════════════════
-// DOM HELPERS
+// DOM
 // ══════════════════════════════════════════════════════════════
 const $b = id => document.getElementById(id);
 
 function belaSetStatus(state, txt) {
   const pill = $b('bela-status-pill');
   if (!pill) return;
-  pill.className = 'bela-status-pill' + (state ? ' '+state : '');
+  pill.className = 'bela-status-pill'+(state?' '+state:'');
   const el = $b('bela-status-txt');
-  if (el) el.textContent = txt || 'Aguardando';
+  if (el) el.textContent = txt||'Aguardando';
 }
-
 function belaSetTranscript(txt) {
   const el = $b('bela-transcript');
   if (!el) return;
-  if (txt) { el.innerHTML = txt; el.classList.add('visible'); }
-  else { el.innerHTML = ''; el.classList.remove('visible'); }
+  if (txt) { el.innerHTML=txt; el.classList.add('visible'); }
+  else { el.innerHTML=''; el.classList.remove('visible'); }
 }
-
 function belaNucleusState(state) {
-  const wrap = $b('bela-nucleus-wrap');
-  if (!wrap) return;
-  wrap.className = 'bela-nucleus-wrap' + (state ? ' '+state : '');
-  const hint = $b('bela-click-hint');
-  if (hint) hint.style.display = state ? 'none' : '';
+  const w = $b('bela-nucleus-wrap');
+  if (!w) return;
+  w.className = 'bela-nucleus-wrap'+(state?' '+state:'');
+  const h = $b('bela-click-hint');
+  if (h) h.style.display = state?'none':'';
 }
-
 window.belaAtualizarStatusDados = function() {
   const el = $b('bela-data-status');
   if (!el) return;
-  const nr = belaGetReservas().length;
-  const nd = belaGetDespesas().length;
-  el.textContent = nr > 0
-    ? '✅ ' + nr + ' reservas · ' + nd + ' despesas carregadas'
-    : '⚠️ Aguardando dados do Firebase…';
+  const nr = belaGetReservas().length, nd = belaGetDespesas().length;
+  el.textContent = nr>0 ? '✅ '+nr+' reservas · '+nd+' despesas' : '⚠️ Aguardando Firebase…';
 };
 
 // ══════════════════════════════════════════════════════════════
-// VOICE SELECTOR
+// VOICES
 // ══════════════════════════════════════════════════════════════
 function belaLoadVoices() {
   const all = belaSynth.getVoices();
   if (!all.length) return;
-  const pt   = all.filter(v => v.lang.startsWith('pt'));
-  const rest = all.filter(v => !v.lang.startsWith('pt'));
-  belaVoices = [...pt, ...rest];
+  belaVoices = [...all.filter(v=>v.lang.startsWith('pt')), ...all.filter(v=>!v.lang.startsWith('pt'))];
   const sel = $b('bela-voice-select');
   if (sel) {
     sel.innerHTML = '';
-    belaVoices.forEach((v,i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' ☁️');
-      if (v.lang === 'pt-BR') opt.style.fontWeight = '700';
-      sel.appendChild(opt);
+    belaVoices.forEach((v,i)=>{
+      const o=document.createElement('option');
+      o.value=i; o.textContent=v.name+' ('+v.lang+')'+(v.localService?'':' ☁️');
+      if(v.lang==='pt-BR') o.style.fontWeight='700';
+      sel.appendChild(o);
     });
-    const femIdx = belaVoices.findIndex(v => v.lang==='pt-BR' && /luciana|vitoria|edith|luana|ana|female/i.test(v.name));
-    const ptIdx  = belaVoices.findIndex(v => v.lang==='pt-BR');
-    if (belaVoiceIdx < 0) belaVoiceIdx = femIdx>=0 ? femIdx : (ptIdx>=0 ? ptIdx : 0);
-    sel.value = belaVoiceIdx;
+    if (belaVoiceIdx<0) {
+      const fi=belaVoices.findIndex(v=>v.lang==='pt-BR'&&/luciana|vitoria|edith|luana|ana|female/i.test(v.name));
+      const pi=belaVoices.findIndex(v=>v.lang==='pt-BR');
+      belaVoiceIdx = fi>=0?fi:(pi>=0?pi:0);
+    }
+    sel.value=belaVoiceIdx;
     belaRenderVoiceInfo();
   }
 }
 function belaRenderVoiceInfo() {
-  const v = belaVoices[belaVoiceIdx];
-  const info = $b('bela-voice-info');
-  if (info) info.textContent = v ? v.lang+(v.localService?' · Local':' · Online') : '';
+  const v=belaVoices[belaVoiceIdx], el=$b('bela-voice-info');
+  if(el&&v) el.textContent=v.lang+(v.localService?' · Local':' · Online');
 }
-window.belaChangeVoice = function(idx) {
-  belaVoiceIdx = parseInt(idx); belaRenderVoiceInfo();
-  belaSpeak('Pronto, senhor! Esta é minha voz. Ficou boa?');
-};
-window.belaChangeRate = function(val) {
-  belaRate = parseFloat(val);
-  const el = $b('bela-rate-val'); if (el) el.textContent = parseFloat(val).toFixed(2)+'x';
-};
-window.belaChangePitch = function(val) {
-  belaPitch = parseFloat(val);
-  const el = $b('bela-pitch-val'); if (el) el.textContent = parseFloat(val).toFixed(1);
-};
+window.belaChangeVoice = v=>{belaVoiceIdx=parseInt(v);belaRenderVoiceInfo();belaSpeak('Voz alterada!');};
+window.belaChangeRate  = v=>{belaRate=parseFloat(v);const el=$b('bela-rate-val');if(el)el.textContent=parseFloat(v).toFixed(2)+'x';};
+window.belaChangePitch = v=>{belaPitch=parseFloat(v);const el=$b('bela-pitch-val');if(el)el.textContent=parseFloat(v).toFixed(1);};
 
 // ══════════════════════════════════════════════════════════════
-// SPEECH SYNTHESIS
+// SPEECH — SEM LOOP
+// A chave: após falar, espera SILENCIO_POS_FALA ms antes de
+// reativar o mic, para que o eco da fala não seja capturado.
 // ══════════════════════════════════════════════════════════════
+const SILENCIO_POS_FALA = 1200; // ms de silêncio após fala antes de ouvir
+
 function belaSpeak(text, onEnd) {
-  if (!belaSynth) { if (onEnd) onEnd(); return; }
+  if (!belaSynth) { if(onEnd) onEnd(); return; }
+  // Para qualquer escuta ativa imediatamente
+  belaStopMicTemporario();
   belaSynth.cancel();
   belaFalando = true;
   belaNucleusState('speaking');
-  belaSetStatus('speaking', '✨ Bela falando…');
+  belaSetStatus('speaking','✨ Falando…');
 
-  setTimeout(() => {
+  clearTimeout(belaSpeakTimeout);
+  setTimeout(()=>{
     const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'pt-BR'; utt.rate = belaRate; utt.pitch = belaPitch;
-    if (belaVoices[belaVoiceIdx]) utt.voice = belaVoices[belaVoiceIdx];
+    utt.lang='pt-BR'; utt.rate=belaRate; utt.pitch=belaPitch;
+    if(belaVoices[belaVoiceIdx]) utt.voice=belaVoices[belaVoiceIdx];
+
     const finish = () => {
       if (!belaFalando) return;
-      belaFalando = false; belaRespondendo = false;
-      const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
-      if (belaAtivo || belaGlobalAtivo) {
-        if (naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
-        if (!belaOuvindo) setTimeout(() => belaStartRecognition(), 100);
-      } else {
-        belaNucleusState(''); belaSetStatus('','Aguardando');
-      }
+      belaFalando = false;
+      belaProcessando = false;
       if (onEnd) onEnd();
+      // Aguarda silêncio para não capturar eco
+      belaSpeakTimeout = setTimeout(()=>{
+        if (belaAtivo||belaGlobalAtivo) {
+          const naAbaBela=(sessionStorage.getItem('vf_tab')||'')==='bela';
+          if(naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
+          belaStartRecognition();
+        } else {
+          belaNucleusState(''); belaSetStatus('','Aguardando');
+        }
+      }, SILENCIO_POS_FALA);
     };
-    const guard = setTimeout(() => { if (belaFalando) finish(); }, Math.max(text.length*75, 2500));
-    utt.onend  = () => { clearTimeout(guard); finish(); };
-    utt.onerror = () => { clearTimeout(guard); finish(); };
+    const guard = setTimeout(()=>{ if(belaFalando) finish(); }, Math.max(text.length*75,2500));
+    utt.onend  = ()=>{ clearTimeout(guard); finish(); };
+    utt.onerror= ()=>{ clearTimeout(guard); finish(); };
     belaSynth.speak(utt);
   }, 80);
+}
+
+// Para o mic sem desligar o modo ativo (usado antes de falar)
+function belaStopMicTemporario() {
+  if (belaRecog) {
+    try { belaRecog.abort(); } catch(e){}
+    belaRecog = null;
+  }
+  belaOuvindo = false;
 }
 
 // ══════════════════════════════════════════════════════════════
 // CARDS
 // ══════════════════════════════════════════════════════════════
 function belaShowCard(icon, title, answerHTML, subtext, listItems) {
-  const container = $b('bela-cards');
-  if (!container) return;
-  while (container.children.length >= 5) container.removeChild(container.firstChild);
-  const card = document.createElement('div');
-  card.className = 'bela-card';
-  let listHTML = '';
-  if (listItems && listItems.length) {
-    listHTML = '<ul class="bela-card-list">' +
-      listItems.map(it => '<li><span style="font-weight:600;color:var(--text)">'+it.name+'</span><span>'+it.detail+'</span></li>').join('') +
-      '</ul>';
-  }
-  card.innerHTML =
+  const c=$b('bela-cards'); if(!c) return;
+  while(c.children.length>=5) c.removeChild(c.firstChild);
+  const card=document.createElement('div');
+  card.className='bela-card';
+  card.innerHTML=
     '<div class="bela-card-q">'+icon+' '+title+'</div>'+
     '<div class="bela-card-answer">'+answerHTML+'</div>'+
-    (subtext ? '<div class="bela-card-sub">'+subtext+'</div>' : '') +
-    listHTML;
-  container.appendChild(card);
-  setTimeout(() => card.scrollIntoView({behavior:'smooth',block:'nearest'}), 50);
+    (subtext?'<div class="bela-card-sub">'+subtext+'</div>':'')+
+    (listItems&&listItems.length?'<ul class="bela-card-list">'+listItems.map(it=>
+      '<li><span style="font-weight:600;color:var(--text)">'+it.name+'</span><span>'+it.detail+'</span></li>'
+    ).join('')+'</ul>':'');
+  c.appendChild(card);
+  setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
 }
 
 // ══════════════════════════════════════════════════════════════
-// DATA ACCESS — tripla camada de fallback
+// DADOS
 // ══════════════════════════════════════════════════════════════
-function belaGetReservas() {
-  if (window._belaReservas && window._belaReservas.length>0) return window._belaReservas;
-  try { if (typeof reservas!=='undefined' && Array.isArray(reservas) && reservas.length>0) return reservas; } catch(e){}
-  if (window._reservasNuvem && window._reservasNuvem.length>0) return window._reservasNuvem;
-  try { const r=localStorage.getItem('vf_reservas'); if(r){const a=JSON.parse(r);if(a.length)return a;} } catch(e){}
+function fmtBRL(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function belaDatasEvento(r){
+  if(Array.isArray(r.datas)&&r.datas.length>0) return r.datas;
+  if(r.data) return [r.data];
   return [];
 }
-function belaGetDespesas() {
-  if (window._belaDespesas && window._belaDespesas.length>0) return window._belaDespesas;
-  try { if (typeof despesas!=='undefined' && Array.isArray(despesas) && despesas.length>0) return despesas; } catch(e){}
-  try { const d=localStorage.getItem('vf_despesas'); if(d){const a=JSON.parse(d);if(a.length)return a;} } catch(e){}
+function belaGetReservas(){
+  if(window._belaReservas&&window._belaReservas.length>0) return window._belaReservas;
+  try{if(typeof reservas!=='undefined'&&Array.isArray(reservas)&&reservas.length>0)return reservas;}catch(e){}
+  if(window._reservasNuvem&&window._reservasNuvem.length>0) return window._reservasNuvem;
+  try{const r=localStorage.getItem('vf_reservas');if(r){const a=JSON.parse(r);if(a.length)return a;}}catch(e){}
   return [];
 }
-
-function fmtBRL(v) {
-  return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-}
-function belaDatasEvento(r) {
-  if (Array.isArray(r.datas) && r.datas.length>0) return r.datas;
-  if (r.data) return [r.data];
+function belaGetDespesas(){
+  if(window._belaDespesas&&window._belaDespesas.length>0) return window._belaDespesas;
+  try{if(typeof despesas!=='undefined'&&Array.isArray(despesas)&&despesas.length>0)return despesas;}catch(e){}
+  try{const d=localStorage.getItem('vf_despesas');if(d){const a=JSON.parse(d);if(a.length)return a;}}catch(e){}
   return [];
 }
 
 // ══════════════════════════════════════════════════════════════
-// QUERIES — todos os meses, qualquer período
+// QUERIES
 // ══════════════════════════════════════════════════════════════
 function belaFaturamentoMes(mesInfo) {
-  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
-  const { prefix, nome } = mesInfo;
-  const todas = belaGetReservas().filter(r => r.status !== 'cancelada');
-  let total=0, qtd=0, pagas=0, aReceber=0;
-  todas.forEach(r => {
-    if (!belaDatasEvento(r).some(d => d && d.startsWith(prefix))) return;
+  const {prefix,nome}=mesInfo;
+  const ativas=belaGetReservas().filter(r=>r.status!=='cancelada');
+  let total=0,qtd=0,pagas=0,aReceber=0;
+  ativas.forEach(r=>{
+    if(!belaDatasEvento(r).some(d=>d&&d.startsWith(prefix)))return;
     qtd++;
-    const val  = Number(r.total)||0;
-    const sinal= Number(r.sinal)||0;
-    if (r.pagamento==='pago') { total+=val; pagas++; }
-    else { total+=sinal; aReceber+=(val-sinal); }
+    const val=Number(r.total)||0, sinal=Number(r.sinal)||0;
+    if(r.pagamento==='pago'){total+=val;pagas++;}
+    else{total+=sinal;aReceber+=(val-sinal);}
   });
-  const speech = 'Em '+nome+', senhor, o faturamento foi de '+fmtBRL(total)+
-    ', com '+qtd+(qtd===1?' reserva':' reservas')+', sendo '+pagas+(pagas===1?' paga':' pagas')+
-    (aReceber>0?', e ainda há '+fmtBRL(aReceber)+' a receber.':'.');
+  const resp = 'Em '+nome+', o faturamento foi '+fmtBRL(total)+
+    ', com '+qtd+(qtd===1?' reserva':' reservas')+
+    (pagas>0?', '+pagas+' paga'+(pagas>1?'s':''):'')+
+    (aReceber>0?'. Ainda há '+fmtBRL(aReceber)+' a receber':'')+'.';
   belaShowCard('💰','Faturamento — '+nome,
     '<span class="highlight">'+fmtBRL(total)+'</span>',
-    qtd+(qtd===1?' reserva · ':' reservas · ')+pagas+(pagas===1?' paga':' pagas')+
+    qtd+(qtd===1?' reserva':' reservas')+' · '+pagas+(pagas===1?' paga':' pagas')+
     (aReceber>0?' · A receber: '+fmtBRL(aReceber):''));
+  belaMemoria.registrar('faturamento '+nome, fmtBRL(total));
   belaSetTranscript('');
-  belaSpeak(speech);
+  belaSpeak(resp);
 }
 
-function belaProximasReservas(qtdMax) {
-  qtdMax = qtdMax || 5;
-  const hoje = new Date();
-  const hojeStr = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
-  const proximas = [];
-  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r => {
-    belaDatasEvento(r).forEach(d => { if(d>=hojeStr) proximas.push(Object.assign({},r,{_d:d})); });
+function belaProximasReservas() {
+  const hoje=new Date();
+  const hs=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+  const prox=[];
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r=>{
+    belaDatasEvento(r).forEach(d=>{if(d>=hs)prox.push(Object.assign({},r,{_d:d}));});
   });
-  proximas.sort((a,b)=>a._d.localeCompare(b._d));
-  const top = proximas.slice(0, qtdMax);
-  if (!top.length) {
-    belaShowCard('📋','Próximas Reservas','Nenhuma reserva futura, senhor.','');
-    belaSpeak('Não encontrei reservas futuras no sistema, senhor.'); return;
+  prox.sort((a,b)=>a._d.localeCompare(b._d));
+  const top=prox.slice(0,5);
+  if(!top.length){
+    belaShowCard('📋','Próximas Reservas','Nenhuma reserva futura encontrada.','');
+    belaSpeak('Não há reservas futuras no sistema.');
+    return;
   }
-  const listItems = top.map(r=>({
-    name: r.nome||'—',
-    detail: r._d.split('-').reverse().join('/')+(r.tipo?' · '+r.tipo:'')+(r.pagamento?' · '+r.pagamento:'')
-  }));
-  const nomes = top.slice(0,3).map(r=>r.nome).join(', ')+(top.length>3?' e mais ':' ');
-  belaShowCard('📋','Próximas '+top.length+' Reservas',
-    top.length+(top.length===1?' reserva agendada':' reservas agendadas'),'',listItems);
+  const itens=top.map(r=>({name:r.nome||'—',detail:r._d.split('-').reverse().join('/')+(r.tipo?' · '+r.tipo:'')}));
+  const nomes=top.slice(0,3).map(r=>r.nome).join(', ')+(top.length>3?' e mais':'')+'.';
+  belaShowCard('📋','Próximas '+top.length+' Reservas',top.length+(top.length===1?' reserva':' reservas')+'','',itens);
+  belaMemoria.registrar('próximas reservas', top.length+' encontradas');
   belaSetTranscript('');
-  belaSpeak('As próximas reservas do senhor são: '+nomes+'.');
+  belaSpeak('As próximas reservas são: '+nomes);
 }
 
-function belaReservasNome(nome) {
-  const n = normTxt(nome);
-  const encontradas = belaGetReservas().filter(r =>
-    r.status!=='cancelada' && normTxt(r.nome||'').includes(n)
-  );
-  if (!encontradas.length) {
-    belaShowCard('🔍','Busca por cliente','Nenhuma reserva para "'+nome+'", senhor.','');
-    belaSpeak('Não encontrei reservas para '+nome+', senhor.'); return;
-  }
-  const listItems = encontradas.slice(0,5).map(r=>({
-    name: r.nome||'—',
-    detail: (belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · R$ '+(r.total||'0')+' · '+r.pagamento
-  }));
-  belaShowCard('🔍','Reservas — '+nome,
-    encontradas.length+(encontradas.length===1?' reserva encontrada':' reservas encontradas'),'',listItems);
-  belaSetTranscript('');
-  belaSpeak('Encontrei '+encontradas.length+(encontradas.length===1?' reserva':' reservas')+' para '+nome+', senhor.');
-}
-
-function belaReservasSemana() {
-  const hoje = new Date();
-  const dom = new Date(hoje); dom.setDate(hoje.getDate()-hoje.getDay());
-  const sab = new Date(dom);  sab.setDate(dom.getDate()+6);
-  const s = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  const ini=s(dom), fim=s(sab);
-  const lista = belaGetReservas().filter(r=>r.status!=='cancelada')
+function belaReservasSemana(){
+  const hoje=new Date();
+  const dom=new Date(hoje);dom.setDate(hoje.getDate()-hoje.getDay());
+  const sab=new Date(dom);sab.setDate(dom.getDate()+6);
+  const s=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const ini=s(dom),fim=s(sab);
+  const lista=belaGetReservas().filter(r=>r.status!=='cancelada')
     .filter(r=>belaDatasEvento(r).some(d=>d>=ini&&d<=fim));
-  const listItems = lista.map(r=>({
-    name: r.nome||'—',
-    detail: (belaDatasEvento(r).find(d=>d>=ini&&d<=fim)||'').split('-').reverse().join('/')
-  }));
+  const itens=lista.map(r=>({name:r.nome||'—',detail:(belaDatasEvento(r).find(d=>d>=ini&&d<=fim)||'').split('-').reverse().join('/')}));
   belaShowCard('📆','Reservas desta Semana',
     '<span class="highlight">'+lista.length+'</span>'+(lista.length===1?' reserva':' reservas'),
-    ini.split('-').reverse().join('/')+' a '+fim.split('-').reverse().join('/'),
-    listItems.length ? listItems : undefined);
+    ini.split('-').reverse().join('/')+' a '+fim.split('-').reverse().join('/'),itens);
+  belaMemoria.registrar('reservas semana', lista.length+' reservas');
   belaSetTranscript('');
-  belaSpeak('O senhor tem '+lista.length+(lista.length===1?' reserva':' reservas')+' esta semana.');
+  belaSpeak('Esta semana há '+lista.length+(lista.length===1?' reserva.':' reservas.'));
 }
 
-function belaDespesasMes(mesInfo) {
-  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
-  const { prefix, nome } = mesInfo;
-  let total=0, qtd=0;
-  const porCat = {};
-  belaGetDespesas().forEach(d => {
-    if (!(d.data && d.data.startsWith(prefix))) return;
-    total += Number(d.valor)||0; qtd++;
-    const cat = d.categoria||d.cat||'outros';
-    porCat[cat] = (porCat[cat]||0)+(Number(d.valor)||0);
+function belaDespesasMes(mesInfo){
+  const {prefix,nome}=mesInfo;
+  let total=0,qtd=0;const porCat={};
+  belaGetDespesas().forEach(d=>{
+    if(!(d.data&&d.data.startsWith(prefix)))return;
+    total+=Number(d.valor)||0;qtd++;
+    const cat=d.categoria||d.cat||'outros';
+    porCat[cat]=(porCat[cat]||0)+(Number(d.valor)||0);
   });
-  const topCat = Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,3)
-    .map(([c,v])=>({name:c,detail:fmtBRL(v)}));
+  const topCat=Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,v])=>({name:c,detail:fmtBRL(v)}));
   belaShowCard('💸','Despesas — '+nome,
     '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+fmtBRL(total)+'</span>',
-    qtd+(qtd===1?' lançamento':' lançamentos'), topCat.length ? topCat : undefined);
+    qtd+(qtd===1?' lançamento':' lançamentos'),topCat.length?topCat:undefined);
+  belaMemoria.registrar('despesas '+nome, fmtBRL(total));
   belaSetTranscript('');
-  belaSpeak('As despesas de '+nome+' somam '+fmtBRL(total)+', senhor, com '+qtd+(qtd===1?' lançamento.':' lançamentos.'));
+  belaSpeak('As despesas de '+nome+' somam '+fmtBRL(total)+', com '+qtd+(qtd===1?' lançamento.':' lançamentos.'));
 }
 
-function belaMelhorMes() {
-  const totais = {};
-  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r => {
-    const datas = belaDatasEvento(r);
-    if (!datas.length) return;
-    const pref = datas[0].substring(0,7);
-    totais[pref] = (totais[pref]||0)+(Number(r.total)||0);
+function belaDespesasAno(){
+  const ano=new Date().getFullYear(),prefix=String(ano);
+  let total=0,qtd=0;const porMes={};
+  belaGetDespesas().forEach(d=>{
+    if(!(d.data&&d.data.startsWith(prefix)))return;
+    total+=Number(d.valor)||0;qtd++;
+    const m=d.data.substring(0,7);porMes[m]=(porMes[m]||0)+(Number(d.valor)||0);
   });
-  const entries = Object.entries(totais);
-  if (!entries.length) {
-    belaShowCard('🏆','Melhor Mês','Sem dados ainda, senhor.','');
-    belaSpeak('Ainda não há dados suficientes, senhor.'); return;
-  }
-  entries.sort((a,b)=>b[1]-a[1]);
-  const top3 = entries.slice(0,3).map(([k,v])=>{
-    const [y,m]=k.split('-');
-    return { name:MESES_NOME[parseInt(m)-1]+' '+y, detail:fmtBRL(v) };
-  });
-  const [y,mo] = entries[0][0].split('-');
-  belaShowCard('🏆','Melhor Mês Histórico',
-    '<span class="highlight">'+MESES_NOME[parseInt(mo)-1]+' de '+y+'</span>',
-    'Receita: '+fmtBRL(entries[0][1]), top3);
-  belaSetTranscript('');
-  belaSpeak('O melhor mês do senhor foi '+MESES_NOME[parseInt(mo)-1]+' de '+y+', com '+fmtBRL(entries[0][1])+' em faturamento.');
-}
-
-function belaResumoGeral() {
-  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
-  const recebido  = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
-  const pendentes = ativas.filter(r=>r.pagamento!=='pago').length;
-  const previsto  = ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
-  const canceladas = belaGetReservas().filter(r=>r.status==='cancelada').length;
-  belaShowCard('📊','Resumo Geral',
-    '<span class="highlight">'+fmtBRL(recebido)+'</span>',
-    'Já recebido · '+pendentes+(pendentes===1?' pendente':' pendentes')+' · Previsto: '+fmtBRL(previsto)+' · '+canceladas+' canceladas');
-  belaSetTranscript('');
-  belaSpeak('Senhor, o resumo: já recebido '+fmtBRL(recebido)+', previsto '+fmtBRL(previsto)+', com '+pendentes+(pendentes===1?' reserva pendente':' reservas pendentes')+'.');
-}
-
-function belaComparaMeses(mes1, mes2) {
-  function totalMes(prefix) {
-    return belaGetReservas().filter(r=>r.status!=='cancelada')
-      .filter(r=>belaDatasEvento(r).some(d=>d.startsWith(prefix)))
-      .reduce((s,r)=>s+(Number(r.total)||0),0);
-  }
-  const t1=totalMes(mes1.prefix), t2=totalMes(mes2.prefix);
-  const diff = t1-t2;
-  const melhor = diff>=0 ? mes1.nome : mes2.nome;
-  belaShowCard('📈','Comparativo',
-    '<span class="highlight">'+melhor+'</span>',
-    mes1.nome+': '+fmtBRL(t1)+' · '+mes2.nome+': '+fmtBRL(t2));
-  belaSetTranscript('');
-  belaSpeak('Senhor, '+mes1.nome+' teve '+fmtBRL(t1)+' e '+mes2.nome+' teve '+fmtBRL(t2)+'. '+melhor+' foi melhor.');
-}
-
-function belaStatusPagamentos() {
-  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
-  const pagas  = ativas.filter(r=>r.pagamento==='pago');
-  const pend   = ativas.filter(r=>r.pagamento!=='pago');
-  const listItems = pend.slice(0,5).map(r=>({
-    name: r.nome||'—',
-    detail: fmtBRL(Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)))+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')
-  }));
-  belaShowCard('💳','Status de Pagamentos',
-    '<span style="color:var(--green);font-weight:800">'+pagas.length+' pagas</span> · <span style="color:var(--amber);font-weight:800">'+pend.length+' pendentes</span>',
-    'Total a receber: '+fmtBRL(pend.reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0)),
-    listItems);
-  belaSetTranscript('');
-  belaSpeak('Senhor, '+pagas.length+(pagas.length===1?' reserva paga':' reservas pagas')+' e '+pend.length+(pend.length===1?' pendente.':' pendentes.'));
-}
-
-function belaTicketMedio() {
-  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada'&&Number(r.total)>0);
-  if (!ativas.length) { belaSpeak('Sem dados para calcular, senhor.'); return; }
-  const media = ativas.reduce((s,r)=>s+(Number(r.total)||0),0)/ativas.length;
-  belaShowCard('🎯','Ticket Médio','<span class="highlight">'+fmtBRL(media)+'</span>',
-    'Baseado em '+ativas.length+' reservas ativas');
-  belaSetTranscript('');
-  belaSpeak('O ticket médio do senhor é de '+fmtBRL(media)+', calculado sobre '+ativas.length+' reservas.');
-}
-
-function belaReservasMes(mesInfo) {
-  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
-  const { prefix, nome } = mesInfo;
-  const lista = belaGetReservas().filter(r=>r.status!=='cancelada')
-    .filter(r=>belaDatasEvento(r).some(d=>d&&d.startsWith(prefix)));
-  const listItems = lista.slice(0,5).map(r=>({
-    name: r.nome||'—',
-    detail: (belaDatasEvento(r).find(d=>d.startsWith(prefix))||'').split('-').reverse().join('/')+' · '+fmtBRL(r.total)+' · '+r.pagamento
-  }));
-  belaShowCard('📋','Reservas — '+nome,
-    '<span class="highlight">'+lista.length+'</span>'+(lista.length===1?' reserva':' reservas'),'',listItems);
-  belaSetTranscript('');
-  belaSpeak('Em '+nome+', senhor, há '+lista.length+(lista.length===1?' reserva.':' reservas.'));
-}
-
-function belaDespesasAno() {
-  const ano = new Date().getFullYear();
-  const prefix = String(ano);
-  let total=0, qtd=0;
-  const porMes = {};
-  belaGetDespesas().forEach(d => {
-    if (!(d.data&&d.data.startsWith(prefix))) return;
-    total+=Number(d.valor)||0; qtd++;
-    const m = d.data.substring(0,7);
-    porMes[m]=(porMes[m]||0)+(Number(d.valor)||0);
-  });
-  const topMeses = Object.entries(porMes).sort((a,b)=>b[1]-a[1]).slice(0,4)
-    .map(([k,v])=>{ const[,m]=k.split('-'); return {name:MESES_NOME[parseInt(m)-1],detail:fmtBRL(v)}; });
+  const topMeses=Object.entries(porMes).sort((a,b)=>b[1]-a[1]).slice(0,4)
+    .map(([k,v])=>{const[,m]=k.split('-');return{name:MESES_NOME[parseInt(m)-1],detail:fmtBRL(v)};});
   belaShowCard('💸','Despesas — '+ano,
     '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+fmtBRL(total)+'</span>',
-    qtd+' lançamentos em '+ano, topMeses);
+    qtd+' lançamentos em '+ano,topMeses);
   belaSetTranscript('');
-  belaSpeak('As despesas de '+ano+' somam '+fmtBRL(total)+', senhor.');
+  belaSpeak('As despesas de '+ano+' somam '+fmtBRL(total)+'.');
+}
+
+function belaMelhorMes(){
+  const totais={};
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r=>{
+    const d=belaDatasEvento(r);if(!d.length)return;
+    const p=d[0].substring(0,7);totais[p]=(totais[p]||0)+(Number(r.total)||0);
+  });
+  const entries=Object.entries(totais);
+  if(!entries.length){belaShowCard('🏆','Melhor Mês','Sem dados ainda.','');belaSpeak('Sem dados suficientes ainda.');return;}
+  entries.sort((a,b)=>b[1]-a[1]);
+  const top3=entries.slice(0,3).map(([k,v])=>{const[y,m]=k.split('-');return{name:MESES_NOME[parseInt(m)-1]+' '+y,detail:fmtBRL(v)};});
+  const[y,mo]=entries[0][0].split('-');
+  belaShowCard('🏆','Melhor Mês Histórico','<span class="highlight">'+MESES_NOME[parseInt(mo)-1]+' de '+y+'</span>','Receita: '+fmtBRL(entries[0][1]),top3);
+  belaMemoria.registrar('melhor mês', MESES_NOME[parseInt(mo)-1]+' '+y);
+  belaSetTranscript('');
+  belaSpeak('O melhor mês foi '+MESES_NOME[parseInt(mo)-1]+' de '+y+', com '+fmtBRL(entries[0][1])+'.');
+}
+
+function belaResumoGeral(){
+  const ativas=belaGetReservas().filter(r=>r.status!=='cancelada');
+  const recebido=ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
+  const pend=ativas.filter(r=>r.pagamento!=='pago').length;
+  const previsto=ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
+  belaShowCard('📊','Resumo Geral','<span class="highlight">'+fmtBRL(recebido)+'</span>',
+    'Recebido · '+pend+(pend===1?' pendente':' pendentes')+' · Previsto: '+fmtBRL(previsto));
+  belaMemoria.registrar('resumo', 'recebido '+fmtBRL(recebido));
+  belaSetTranscript('');
+  belaSpeak('Recebido até agora: '+fmtBRL(recebido)+'. Previsto: '+fmtBRL(previsto)+'. '+pend+(pend===1?' pendência.':' pendências.'));
+}
+
+function belaStatusPagamentos(){
+  const ativas=belaGetReservas().filter(r=>r.status!=='cancelada');
+  const pagas=ativas.filter(r=>r.pagamento==='pago');
+  const pend=ativas.filter(r=>r.pagamento!=='pago');
+  const itens=pend.slice(0,5).map(r=>({
+    name:r.nome||'—',
+    detail:fmtBRL(Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)))+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')
+  }));
+  belaShowCard('💳','Pagamentos',
+    '<span style="color:var(--green);font-weight:800">'+pagas.length+' pagas</span> · <span style="color:var(--amber);font-weight:800">'+pend.length+' pendentes</span>',
+    'A receber: '+fmtBRL(pend.reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0)),itens);
+  belaSetTranscript('');
+  belaSpeak(pagas.length+' reservas pagas e '+pend.length+(pend.length===1?' pendente.':' pendentes.'));
+}
+
+function belaTicketMedio(){
+  const ativas=belaGetReservas().filter(r=>r.status!=='cancelada'&&Number(r.total)>0);
+  if(!ativas.length){belaSpeak('Sem dados para calcular.');return;}
+  const media=ativas.reduce((s,r)=>s+(Number(r.total)||0),0)/ativas.length;
+  belaShowCard('🎯','Ticket Médio','<span class="highlight">'+fmtBRL(media)+'</span>','Baseado em '+ativas.length+' reservas');
+  belaSetTranscript('');
+  belaSpeak('O ticket médio é '+fmtBRL(media)+', calculado em '+ativas.length+' reservas.');
+}
+
+function belaReservasMes(mesInfo){
+  const{prefix,nome}=mesInfo;
+  const lista=belaGetReservas().filter(r=>r.status!=='cancelada')
+    .filter(r=>belaDatasEvento(r).some(d=>d&&d.startsWith(prefix)));
+  const itens=lista.slice(0,5).map(r=>({
+    name:r.nome||'—',
+    detail:(belaDatasEvento(r).find(d=>d.startsWith(prefix))||'').split('-').reverse().join('/')+' · '+fmtBRL(r.total)+' · '+r.pagamento
+  }));
+  belaShowCard('📋','Reservas — '+nome,'<span class="highlight">'+lista.length+'</span>'+(lista.length===1?' reserva':' reservas'),'',itens);
+  belaSetTranscript('');
+  belaSpeak('Em '+nome+' há '+lista.length+(lista.length===1?' reserva.':' reservas.'));
+}
+
+function belaReservasNome(nome){
+  const n=normTxt(nome);
+  const enc=belaGetReservas().filter(r=>r.status!=='cancelada'&&normTxt(r.nome||'').includes(n));
+  if(!enc.length){belaShowCard('🔍','Busca','Nenhuma reserva para "'+nome+'".','');belaSpeak('Não encontrei reservas para '+nome+'.');return;}
+  const itens=enc.slice(0,5).map(r=>({name:r.nome||'—',detail:(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · R$'+(r.total||0)+' · '+r.pagamento}));
+  belaShowCard('🔍','Reservas — '+nome,enc.length+(enc.length===1?' reserva':' reservas'),'',itens);
+  belaSetTranscript('');
+  belaSpeak('Encontrei '+enc.length+(enc.length===1?' reserva':' reservas')+' para '+nome+'.');
+}
+
+function belaComparaMeses(m1,m2){
+  const tot=p=>belaGetReservas().filter(r=>r.status!=='cancelada')
+    .filter(r=>belaDatasEvento(r).some(d=>d.startsWith(p))).reduce((s,r)=>s+(Number(r.total)||0),0);
+  const t1=tot(m1.prefix),t2=tot(m2.prefix);
+  belaShowCard('📈','Comparativo','<span class="highlight">'+(t1>=t2?m1.nome:m2.nome)+'</span>',m1.nome+': '+fmtBRL(t1)+' · '+m2.nome+': '+fmtBRL(t2));
+  belaSetTranscript('');
+  belaSpeak(m1.nome+': '+fmtBRL(t1)+'. '+m2.nome+': '+fmtBRL(t2)+'. '+(t1>=t2?m1.nome:m2.nome)+' foi melhor.');
+}
+
+function belaHistorico(){
+  const h=belaMemoria.historico.slice(-5).reverse();
+  if(!h.length){belaShowCard('🧠','Histórico','Nenhuma consulta registrada ainda.','');belaSpeak('Não há consultas anteriores registradas.');return;}
+  const itens=h.map(e=>({name:e.q,detail:e.r+' · '+e.ts}));
+  belaShowCard('🧠','Últimas Consultas',h.length+' consultas recentes','',itens);
+  belaSetTranscript('');
+  belaSpeak('Aqui estão suas últimas '+h.length+' consultas.');
 }
 
 // ══════════════════════════════════════════════════════════════
-// NLP — reconhece centenas de variações
+// NLP
 // ══════════════════════════════════════════════════════════════
 function belaInterpret(rawText) {
   const t = normTxt(rawText);
   const mesInfo = extrairMesAno(t);
 
-  // ── SAUDAÇÕES / VERIFICAÇÃO ───────────────────────────────
-  if (/^(oi|ola|ei|hey|bela)$/.test(t.trim()) ||
-      /bom\s*dia|boa\s*tarde|boa\s*noite|tudo\s*(bem|bom|certo)|como\s*(vai|esta|vc|voce)|ta\s*ai|esta\s*ai|me\s*ouve|funcionando|ativo/.test(t)) {
-    const h = new Date().getHours();
-    const s = h<12 ? 'Bom dia' : h<18 ? 'Boa tarde' : 'Boa noite';
-    return () => {
-      belaShowCard('👋','Olá, senhor!',s+', senhor!',
-        'Diga o que precisa saber: faturamento, reservas, despesas, pagamentos…');
-      belaSpeak(s+', senhor! Estou aqui e pronta. O que deseja saber?');
+  // SAUDAÇÕES
+  if (/^(oi|ola|ei|hey|bela|ola bela)$/.test(t.replace(/\bbela\b/,'').trim())||
+      /bom\s*dia|boa\s*tarde|boa\s*noite|tudo\s*(bem|bom)|como\s*(vai|esta)|ta\s*ai|esta\s*ai|me\s*ouve|ativo|funcionando/.test(t)) {
+    const h=new Date().getHours();
+    const s=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+    return ()=>{
+      belaShowCard('👋','Olá!',s+'!','Pergunte sobre faturamento, reservas, despesas ou pagamentos.');
+      belaSpeak(s+'! Estou aqui. O que precisa saber?');
     };
   }
 
-  // ── FATURAMENTO / RECEITA ─────────────────────────────────
-  if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada/.test(t) && !/despesa|gasto/.test(t)) {
-    // Comparativo entre dois meses: "compare janeiro com fevereiro"
-    const meses = [];
-    for (const [nome,num] of Object.entries(MESES_MAP)) {
-      if (new RegExp('\\b'+nome+'\\b').test(t)) {
-        const anoM = t.match(/\b(20\d{2})\b/);
-        meses.push(mkPrefix(anoM?parseInt(anoM[1]):new Date().getFullYear(), num));
-        if (meses.length===2) break;
-      }
-    }
-    if (meses.length===2) return () => belaComparaMeses(meses[0], meses[1]);
-    return () => belaFaturamentoMes(mesInfo);
+  // HISTÓRICO / MEMÓRIA
+  if (/historico|ultimas|anteriores|ja perguntei|lembra|memoria/.test(t))
+    return belaHistorico;
+
+  // FATURAMENTO / RECEITA
+  if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada|quanto fiz|quanto foi/.test(t)&&!/despesa|gasto/.test(t)) {
+    const meses=[];
+    for (const[nome,num] of Object.entries(MESES_MAP))
+      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+    if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
+    return ()=>belaFaturamentoMes(mesInfo);
   }
 
-  // ── RESERVAS ──────────────────────────────────────────────
+  // RESERVAS
   if (/reserva/.test(t)) {
-    // Busca por nome: "reservas do joao" / "cliente maria"
-    const nomeMatch = t.match(/(?:reserva(?:s)?\s+d[ao]s?\s+|cliente\s+|para\s+)([a-z]{3,}(?:\s+[a-z]{3,})?)/);
-    if (nomeMatch) return () => belaReservasNome(nomeMatch[1]);
-    if (/semana/.test(t)) return belaReservasSemana;
-    if (/proxim|futur|agenda|vem\s*ai|vindo/.test(t)) return belaProximasReservas;
-    if (/pag|pago|pend|deve|devendo|inadim/.test(t)) return belaStatusPagamentos;
-    return () => belaReservasMes(mesInfo);
+    const nm=t.match(/(?:reservas?\s+d[ao]s?\s+|cliente\s+|para\s+o\s+|para\s+a\s+)([a-z]{3,}(?:\s+[a-z]{2,})?)/);
+    if(nm) return ()=>belaReservasNome(nm[1]);
+    if(/semana/.test(t)) return belaReservasSemana;
+    if(/proxim|futur|agenda|vindo/.test(t)) return belaProximasReservas;
+    if(/pag|pago|pend|deve|inadim/.test(t)) return belaStatusPagamentos;
+    return ()=>belaReservasMes(mesInfo);
   }
 
-  // ── PRÓXIMAS (sem palavra "reserva") ─────────────────────
-  if (/proxim|agenda/.test(t) && !/despesa/.test(t)) return belaProximasReservas;
+  // PRÓXIMAS (sem "reserva")
+  if (/proxim|agenda/.test(t)&&!/despesa/.test(t)) return belaProximasReservas;
 
-  // ── SEMANA ────────────────────────────────────────────────
+  // SEMANA
   if (/semana/.test(t)) return belaReservasSemana;
 
-  // ── DESPESAS / GASTOS ─────────────────────────────────────
-  if (/despesa|gasto|custo|pago|saiu|saida|gastei/.test(t)) {
-    if (/ano|anual/.test(t)) return belaDespesasAno;
-    return () => belaDespesasMes(mesInfo);
+  // DESPESAS
+  if (/despesa|gasto|custo|saiu|saida|gastei/.test(t)) {
+    if(/ano|anual/.test(t)) return belaDespesasAno;
+    return ()=>belaDespesasMes(mesInfo);
   }
 
-  // ── PAGAMENTOS ────────────────────────────────────────────
-  if (/pagament|pag|pago|pendente|deve|inadim|cobrar/.test(t)) return belaStatusPagamentos;
+  // PAGAMENTOS
+  if (/pagament|pago|pendente|deve|inadim|cobrar/.test(t)) return belaStatusPagamentos;
 
-  // ── MELHOR MÊS ────────────────────────────────────────────
-  if (/melhor|record|maior.*fatur|mais.*fatur|top|peak/.test(t)) return belaMelhorMes;
+  // MELHOR MÊS
+  if (/melhor|record|maior|top\s*mes/.test(t)) return belaMelhorMes;
 
-  // ── TICKET MÉDIO ──────────────────────────────────────────
-  if (/ticket|media|medio|valor.*medio|media.*valor/.test(t)) return belaTicketMedio;
+  // TICKET
+  if (/ticket|media|medio/.test(t)) return belaTicketMedio;
 
-  // ── RESUMO / GERAL ────────────────────────────────────────
-  if (/resumo|geral|total|overview|tudo|status/.test(t)) return belaResumoGeral;
+  // RESUMO
+  if (/resumo|geral|tudo|status|overview/.test(t)) return belaResumoGeral;
 
-  // ── COMPARATIVO ───────────────────────────────────────────
-  if (/compar|versus|vs|contra|diferenca/.test(t)) {
-    const meses = [];
-    for (const [nome,num] of Object.entries(MESES_MAP)) {
-      if (new RegExp('\\b'+nome+'\\b').test(t)) { meses.push(mkPrefix(new Date().getFullYear(),num)); if(meses.length===2) break; }
-    }
-    if (meses.length===2) return () => belaComparaMeses(meses[0],meses[1]);
+  // COMPARATIVO
+  if (/compar|versus|vs|contra/.test(t)) {
+    const meses=[];
+    for(const[nome,num] of Object.entries(MESES_MAP))
+      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+    if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
   }
 
   return null;
@@ -9517,274 +9514,254 @@ function belaInterpret(rawText) {
 function belaHasWakeWord(text) {
   return /\bbela\b/.test(normTxt(text));
 }
-
 function belaRefreshContext() {
   belaContextAtivo = true;
   clearTimeout(belaContextTimer);
-  belaContextTimer = setTimeout(() => { belaContextAtivo = false; }, 20000); // 20s de contexto
+  belaContextTimer = setTimeout(()=>{belaContextAtivo=false;},20000);
 }
 
 // ══════════════════════════════════════════════════════════════
 // CHIP BUTTONS
 // ══════════════════════════════════════════════════════════════
 window.belaAskText = function(text) {
-  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
-  if (belaRespondendo) return;
-  belaRespondendo = true;
-  if (belaFalando) belaSynth.cancel();
-  belaSetTranscript('🎤 ' + text);
+  window.belaAtualizarStatusDados&&window.belaAtualizarStatusDados();
+  if(belaProcessando) return;
+  belaProcessando = true;
+  if(belaFalando) belaSynth.cancel();
+  belaStopMicTemporario();
+  belaSetTranscript('🎤 '+text);
   belaSetStatus('thinking','⚡ Consultando…');
   belaNucleusState('active');
-  setTimeout(() => {
-    const fn = belaInterpret(text);
-    if (fn) fn();
+  setTimeout(()=>{
+    const fn=belaInterpret(text);
+    if(fn) fn();
     else {
-      belaRespondendo = false;
-      belaShowCard('🤔','Não entendi','Tente reformular, senhor.','');
-      belaSpeak('Desculpe, senhor, não entendi. Pode reformular?');
+      belaProcessando=false;
+      belaShowCard('🤔','Não entendi','Reformule a pergunta.','');
+      belaSpeak('Não entendi. Pode reformular?');
     }
-  }, 150);
+  },150);
 };
 
 // ══════════════════════════════════════════════════════════════
-// RECONHECIMENTO — contínuo, robusto, global
+// RECONHECIMENTO — sem loop, sem eco
 // ══════════════════════════════════════════════════════════════
 function belaStartRecognition() {
-  if (belaOuvindo || belaFalando) return;
+  // Guarda de segurança tripla contra loop
+  if (belaOuvindo)    return;
+  if (belaFalando)    return;
+  if (belaProcessando) return;
   if (!belaAtivo && !belaGlobalAtivo) return;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return;
-  try { if (belaRecog) { belaRecog.abort(); belaRecog = null; } } catch(e) {}
 
-  belaRecog = new SR();
-  belaRecog.lang = 'pt-BR';
-  belaRecog.continuous = false;
-  belaRecog.interimResults = true;
-  belaRecog.maxAlternatives = 3;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
 
-  belaRecog.onstart = () => {
-    belaOuvindo = true;
-    const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
-    if (!belaFalando && naAbaBela && belaAtivo) {
-      belaNucleusState('active');
-      belaSetStatus('listening','🎙️ Ouvindo…');
-    }
-    // Global: update floating indicator
+  try{if(belaRecog){belaRecog.abort();belaRecog=null;}}catch(e){}
+
+  belaRecog=new SR();
+  belaRecog.lang='pt-BR';
+  belaRecog.continuous=false;
+  belaRecog.interimResults=true;
+  belaRecog.maxAlternatives=2;
+
+  belaRecog.onstart=()=>{
+    belaOuvindo=true;
+    const naAbaBela=(sessionStorage.getItem('vf_tab')||'')==='bela';
+    if(!belaFalando&&naAbaBela&&belaAtivo){belaNucleusState('active');belaSetStatus('listening','🎙️ Ouvindo…');}
     belaUpdateGlobalIndicator();
   };
 
-  belaRecog.onresult = (e) => {
-    let interim='', final='';
-    for (let i=e.resultIndex; i<e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
+  belaRecog.onresult=(e)=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
     }
-    if (interim && !final) { belaSetTranscript('🎤 <em style="opacity:.55">'+interim+'</em>'); return; }
-    if (!final) return;
+    if(interim&&!final){belaSetTranscript('🎤 <em style="opacity:.5">'+interim+'</em>');return;}
+    if(!final) return;
 
-    belaOuvindo = false;
-    belaSetTranscript('🎤 ' + final);
-    const hasWake = belaHasWakeWord(final);
+    belaOuvindo=false;
+    belaSetTranscript('🎤 '+final);
+    const hasWake=belaHasWakeWord(final);
 
-    // Sem wake word e fora de contexto → ignora
-    if (!hasWake && !belaContextAtivo) {
-      setTimeout(() => belaSetTranscript(''), 1800);
-      setTimeout(() => { if ((belaAtivo||belaGlobalAtivo) && !belaFalando) belaStartRecognition(); }, 250);
+    // SEM wake word e fora de contexto → descarta silenciosamente
+    if(!hasWake&&!belaContextAtivo){
+      setTimeout(()=>belaSetTranscript(''),1500);
+      setTimeout(()=>{if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)belaStartRecognition();},300);
       return;
     }
 
-    if (hasWake) {
-      belaRefreshContext();
-      // Se está em outra aba, abre a aba bela
-      const tabAtual = sessionStorage.getItem('vf_tab') || '';
-      if (tabAtual !== 'bela') {
-        // Não muda de aba automaticamente — só responde por voz
-      }
-    }
+    if(hasWake) belaRefreshContext();
 
-    if (belaRespondendo) return;
-    belaRespondendo = true;
-    belaSetStatus('thinking','⚡ Processando…');
-    const fn = belaInterpret(final);
-    if (fn) {
+    // Já processando → ignora (evita loop)
+    if(belaProcessando) return;
+    belaProcessando=true;
+
+    const fn=belaInterpret(final);
+    if(fn){
+      belaSetStatus('thinking','⚡ Processando…');
       fn();
-    } else if (hasWake) {
-      belaRespondendo = false;
-      belaShowCard('👂','Estou aqui, senhor','O que deseja saber?',
-        'Exemplos: faturamento de fevereiro · despesas de março · próximas reservas');
-      belaSpeak('Estou aqui, senhor! Pode perguntar qualquer coisa sobre faturamento, reservas ou despesas.');
-    } else {
-      belaRespondendo = false;
-      belaSpeak('Pode repetir, senhor?');
+    } else if(hasWake) {
+      // Wake word sem comando → pergunta breve, SEM resposta "pode repetir"
+      belaProcessando=false;
+      belaShowCard('👂','Ouvindo…','O que deseja consultar?',
+        'Exemplos: "faturamento de março" · "despesas de fevereiro" · "próximas reservas"');
+      belaSpeak('O que deseja consultar?');
+    }
+    // Se está em contexto mas sem comando → silêncio (não fala nada, só reinicia mic)
+    // Isso evita o loop de "pode repetir"
+  };
+
+  belaRecog.onerror=(e)=>{
+    belaOuvindo=false;
+    if(e.error==='no-speech'){
+      if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)
+        setTimeout(()=>belaStartRecognition(),200);
+    } else if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+      belaGlobalAtivo=false;belaAtivo=false;
+      belaSetStatus('','🚫 Microfone bloqueado');belaNucleusState('');belaUpdateGlobalIndicator();
+    } else if(e.error!=='aborted'){
+      if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)
+        setTimeout(()=>belaStartRecognition(),800);
     }
   };
 
-  belaRecog.onerror = (e) => {
-    belaOuvindo = false;
-    if (e.error==='no-speech') {
-      if ((belaAtivo||belaGlobalAtivo) && !belaFalando) setTimeout(()=>belaStartRecognition(), 200);
-    } else if (e.error==='not-allowed'||e.error==='service-not-allowed') {
-      belaGlobalAtivo = false; belaAtivo = false;
-      belaSetStatus('','🚫 Microfone bloqueado');
-      belaNucleusState('');
-      belaUpdateGlobalIndicator();
-    } else if (e.error!=='aborted') {
-      if ((belaAtivo||belaGlobalAtivo) && !belaFalando) setTimeout(()=>belaStartRecognition(), 600);
+  belaRecog.onend=()=>{
+    belaOuvindo=false;
+    // Reinicia SOMENTE se não está falando e não está processando
+    if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando){
+      setTimeout(()=>{
+        if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando&&!belaOuvindo)
+          belaStartRecognition();
+      },250);
     }
   };
 
-  belaRecog.onend = () => {
-    belaOuvindo = false;
-    if ((belaAtivo||belaGlobalAtivo) && !belaFalando) {
-      setTimeout(() => { if ((belaAtivo||belaGlobalAtivo) && !belaFalando && !belaOuvindo) belaStartRecognition(); }, 200);
-    }
-  };
-  try { belaRecog.start(); } catch(e) { belaOuvindo = false; }
+  try{belaRecog.start();}catch(e){belaOuvindo=false;}
 }
 
 function belaStopRecognition() {
-  belaContextAtivo = false; clearTimeout(belaContextTimer);
-  if (belaRecog) { try { belaRecog.abort(); } catch(e){} belaRecog = null; }
-  belaOuvindo = false;
+  belaContextAtivo=false;clearTimeout(belaContextTimer);
+  if(belaRecog){try{belaRecog.abort();}catch(e){}belaRecog=null;}
+  belaOuvindo=false;
 }
 
 // ══════════════════════════════════════════════════════════════
-// INDICADOR GLOBAL FLUTUANTE (aparece em qualquer aba)
+// INDICADOR GLOBAL
 // ══════════════════════════════════════════════════════════════
-function belaUpdateGlobalIndicator() {
-  let ind = document.getElementById('bela-global-indicator');
-  if (!ind) return;
-  if (belaGlobalAtivo) {
-    ind.style.display = 'flex';
-    ind.classList.toggle('listening', belaOuvindo && !belaFalando);
-    ind.classList.toggle('speaking', belaFalando);
-  } else {
-    ind.style.display = 'none';
-  }
+function belaUpdateGlobalIndicator(){
+  const ind=$b('bela-global-indicator');if(!ind)return;
+  ind.style.display=belaGlobalAtivo?'flex':'none';
+  ind.classList.toggle('listening',belaOuvindo&&!belaFalando);
+  ind.classList.toggle('speaking',belaFalando);
 }
 
-function belaCriarIndicadorGlobal() {
-  if (document.getElementById('bela-global-indicator')) return;
-  const div = document.createElement('div');
-  div.id = 'bela-global-indicator';
-  div.title = 'Bela está ouvindo — diga "Bela" para ativar';
-  div.innerHTML = '<svg width="18" height="18" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="54" fill="url(#bg2)" opacity="0.7"/><circle cx="60" cy="60" r="22" fill="#ffcc44" opacity="0.9"/><circle cx="60" cy="60" r="10" fill="#fffbe0"/><defs><radialGradient id="bg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffcc44"/><stop offset="100%" stop-color="#ff6600" stop-opacity="0"/></radialGradient></defs></svg><span id="bgi-txt">Bela ativa</span>';
-  div.onclick = () => {
-    if (typeof goAdminTab === 'function') goAdminTab('bela');
-  };
+function belaCriarIndicadorGlobal(){
+  if($b('bela-global-indicator'))return;
+  const div=document.createElement('div');
+  div.id='bela-global-indicator';
+  div.title='Bela ativa — diga "Bela" para consultar';
+  div.innerHTML='<svg width="16" height="16" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="54" fill="url(#bg2)" opacity="0.7"/><circle cx="60" cy="60" r="22" fill="#ffcc44" opacity="0.9"/><circle cx="60" cy="60" r="10" fill="#fffbe0"/><defs><radialGradient id="bg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffcc44"/><stop offset="100%" stop-color="#ff6600" stop-opacity="0"/></radialGradient></defs></svg><span id="bgi-txt">Bela ativa</span>';
+  div.onclick=()=>{if(typeof goAdminTab==='function')goAdminTab('bela');};
   document.body.appendChild(div);
-
-  // CSS inline para o indicador
-  const style = document.createElement('style');
-  style.textContent = `
-    #bela-global-indicator {
-      display:none; position:fixed; bottom:80px; right:18px; z-index:9999;
-      align-items:center; gap:7px;
-      background:rgba(10,8,0,0.88); border:1px solid rgba(255,180,0,0.4);
-      border-radius:999px; padding:7px 14px 7px 10px;
-      font-size:0.72rem; color:rgba(255,210,80,0.9); font-family:'DM Sans',sans-serif;
-      cursor:pointer; backdrop-filter:blur(8px);
-      box-shadow:0 0 20px rgba(255,160,0,0.25);
-      transition:all .3s; user-select:none;
-    }
-    #bela-global-indicator:hover { background:rgba(20,15,0,0.95); border-color:rgba(255,180,0,0.7); }
-    #bela-global-indicator.listening svg { animation:bela-glow-pulse .8s ease-in-out infinite; }
-    #bela-global-indicator.speaking { border-color:rgba(0,212,255,0.5); }
-    #bela-global-indicator.speaking svg { filter:hue-rotate(180deg); }
-    @keyframes bela-glow-pulse { 0%,100%{filter:drop-shadow(0 0 4px rgba(255,180,0,.6))} 50%{filter:drop-shadow(0 0 12px rgba(255,180,0,1))} }
-    @media(max-width:640px){ #bela-global-indicator { bottom:76px; right:10px; } }
+  const style=document.createElement('style');
+  style.textContent=`
+    #bela-global-indicator{display:none;position:fixed;bottom:80px;right:18px;z-index:9999;
+      align-items:center;gap:7px;background:rgba(10,8,0,.88);border:1px solid rgba(255,180,0,.4);
+      border-radius:999px;padding:7px 14px 7px 10px;font-size:.72rem;color:rgba(255,210,80,.9);
+      font-family:'DM Sans',sans-serif;cursor:pointer;backdrop-filter:blur(8px);
+      box-shadow:0 0 20px rgba(255,160,0,.25);transition:all .3s;user-select:none;}
+    #bela-global-indicator:hover{background:rgba(20,15,0,.95);border-color:rgba(255,180,0,.7);}
+    #bela-global-indicator.listening svg{animation:bela-glow .8s ease-in-out infinite;}
+    #bela-global-indicator.speaking{border-color:rgba(0,212,255,.5);}
+    @keyframes bela-glow{0%,100%{filter:drop-shadow(0 0 4px rgba(255,180,0,.6))}50%{filter:drop-shadow(0 0 12px rgba(255,180,0,1))}}
+    @media(max-width:640px){#bela-global-indicator{bottom:76px;right:10px;}}
   `;
   document.head.appendChild(style);
 }
 
 // ══════════════════════════════════════════════════════════════
-// TOGGLE MICROFONE GLOBAL
+// TOGGLES
 // ══════════════════════════════════════════════════════════════
-window.belaToggleGlobal = function() {
-  if (!belaInitDone) { belaInitDone=true; belaLoadVoices(); if(belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices; }
-  if (belaGlobalAtivo) {
-    belaGlobalAtivo = false;
-    if (!belaAtivo) belaStopRecognition();
+window.belaToggleGlobal=function(silencioso){
+  if(!belaInitDone){belaInitDone=true;belaLoadVoices();if(belaSynth.onvoiceschanged!==undefined)belaSynth.onvoiceschanged=belaLoadVoices;}
+  if(belaGlobalAtivo){
+    belaGlobalAtivo=false;
+    if(!belaAtivo)belaStopRecognition();
     belaUpdateGlobalIndicator();
-    const btn = document.getElementById('bela-global-btn');
-    if (btn) { btn.textContent='🎙️ Ativar escuta global'; btn.style.background=''; }
+    const btn=$b('bela-global-btn');if(btn){btn.textContent='🎙️ Ativar escuta global';btn.style.background='';}
+    const btn2=$b('bela-global-btn-tab');if(btn2){btn2.textContent='🎙️ Ativar escuta global — ouça "Bela" em qualquer aba';}
   } else {
-    belaGlobalAtivo = true;
+    belaGlobalAtivo=true;
     belaUpdateGlobalIndicator();
-    const btn = document.getElementById('bela-global-btn');
-    if (btn) { btn.textContent='🔴 Desativar escuta global'; btn.style.background='rgba(255,80,0,0.15)'; }
-    if (!belaOuvindo && !belaFalando) belaStartRecognition();
-    belaSpeak('Escuta global ativada, senhor. Diga Bela de qualquer tela.');
+    const btn=$b('bela-global-btn');if(btn){btn.textContent='🔴 Desativar escuta global';btn.style.background='rgba(255,80,0,.15)';}
+    const btn2=$b('bela-global-btn-tab');if(btn2){btn2.textContent='🔴 Desativar escuta global';btn2.style.background='rgba(255,80,0,.12)';btn2.style.borderColor='rgba(255,80,0,.4)';}
+    if(!belaOuvindo&&!belaFalando&&!belaProcessando)belaStartRecognition();
+    if(!silencioso) belaSpeak('Escuta global ativada. Diga Bela de qualquer tela.');
+    // Sync nav button state
+    setTimeout(()=>{
+      const btn=$b('bela-global-btn');
+      if(btn){btn.textContent='🔴 Desativar escuta global';btn.style.background='rgba(255,80,0,.15)';}
+    }, 900);
   }
 };
 
-// ══════════════════════════════════════════════════════════════
-// TOGGLE ABA BELA (clique no núcleo)
-// ══════════════════════════════════════════════════════════════
-window.belaToggle = function() {
-  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
-  if (!belaInitDone) {
-    belaInitDone = true;
-    if (belaSynth.getVoices().length) belaLoadVoices();
-    if (belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices;
-    else setTimeout(belaLoadVoices, 600);
+window.belaToggle=function(){
+  window.belaAtualizarStatusDados&&window.belaAtualizarStatusDados();
+  if(!belaInitDone){
+    belaInitDone=true;
+    if(belaSynth.getVoices().length)belaLoadVoices();
+    if(belaSynth.onvoiceschanged!==undefined)belaSynth.onvoiceschanged=belaLoadVoices;
+    else setTimeout(belaLoadVoices,600);
   }
-  if (belaFalando) { belaSynth.cancel(); belaFalando=false; }
-
-  if (belaAtivo) {
-    belaAtivo = false; belaRespondendo = false;
-    if (!belaGlobalAtivo) belaStopRecognition();
-    belaNucleusState(''); belaSetStatus('','Aguardando'); belaSetTranscript('');
+  if(belaFalando){belaSynth.cancel();belaFalando=false;belaProcessando=false;}
+  if(belaAtivo){
+    belaAtivo=false;belaProcessando=false;
+    if(!belaGlobalAtivo)belaStopRecognition();
+    belaNucleusState('');belaSetStatus('','Aguardando');belaSetTranscript('');
   } else {
-    belaAtivo = true; belaRespondendo = false;
-    belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…');
-    belaSpeak('Pronto, senhor! Diga Bela e sua pergunta.', () => {
-      if (belaAtivo) belaStartRecognition();
-    });
+    belaAtivo=true;belaProcessando=false;
+    belaNucleusState('active');belaSetStatus('listening','🎙️ Ouvindo…');
+    belaSpeak('Pronto! Diga Bela e sua pergunta.',()=>{if(belaAtivo)belaStartRecognition();});
   }
 };
 
 // ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded',function(){
+  belaMemoria.carregar();
   belaCriarIndicadorGlobal();
-
-  if (belaSynth) {
-    if (belaSynth.getVoices().length) belaLoadVoices();
-    if (belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices;
-    else setTimeout(belaLoadVoices, 700);
+  if(belaSynth){
+    if(belaSynth.getVoices().length)belaLoadVoices();
+    if(belaSynth.onvoiceschanged!==undefined)belaSynth.onvoiceschanged=belaLoadVoices;
+    else setTimeout(belaLoadVoices,700);
   }
-
-  const orig = window.goAdminTab;
-  if (typeof orig === 'function') {
-    window.goAdminTab = function(tab) {
-      if (tab !== 'bela') {
-        belaAtivo = false; belaRespondendo = false;
-        if (!belaGlobalAtivo) { if(belaSynth) belaSynth.cancel(); belaFalando=false; }
-        belaNucleusState(''); belaSetStatus('','Aguardando');
+  const orig=window.goAdminTab;
+  if(typeof orig==='function'){
+    window.goAdminTab=function(tab){
+      if(tab!=='bela'){
+        belaAtivo=false;belaProcessando=false;
+        if(!belaGlobalAtivo){if(belaSynth)belaSynth.cancel();belaFalando=false;clearTimeout(belaSpeakTimeout);}
+        belaNucleusState('');belaSetStatus('','Aguardando');
       } else {
-        belaAtivo = true;
-        setTimeout(() => { window.belaAtualizarStatusDados&&window.belaAtualizarStatusDados(); }, 200);
-        if (!belaOuvindo && !belaFalando) setTimeout(belaStartRecognition, 400);
+        belaAtivo=true;
+        setTimeout(()=>{window.belaAtualizarStatusDados&&window.belaAtualizarStatusDados();},200);
+        setTimeout(()=>{if(!belaOuvindo&&!belaFalando&&!belaProcessando)belaStartRecognition();},500);
       }
-      return orig.apply(this, arguments);
+      return orig.apply(this,arguments);
     };
   }
-
-  // Botão de escuta global — insere no header se existir
-  setTimeout(() => {
-    const nav = document.querySelector('.admin-nav');
-    if (nav && !document.getElementById('bela-global-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'bela-global-btn';
-      btn.className = 'admin-nav-btn';
-      btn.style.cssText = 'font-size:0.72rem;padding:6px 12px;border:1px dashed rgba(255,180,0,0.35);color:rgba(255,180,0,0.8);';
-      btn.textContent = '🎙️ Escuta global';
-      btn.onclick = window.belaToggleGlobal;
+  setTimeout(()=>{
+    const nav=document.querySelector('.admin-nav');
+    if(nav&&!$b('bela-global-btn')){
+      const btn=document.createElement('button');
+      btn.id='bela-global-btn';btn.className='admin-nav-btn';
+      btn.style.cssText='font-size:.72rem;padding:6px 12px;border:1px dashed rgba(255,180,0,.35);color:rgba(255,180,0,.8);';
+      btn.textContent='🎙️ Escuta global';btn.onclick=window.belaToggleGlobal;
       nav.appendChild(btn);
     }
-  }, 800);
+  },800);
 });
 
 })();
