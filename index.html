@@ -9991,7 +9991,193 @@ function belaInterpret(rawText) {
     }
   }
 
-  // ── CONSULTA UNIVERSAL COM NÚMERO (ex: "3 maiores despesas") ─
+  // ── BLOCO CRIAR RESERVA POR VOZ ───────────────────────────
+  // Ativa com: "cria reserva para Maria, casamento dia 15 de junho, valor 3500, sinal 1000"
+  if (/(cria|criar|nova|cadastra|adiciona|abre)\s*(uma\s*)?(reserva|evento|agendamento)/.test(t) ||
+      /reserva\s*(para|pro|pra)/.test(t)) {
+    return () => {
+      belaProcessando = false;
+
+      // ── Parser de campos ──────────────────────────────────
+      // Nome: "para [Nome]" ou "pro [Nome]" ou "pra [Nome]"
+      const nomeMatch = rawText.match(/(?:para|pro|pra|cliente)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Úa-zà-ú]+)*)/i);
+      const nome = nomeMatch ? nomeMatch[1].trim() : '';
+
+      // Telefone: sequências numéricas tipo (34) 9 9999-9999
+      const telMatch = rawText.match(/(?:telefone|fone|cel|whats(?:app)?)?[\s:]*(\(?\d{2}\)?\s*\d[\s.]?\d{4}[\s.-]?\d{4})/i);
+      const tel = telMatch ? telMatch[1].replace(/\D/g,'').replace(/^(\d{2})(\d)/,'($1) $2').replace(/(\d{4,5})(\d{4})$/,'$1-$2') : '';
+
+      // Tipo de evento
+      const TIPOS = {
+        'casamento':       'Casamento',
+        'aniversario':     'Aniversário',
+        'aniversário':     'Aniversário',
+        'formatura':       'Formatura',
+        'confraternizacao':'Confraternização',
+        'confraternização':'Confraternização',
+        'batizado':        'Batizado',
+        'outro':           'Outro',
+      };
+      let tipoSel = '';
+      for (const [k, v] of Object.entries(TIPOS)) {
+        if (t.includes(k)) { tipoSel = v; break; }
+      }
+
+      // Valor e sinal
+      const valMatch = rawText.match(/valor\s+(?:de\s+)?r?\$?\s*([\d.,]+)/i) ||
+                       rawText.match(/r?\$\s*([\d.,]+)/i);
+      const valorNum = valMatch ? parseFloat(valMatch[1].replace(/\./g,'').replace(',','.')) : 0;
+
+      const sinalMatch = rawText.match(/sinal\s+(?:de\s+)?r?\$?\s*([\d.,]+)/i);
+      const sinalNum = sinalMatch ? parseFloat(sinalMatch[1].replace(/\./g,'').replace(',','.')) : 0;
+
+      // Data: "dia 15 de junho", "15/06", "15 de junho"
+      const MESES_PT = {janeiro:1,fevereiro:2,março:3,marco:3,abril:4,maio:5,junho:6,
+                        julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+      let dataISO = '';
+      const dataM1 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+de\s+([a-záéíóúãõ]+)/i);
+      const dataM2 = rawText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      if (dataM1) {
+        const dia = dataM1[1].padStart(2,'0');
+        const mesNome = dataM1[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        const mesNum = MESES_PT[mesNome] || MESES_PT[dataM1[2].toLowerCase()];
+        if (mesNum) {
+          const ano = new Date().getFullYear();
+          dataISO = `${ano}-${String(mesNum).padStart(2,'0')}-${dia}`;
+        }
+      } else if (dataM2) {
+        const dia = dataM2[1].padStart(2,'0'), mes = dataM2[2].padStart(2,'0');
+        const ano = dataM2[3] ? (dataM2[3].length===2 ? '20'+dataM2[3] : dataM2[3]) : String(new Date().getFullYear());
+        dataISO = `${ano}-${mes}-${dia}`;
+      }
+
+      // ── Navega para Reservas e abre o modal ──────────────
+      if (typeof goAdminTab === 'function') goAdminTab('reservas');
+
+      setTimeout(() => {
+        if (typeof abrirNovaReserva === 'function') abrirNovaReserva();
+
+        setTimeout(() => {
+          if (nome)     document.getElementById('mr-nome').value = nome;
+          if (tel)      document.getElementById('mr-tel').value  = tel;
+          if (tipoSel)  document.getElementById('mr-tipo').value = tipoSel;
+          if (valorNum) document.getElementById('mr-valor').value = valorNum.toLocaleString('pt-BR',{minimumFractionDigits:2});
+          if (sinalNum) document.getElementById('mr-sinal-input').value = sinalNum.toLocaleString('pt-BR',{minimumFractionDigits:2});
+          if (dataISO && typeof mrAdicionarData === 'function') {
+            document.getElementById('mr-data-add').value = dataISO;
+            mrAdicionarData();
+          } else if (dataISO) {
+            // Fallback manual
+            if (!mrDatas.includes(dataISO)) {
+              mrDatas.push(dataISO); mrDatas.sort();
+              const ev = new Event('change'); document.getElementById('mr-data-add').dispatchEvent(ev);
+              if (typeof renderMrDatas === 'function') renderMrDatas();
+            }
+          }
+          if (typeof calcSinal === 'function') calcSinal();
+        }, 300);
+
+        // Monta resumo falado
+        let resumo = 'Pronto! Abri o formulário';
+        if (nome)     resumo += ` para ${nome}`;
+        if (tipoSel)  resumo += `, ${tipoSel}`;
+        if (dataISO)  resumo += `, ${dataISO.split('-').reverse().join('/')}`;
+        if (valorNum) resumo += `, valor ${valorNum.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`;
+        resumo += '. Confira e confirme os dados antes de salvar.';
+        belaSpeak(resumo);
+      }, 600);
+    };
+  }
+
+  // ── BLOCO CRIAR DESPESA POR VOZ ────────────────────────────
+  // Ativa com: "cria despesa de energia, valor 350, mês de abril"
+  if (/(cria|criar|nova|cadastra|adiciona|lança|lancamento|registra)\s*(uma\s*)?(despesa|gasto|custo|conta)/.test(t) ||
+      /despesa\s*(de|do|da|para|com)/.test(t)) {
+    return () => {
+      belaProcessando = false;
+
+      // Categoria
+      const CAT_MAP = {
+        'agua':          'agua',
+        'água':          'agua',
+        'energia':       'energia',
+        'luz':           'energia',
+        'eletric':       'energia',
+        'limpeza':       'limpeza',
+        'manutencao':    'manutencao',
+        'manutenção':    'manutencao',
+        'conserto':      'manutencao',
+        'reparo':        'manutencao',
+        'funcionario':   'funcionarios',
+        'funcionário':   'funcionarios',
+        'salario':       'funcionarios',
+        'salário':       'funcionarios',
+        'marketing':     'marketing',
+        'publicidade':   'marketing',
+        'propaganda':    'marketing',
+        'outros':        'outros',
+        'outro':         'outros',
+      };
+      let catSel = '';
+      for (const [k, v] of Object.entries(CAT_MAP)) {
+        if (t.includes(k)) { catSel = v; break; }
+      }
+
+      // Valor
+      const valMatch = rawText.match(/valor\s+(?:de\s+)?r?\$?\s*([\d.,]+)/i) ||
+                       rawText.match(/r?\$\s*([\d.,]+)/i);
+      const valorNum = valMatch ? parseFloat(valMatch[1].replace(/\./g,'').replace(',','.')) : 0;
+
+      // Data: hoje por padrão, mas aceita "dia X" ou "mês de X"
+      const MESES_PT = {janeiro:1,fevereiro:2,março:3,marco:3,abril:4,maio:5,junho:6,
+                        julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+      let dataISO = new Date().toISOString().split('T')[0];
+      const dataM1 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+de\s+([a-záéíóúãõ]+)/i);
+      const dataM2 = rawText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      const mesM   = rawText.match(/(?:mes|mês)\s+de\s+([a-záéíóúãõ]+)/i);
+      if (dataM1) {
+        const dia = dataM1[1].padStart(2,'0');
+        const mesNome = dataM1[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        const mesNum = MESES_PT[mesNome] || MESES_PT[dataM1[2].toLowerCase()];
+        if (mesNum) dataISO = `${new Date().getFullYear()}-${String(mesNum).padStart(2,'0')}-${dia}`;
+      } else if (dataM2) {
+        const dia = dataM2[1].padStart(2,'0'), mes = dataM2[2].padStart(2,'0');
+        const ano = dataM2[3] ? (dataM2[3].length===2?'20'+dataM2[3]:dataM2[3]) : String(new Date().getFullYear());
+        dataISO = `${ano}-${mes}-${dia}`;
+      } else if (mesM) {
+        const mesNome = mesM[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        const mesNum = MESES_PT[mesNome];
+        if (mesNum) dataISO = `${new Date().getFullYear()}-${String(mesNum).padStart(2,'0')}-01`;
+      }
+
+      // Descrição: tenta extrair o que foi dito depois de "despesa de / gasto de / conta de"
+      const descMatch = rawText.match(/(?:despesa|gasto|custo|conta)\s+(?:de|do|da|com)\s+([^,\.]+)/i);
+      const desc = descMatch ? descMatch[1].trim() : (catSel ? catSel.charAt(0).toUpperCase()+catSel.slice(1) : '');
+
+      // ── Navega para Despesas e abre modal ─────────────────
+      if (typeof goAdminTab === 'function') goAdminTab('despesas');
+
+      setTimeout(() => {
+        if (typeof abrirNovaDespesa === 'function') abrirNovaDespesa();
+
+        setTimeout(() => {
+          document.getElementById('md-data').value  = dataISO;
+          if (desc)     document.getElementById('md-desc').value  = desc;
+          if (valorNum) document.getElementById('md-valor').value = valorNum.toLocaleString('pt-BR',{minimumFractionDigits:2});
+          if (catSel && typeof selCat === 'function') selCat(catSel);
+        }, 300);
+
+        // Resumo falado
+        let resumo = 'Pronto! Formulário de despesa aberto';
+        if (catSel)   resumo += ` de ${catSel}`;
+        if (valorNum) resumo += `, valor ${valorNum.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`;
+        resumo += '. Confira e salve quando estiver pronto.';
+        belaSpeak(resumo);
+      }, 600);
+    };
+  }
+
+
   // Detecta padrões com número + maior/menor + despesa/reserva
   if (extrairNumero(t) !== null &&
       /(maior|menor|alto|baixo|caro|barato|top|minimo|maximo)/.test(t) &&
