@@ -4055,35 +4055,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bloco 1+2 — Microfone e GPS persistentes ao restaurar sessão
     setTimeout(async function() {
       try {
-        const micGranted = localStorage.getItem('bela_mic_granted');
-        if (micGranted === '1') {
+        // Verifica permissão SEM disparar popup (permissions.query não mostra nada)
+        const perm = await navigator.permissions.query({name:'microphone'});
+
+        if (perm.state === 'granted') {
+          // Permissão já concedida pelo browser — ativa direto, sem pedir nada
+          localStorage.setItem('bela_mic_granted', '1');
           if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
             window.belaToggleGlobal(true);
           }
         } else {
-          const perm = await navigator.permissions.query({name:'microphone'});
+          // 'prompt' ou 'denied' — NÃO chama getUserMedia automaticamente
+          // Vai pedir quando o usuário clicar no botão da Bela pela primeira vez
+          localStorage.removeItem('bela_mic_granted');
+        }
+
+        // Observa mudanças futuras (ex: usuário concede via configurações do browser)
+        perm.onchange = function() {
           if (perm.state === 'granted') {
             localStorage.setItem('bela_mic_granted', '1');
             if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
               window.belaToggleGlobal(true);
             }
-          } else if (perm.state === 'prompt') {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-              stream.getTracks().forEach(t => t.stop());
-              localStorage.setItem('bela_mic_granted', '1');
-              if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
-                window.belaToggleGlobal(true);
-              }
-            } catch(e) { localStorage.removeItem('bela_mic_granted'); }
+          } else {
+            localStorage.removeItem('bela_mic_granted');
           }
-        }
-        // GPS: reutiliza cache de 24h
+        };
+
+        // GPS: reutiliza cache de 24h (sem popup automático)
         const gpsCached = localStorage.getItem('bela_gps_pos');
         const gpsTs = gpsCached ? (JSON.parse(gpsCached).ts || 0) : 0;
         if ((Date.now() - gpsTs) >= 86400000 && navigator.geolocation) {
           const gpsP = await navigator.permissions.query({name:'geolocation'});
-          if (gpsP.state !== 'denied') {
+          if (gpsP.state === 'granted') {
             navigator.geolocation.getCurrentPosition(
               function(pos) {
                 localStorage.setItem('bela_gps_pos', JSON.stringify({lat:pos.coords.latitude, lng:pos.coords.longitude, ts:Date.now()}));
@@ -4091,12 +4095,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
           }
         }
-      } catch(e) {
-        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
-          window.belaToggleGlobal(true);
-        }
-      }
-    }, 1200);
+      } catch(e) {}
+    }, 800);
     setTimeout(async function() {
       try {
         await iniciarSessaoFirebase(_emailRestaurado);
@@ -4304,69 +4304,61 @@ async function doLogin() {
       } catch(e) {}
     }, 500);
     toast('✅ Bem-vindo!');
-    // Bloco 1 — Verifica/persiste permissão de microfone antes de ativar a Bela
+    // Microfone — pede UMA vez no primeiro login, nas próximas só verifica permissão
     setTimeout(async function() {
       try {
-        const micGranted = localStorage.getItem('bela_mic_granted');
-        if (micGranted === '1') {
-          // Já foi concedido antes — ativa direto sem pedir de novo
+        const perm = await navigator.permissions.query({name:'microphone'});
+
+        if (perm.state === 'granted') {
+          // Já tem permissão — ativa direto
+          localStorage.setItem('bela_mic_granted', '1');
           if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
             window.belaToggleGlobal(true);
           }
-        } else {
-          // Verifica estado atual da permissão
-          const perm = await navigator.permissions.query({name:'microphone'});
-          if (perm.state === 'granted') {
+        } else if (perm.state === 'prompt') {
+          // Primeira vez — pede permissão (o usuário acabou de fazer login = interação válida)
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+            stream.getTracks().forEach(t => t.stop());
             localStorage.setItem('bela_mic_granted', '1');
-            if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
-              window.belaToggleGlobal(true);
-            }
-          } else if (perm.state === 'prompt') {
-            // Pede uma única vez via getUserMedia e salva resultado
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-              stream.getTracks().forEach(t => t.stop()); // libera o stream
-              localStorage.setItem('bela_mic_granted', '1');
+            // Pequeno delay para o browser registrar a permissão antes de iniciar o STT
+            setTimeout(function() {
               if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
                 window.belaToggleGlobal(true);
               }
-            } catch(e) {
-              localStorage.removeItem('bela_mic_granted');
-            }
-          } else {
-            // 'denied' — limpa flag se existia
+            }, 500);
+          } catch(e) {
             localStorage.removeItem('bela_mic_granted');
           }
-          // Observa mudanças futuras de permissão
-          perm.onchange = function() {
-            if (perm.state === 'granted') localStorage.setItem('bela_mic_granted', '1');
-            else localStorage.removeItem('bela_mic_granted');
-          };
+        } else {
+          localStorage.removeItem('bela_mic_granted');
         }
-        // Bloco 2 — GPS: salva posição no localStorage por 24h
-        const gpsCached = localStorage.getItem('bela_gps_pos');
-        const gpsTs = gpsCached ? (JSON.parse(gpsCached).ts || 0) : 0;
-        const gpsValido = (Date.now() - gpsTs) < 86400000; // 24h
-        if (!gpsValido && navigator.geolocation) {
+
+        // Escuta mudanças futuras de permissão (ex: usuário revoga nas config do browser)
+        perm.onchange = function() {
+          if (perm.state === 'granted') localStorage.setItem('bela_mic_granted', '1');
+          else localStorage.removeItem('bela_mic_granted');
+        };
+
+        // GPS — só salva se já tem permissão, sem popup automático
+        const gpsTs = JSON.parse(localStorage.getItem('bela_gps_pos') || '{}').ts || 0;
+        if ((Date.now() - gpsTs) >= 86400000 && navigator.geolocation) {
           const gpsP = await navigator.permissions.query({name:'geolocation'});
-          if (gpsP.state !== 'denied') {
+          if (gpsP.state === 'granted') {
             navigator.geolocation.getCurrentPosition(
               function(pos) {
-                const d = {lat:pos.coords.latitude, lng:pos.coords.longitude, ts:Date.now()};
-                localStorage.setItem('bela_gps_pos', JSON.stringify(d));
-              },
-              function(){},
-              {timeout:8000, maximumAge:86400000}
+                localStorage.setItem('bela_gps_pos', JSON.stringify({lat:pos.coords.latitude, lng:pos.coords.longitude, ts:Date.now()}));
+              }, function(){}, {timeout:8000, maximumAge:86400000}
             );
           }
         }
       } catch(e) {
-        // Fallback silencioso se Permissions API não disponível
+        // Permissions API não disponível (Safari antigo) — ativa direto
         if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
           window.belaToggleGlobal(true);
         }
       }
-    }, 1200);
+    }, 1000);
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
       if (pendentes30 && pendentes30.length > 0) {
