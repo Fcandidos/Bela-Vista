@@ -3339,6 +3339,7 @@ select option{background:#060d14;color:#e8f4ff;}
           <div class="bela-title-wrap">
             <h2 class="bela-title">Bela, quanto faturei?</h2>
             <p class="bela-subtitle">Assistente de voz inteligente · Diga <strong>"Bela"</strong> para começar</p>
+        <p id="bela-data-status" style="font-size:0.7rem;color:var(--text-l);margin:4px 0 0;opacity:0.6"></p>
           </div>
           <div class="bela-status-pill" id="bela-status-pill">
             <span class="bela-status-dot" id="bela-status-dot"></span>
@@ -4090,13 +4091,13 @@ function addLog(msg) {
 function carregarDados() {
   try {
     const r = localStorage.getItem('vf_reservas');
-    if (r) reservas = JSON.parse(r);
+    if (r) { reservas = JSON.parse(r); window._belaReservas = reservas; }
     const s = localStorage.getItem('vf_senha');
     if (s) adminSenha = s;
     const c = localStorage.getItem('vf_checklist');
     if (c) checklistData = JSON.parse(c);
     const d = localStorage.getItem('vf_despesas');
-    if (d) despesas = JSON.parse(d);
+    if (d) { despesas = JSON.parse(d); window._belaDespesas = despesas; }
   } catch(e){}
 }
 function salvarSessao(logado, token, email) {
@@ -4195,11 +4196,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sempre carrega dados locais primeiro (senha, checklist, despesas de fallback)
   carregarDados();
+  // Expõe para a Bela imediatamente após carregarDados
+  window._belaReservas = reservas;
+  window._belaDespesas = despesas;
 
   // Tenta carregar do Firebase com listener em tempo real
   if (window._fb?.ativo) {
     window._fb.escutar((dadosNuvem) => {
       reservas = dadosNuvem;
+      window._belaReservas = reservas; // expõe para a Bela
       try { localStorage.setItem('vf_reservas', JSON.stringify(reservas)); } catch(e){}
       const adminAtivo = document.getElementById('screen-admin').classList.contains('active');
       if (adminAtivo) {
@@ -5696,6 +5701,7 @@ function escutarDespesas() {
     snap => {
       despesas = snap.docs.map(d => d.data());
       despesas.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+      window._belaDespesas = despesas; // expõe para a Bela
       try { localStorage.setItem('vf_despesas', JSON.stringify(despesas)); } catch(e){}
       const _tabNow = sessionStorage.getItem('vf_tab') || '';
       if (document.getElementById('tab-despesas')?.classList.contains('active')) renderDespesas();
@@ -9160,8 +9166,23 @@ function semanaAtual() {
   return { ini: s(dom), fim: s(sab) };
 }
 
-function belaGetReservas() { return window.reservas || []; }
-function belaGetDespesas()  { return window.despesas || []; }
+function belaGetReservas() {
+  // window._belaReservas é atualizado pelo listener Firebase toda vez que reservas muda
+  if (window._belaReservas && window._belaReservas.length > 0) return window._belaReservas;
+  // Fallback 1: variável global do script principal (mesmo módulo HTML)
+  try { if (typeof reservas !== 'undefined' && Array.isArray(reservas) && reservas.length > 0) return reservas; } catch(e){}
+  // Fallback 2: dados pré-carregados
+  if (window._reservasNuvem && window._reservasNuvem.length > 0) return window._reservasNuvem;
+  // Fallback 3: localStorage
+  try { const raw = localStorage.getItem('vf_reservas'); if (raw) { const arr = JSON.parse(raw); if (arr.length) return arr; } } catch(e){}
+  return [];
+}
+function belaGetDespesas() {
+  if (window._belaDespesas && window._belaDespesas.length > 0) return window._belaDespesas;
+  try { if (typeof despesas !== 'undefined' && Array.isArray(despesas) && despesas.length > 0) return despesas; } catch(e){}
+  try { const raw = localStorage.getItem('vf_despesas'); if (raw) { const arr = JSON.parse(raw); if (arr.length) return arr; } } catch(e){}
+  return [];
+}
 
 // ══════════════════════════════════════════════════════════════
 // QUERIES — corrigidas e tratando "senhor"
@@ -9369,7 +9390,18 @@ function belaRefreshContext() {
 // ══════════════════════════════════════════════════════════════
 // CHIP BUTTONS
 // ══════════════════════════════════════════════════════════════
+window.belaAtualizarStatusDados = function() {
+  const el = document.getElementById('bela-data-status');
+  if (!el) return;
+  const nr = belaGetReservas().length;
+  const nd = belaGetDespesas().length;
+  el.textContent = nr > 0
+    ? '✅ ' + nr + ' reservas · ' + nd + ' despesas carregadas'
+    : '⚠️ Aguardando dados do Firebase…';
+};
+
 window.belaAskText = function(text) {
+  window.belaAtualizarStatusDados();
   if (belaRespondendo) return;
   belaRespondendo = true;
   if (belaFalando) belaSynth.cancel();
@@ -9502,6 +9534,7 @@ window.belaToggle = function() {
     else setTimeout(belaLoadVoices, 600);
   }
 
+  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
   if (belaFalando) { belaSynth.cancel(); belaFalando = false; }
 
   if (belaAtivo) {
@@ -9545,6 +9578,9 @@ document.addEventListener('DOMContentLoaded', function() {
         belaFalando = false;
         belaNucleusState('');
         belaSetStatus('', 'Aguardando');
+      }
+      if (tab === 'bela') {
+        setTimeout(() => { if (window.belaAtualizarStatusDados) window.belaAtualizarStatusDados(); }, 200);
       }
       return orig.apply(this, arguments);
     };
