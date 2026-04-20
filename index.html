@@ -2373,7 +2373,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <button class="admin-nav-btn" data-tab="despesas" onclick="goAdminTab('despesas')">💸 Despesas</button>
       <button class="admin-nav-btn" data-tab="financeiro" onclick="goAdminTab('financeiro')">📈 Financeiro</button>
       <button class="admin-nav-btn" data-tab="administracao" onclick="goAdminTab('administracao')">⚙️ Administração</button>
-      <button class="admin-nav-btn bela-nav-btn" data-tab="bela" onclick="goAdminTab('bela')" style="background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(120,40,200,0.08));border:1px solid rgba(0,212,255,0.2);color:var(--cyan);font-weight:700;letter-spacing:0.3px;position:relative;overflow:hidden;">
+      <button class="admin-nav-btn bela-nav-btn" id="bela-nav-fixed-btn" data-tab="bela" onclick="goAdminTab('bela')" style="background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(120,40,200,0.08));border:1px solid rgba(0,212,255,0.2);color:var(--cyan);font-weight:700;letter-spacing:0.3px;position:relative;overflow:hidden;">
         <span style="position:relative;z-index:1">✨ Bela, quanto faturei?</span>
         <span style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,212,255,0.06),transparent);animation:bela-nav-shine 3s infinite"></span>
       </button>
@@ -10487,7 +10487,7 @@ function belaIniciarParticulas() {
           </radialGradient></defs>
         </svg>
         <div>
-          <div style="font-weight:700;font-size:0.85rem;color:#fff;line-height:1.1">Bela</div>
+          <div style="font-weight:700;font-size:0.85rem;color:#fff;line-height:1.1" class="bela-name-lbl">Bela</div>
           <div id="bela-chat-status-txt" style="font-size:0.65rem;color:rgba(255,210,80,.7)">Assistente financeira</div>
         </div>
       </div>
@@ -10530,8 +10530,24 @@ function belaIniciarParticulas() {
   left: 18px;
   z-index: 9998;
   font-family: 'DM Sans', sans-serif;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 @media(max-width:640px) { #bela-chat-widget { bottom: 80px; left: 10px; } }
+/* Drag handle indicator */
+#bela-pet-wrap::before {
+  content: '⠿';
+  position: absolute;
+  top: -12px; left: 50%;
+  transform: translateX(-50%);
+  font-size: .6rem;
+  color: rgba(180,130,255,.4);
+  pointer-events: none;
+  letter-spacing: 1px;
+  transition: color .2s;
+}
+#bela-pet-wrap:hover::before { color: rgba(180,130,255,.85); }
 /* Oculta no login e na tela pública */
 #screen-login.active ~ #bela-chat-widget,
 #screen-public.active ~ #bela-chat-widget,
@@ -10733,31 +10749,58 @@ body:not(:has(#screen-admin.active)) #bela-chat-widget { display: none !importan
 
 /* Light mode */
 [data-theme="light"] #bela-chat-panel {
-  background: rgba(255,252,240,.98);
-  border-color: rgba(200,130,0,.3);
-  box-shadow: 0 16px 48px rgba(0,0,0,.18);
+  background: #fffdf5;
+  border-color: rgba(180,110,0,.35);
+  box-shadow: 0 16px 48px rgba(0,0,0,.2), 0 2px 8px rgba(0,0,0,.1);
 }
 [data-theme="light"] #bela-chat-toggle {
   background: linear-gradient(135deg, rgba(255,200,50,.15), rgba(255,120,0,.1));
   border-color: rgba(200,130,0,.5);
 }
 [data-theme="light"] #bela-chat-header {
-  background: rgba(255,180,0,.08);
-  border-color: rgba(200,130,0,.15);
+  background: linear-gradient(90deg, rgba(255,160,0,.15), rgba(255,100,0,.08));
+  border-color: rgba(180,110,0,.2);
 }
+[data-theme="light"] #bela-chat-header .bela-name-lbl { color: #3a2000 !important; }
+[data-theme="light"] #bela-chat-status-txt { color: #8a5500 !important; }
 [data-theme="light"] .bela-msg-bela .bela-msg-bubble {
-  background: rgba(255,180,0,.1); border-color: rgba(200,130,0,.2);
-  color: #7a4800;
+  background: rgba(255,180,0,.12); border-color: rgba(180,110,0,.25);
+  color: #5a3200;
 }
 [data-theme="light"] .bela-msg-user .bela-msg-bubble {
-  background: rgba(0,153,204,.1); border-color: rgba(0,153,204,.2);
-  color: #005580;
+  background: rgba(0,130,190,.1); border-color: rgba(0,130,190,.25);
+  color: #003d5c;
 }
+[data-theme="light"] .bela-msg-time { color: rgba(80,50,0,.45) !important; }
 [data-theme="light"] #bela-chat-input {
-  background: #fff; border-color: rgba(200,130,0,.3); color: #4a3000;
+  background: #fff;
+  border-color: rgba(180,110,0,.35);
+  color: #3a2000;
 }
-[data-theme="light"] #bela-chat-input::placeholder { color: rgba(180,120,0,.4); }
-[data-theme="light"] #bela-chat-suggestions button { color: #7a5000; border-color: rgba(200,130,0,.25); }
+[data-theme="light"] #bela-chat-input::placeholder { color: rgba(140,90,0,.45); }
+[data-theme="light"] #bela-chat-input:focus { border-color: rgba(200,130,0,.6); box-shadow: 0 0 0 3px rgba(200,130,0,.1); }
+[data-theme="light"] #bela-chat-send {
+  background: linear-gradient(135deg, rgba(200,130,0,.2), rgba(180,80,0,.15));
+  border-color: rgba(180,110,0,.4);
+  color: #7a4800;
+}
+[data-theme="light"] #bela-chat-send:hover { background: rgba(200,130,0,.3); }
+[data-theme="light"] #bela-chat-suggestions {
+  border-color: rgba(180,110,0,.12);
+}
+[data-theme="light"] #bela-chat-suggestions button {
+  color: #6a4000;
+  border-color: rgba(180,110,0,.3);
+  background: rgba(255,180,0,.08);
+}
+[data-theme="light"] #bela-chat-suggestions button:hover {
+  background: rgba(255,180,0,.2);
+  color: #4a2800;
+  border-color: rgba(180,110,0,.5);
+}
+[data-theme="light"] #bela-chat-messages::-webkit-scrollbar-thumb { background: rgba(180,110,0,.25); }
+[data-theme="light"] #bela-chat-input-wrap { border-color: rgba(180,110,0,.15); }
+[data-theme="light"] .bela-typing-dots span { background: rgba(180,110,0,.5); }
 </style>
 
 <script>
@@ -11158,6 +11201,206 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch(e){}
   }, 250);
 });
+</script>
+<!-- Botão flutuante arrastável "Bela, quanto faturei?" -->
+<div id="bela-float-btn" title="Segurar e arrastar para mover">
+  <button onclick="goAdminTab('bela')" style="background:linear-gradient(135deg,rgba(0,212,255,0.12),rgba(120,40,200,0.12));border:1px solid rgba(0,212,255,0.3);color:var(--cyan,#00d4ff);font-weight:700;letter-spacing:0.3px;position:relative;overflow:hidden;border-radius:12px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;display:flex;align-items:center;gap:7px;transition:box-shadow .2s;">
+    <span style="position:relative;z-index:1">✨ Bela, quanto faturei?</span>
+    <span style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,212,255,0.08),transparent);animation:bela-nav-shine 3s infinite;pointer-events:none"></span>
+  </button>
+  <div id="bela-float-drag-handle" title="Arrastar">⠿</div>
+</div>
+
+<style>
+#bela-float-btn {
+  position: fixed;
+  top: 14px;
+  right: 220px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  filter: drop-shadow(0 2px 8px rgba(0,212,255,0.15));
+  transition: filter .2s;
+}
+#screen-login.active ~ #bela-float-btn,
+#screen-public.active ~ #bela-float-btn,
+body:not(:has(#screen-admin.active)) #bela-float-btn { display: none !important; }
+#bela-float-btn:hover { filter: drop-shadow(0 4px 16px rgba(0,212,255,0.35)); }
+#bela-float-btn.dragging { filter: drop-shadow(0 8px 24px rgba(0,212,255,0.55)); transition: none; }
+#bela-float-drag-handle {
+  cursor: grab;
+  font-size: .75rem;
+  color: rgba(0,212,255,.35);
+  padding: 4px 3px;
+  letter-spacing: 1px;
+  line-height: 1;
+  transition: color .2s;
+}
+#bela-float-drag-handle:hover { color: rgba(0,212,255,.85); }
+#bela-float-drag-handle:active { cursor: grabbing; }
+[data-theme="light"] #bela-float-btn button {
+  background: linear-gradient(135deg,rgba(0,153,204,.1),rgba(99,102,241,.08)) !important;
+  border-color: rgba(0,153,204,.35) !important;
+  color: #0077aa !important;
+}
+[data-theme="light"] #bela-float-drag-handle { color: rgba(0,120,180,.4); }
+[data-theme="light"] #bela-float-drag-handle:hover { color: rgba(0,120,180,.8); }
+</style>
+
+<script>
+/* ── DRAG ENGINE — Pet + Botão Bela ─────────────────────────── */
+(function(){
+  function makeDraggable(el, handleEl) {
+    var startX, startY, startLeft, startTop, startRight, startBottom;
+    var isDragging = false;
+    var dragMoved  = false;
+
+    function getPos() {
+      var rect = el.getBoundingClientRect();
+      return { left: rect.left, top: rect.top };
+    }
+
+    function onDown(e) {
+      var isTouch = e.type === 'touchstart';
+      var cx = isTouch ? e.touches[0].clientX : e.clientX;
+      var cy = isTouch ? e.touches[0].clientY : e.clientY;
+
+      isDragging = true;
+      dragMoved  = false;
+
+      var pos = getPos();
+      startX    = cx;
+      startY    = cy;
+      startLeft = pos.left;
+      startTop  = pos.top;
+
+      // Switch to left/top absolute positioning
+      el.style.right  = 'auto';
+      el.style.bottom = 'auto';
+      el.style.left   = startLeft + 'px';
+      el.style.top    = startTop  + 'px';
+      el.style.transition = 'none';
+
+      el.classList.add('dragging');
+      document.addEventListener(isTouch ? 'touchmove' : 'mousemove', onMove, {passive:false});
+      document.addEventListener(isTouch ? 'touchend'  : 'mouseup',   onUp);
+      if (!isTouch) e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!isDragging) return;
+      var isTouch = e.type === 'touchmove';
+      var cx = isTouch ? e.touches[0].clientX : e.clientX;
+      var cy = isTouch ? e.touches[0].clientY : e.clientY;
+      var dx = cx - startX;
+      var dy = cy - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+
+      var newLeft = startLeft + dx;
+      var newTop  = startTop  + dy;
+
+      // Clamp inside viewport
+      var W = window.innerWidth, H = window.innerHeight;
+      var elW = el.offsetWidth, elH = el.offsetHeight;
+      newLeft = Math.max(8, Math.min(W - elW - 8, newLeft));
+      newTop  = Math.max(8, Math.min(H - elH - 8, newTop));
+
+      el.style.left = newLeft + 'px';
+      el.style.top  = newTop  + 'px';
+      if (isTouch) e.preventDefault();
+    }
+
+    function onUp(e) {
+      isDragging = false;
+      el.classList.remove('dragging');
+      el.style.transition = '';
+      var isTouch = e.type === 'touchend';
+      document.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onMove);
+      document.removeEventListener(isTouch ? 'touchend'  : 'mouseup',   onUp);
+    }
+
+    handleEl.addEventListener('mousedown',  onDown);
+    handleEl.addEventListener('touchstart', onDown, {passive:false});
+
+    // Prevent click from firing after drag on the handle
+    handleEl.addEventListener('click', function(e){ if(dragMoved){ e.stopPropagation(); e.preventDefault(); } });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    // ── Pet arrastável ─────────────────────────────────────────
+    var petWidget = document.getElementById('bela-chat-widget');
+    var petWrap   = document.getElementById('bela-pet-wrap');
+    if (petWidget && petWrap) {
+      // Remove inline onclick e substituir com controle de drag
+      petWrap.removeAttribute('onclick');
+      var _petDragMoved = false;
+
+      // Custom drag para o pet (handle = petWrap inteiro)
+      var _isDragging = false;
+      var _startX, _startY, _startLeft, _startTop;
+
+      function petGetPos() {
+        var rect = petWidget.getBoundingClientRect();
+        return { left: rect.left, top: rect.top };
+      }
+
+      function petDown(e) {
+        var isTouch = e.type === 'touchstart';
+        var cx = isTouch ? e.touches[0].clientX : e.clientX;
+        var cy = isTouch ? e.touches[0].clientY : e.clientY;
+        _isDragging = true; _petDragMoved = false;
+        var pos = petGetPos();
+        _startX = cx; _startY = cy;
+        _startLeft = pos.left; _startTop = pos.top;
+        petWidget.style.right = 'auto'; petWidget.style.bottom = 'auto';
+        petWidget.style.left  = _startLeft + 'px'; petWidget.style.top = _startTop + 'px';
+        petWidget.style.transition = 'none';
+        petWidget.classList.add('dragging');
+        document.addEventListener(isTouch?'touchmove':'mousemove', petMove, {passive:false});
+        document.addEventListener(isTouch?'touchend':'mouseup', petUp);
+        if (!isTouch) e.preventDefault();
+      }
+      function petMove(e) {
+        if (!_isDragging) return;
+        var isTouch = e.type === 'touchmove';
+        var cx = isTouch ? e.touches[0].clientX : e.clientX;
+        var cy = isTouch ? e.touches[0].clientY : e.clientY;
+        var dx = cx - _startX, dy = cy - _startY;
+        if (Math.abs(dx)>4||Math.abs(dy)>4) _petDragMoved = true;
+        var W = window.innerWidth, H = window.innerHeight;
+        var newL = Math.max(8, Math.min(W - petWidget.offsetWidth  - 8, _startLeft + dx));
+        var newT = Math.max(8, Math.min(H - petWidget.offsetHeight - 8, _startTop  + dy));
+        petWidget.style.left = newL+'px'; petWidget.style.top = newT+'px';
+        if (isTouch) e.preventDefault();
+      }
+      function petUp(e) {
+        _isDragging = false;
+        petWidget.style.transition = '';
+        petWidget.classList.remove('dragging');
+        var isTouch = e.type === 'touchend';
+        document.removeEventListener(isTouch?'touchmove':'mousemove', petMove);
+        document.removeEventListener(isTouch?'touchend':'mouseup', petUp);
+      }
+      petWrap.addEventListener('mousedown',  petDown);
+      petWrap.addEventListener('touchstart', petDown, {passive:false});
+      petWrap.addEventListener('click', function(e){
+        if (_petDragMoved) { _petDragMoved = false; return; }
+        belaChatToggle();
+      });
+    }
+
+    // ── Botão flutuante arrastável ─────────────────────────────
+    var floatBtn    = document.getElementById('bela-float-btn');
+    var floatHandle = document.getElementById('bela-float-drag-handle');
+    if (floatBtn && floatHandle) {
+      makeDraggable(floatBtn, floatHandle);
+    }
+  });
+})();
 </script>
 </body>
 </html>
