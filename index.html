@@ -1920,441 +1920,238 @@ select option{background:#060d14;color:#e8f4ff;}
 }
 
 /* ============================================================
-   BELA — Assistente de Voz
+   BELA — Assistente de Voz — v5 Estados Reativos
 ============================================================ */
 @keyframes bela-nav-shine {
   0%   { transform: translateX(-100%); }
   60%  { transform: translateX(100%); }
   100% { transform: translateX(100%); }
 }
+@keyframes bela-ring-rot       { to { transform: rotate(360deg); } }
+@keyframes bela-ring-rot-rev   { to { transform: rotate(-360deg); } }
+@keyframes bela-pulse-idle { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:.75;transform:scale(1.04)} }
+@keyframes bela-pulse-listen{ 0%,100%{opacity:.7;transform:scale(1)} 50%{opacity:1;transform:scale(1.07)} }
+@keyframes bela-pulse-speak { 0%,100%{opacity:.8;transform:scale(1)} 50%{opacity:1;transform:scale(1.12)} }
+@keyframes bela-pulse-think { 0%,100%{opacity:.6;transform:scale(1)} 33%{opacity:1;transform:scale(1.05)} 66%{opacity:.7;transform:scale(.98)} }
+@keyframes bela-wave-out  { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(1.35);opacity:0} }
+@keyframes bela-wave-out2 { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
+@keyframes bela-blink     { 0%,100%{opacity:1} 50%{opacity:.2} }
+@keyframes bela-dot-orbit { to { transform: rotate(360deg); } }
+@keyframes bela-card-in   { from{opacity:0;transform:translateY(18px) scale(.97)} to{opacity:1;transform:none} }
+@keyframes bela-state-fade{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
 
-.bela-container {
-  max-width: 860px;
-  margin: 0 auto;
-  padding-bottom: 60px;
-}
+.bela-container { max-width:860px;margin:0 auto;padding-bottom:60px; }
 
 /* Header */
-.bela-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 32px;
-}
-.bela-title {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  font-weight: 800;
-  background: linear-gradient(135deg, #ffd04a, #ff8800, #ff4488);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0 0 4px 0;
-  line-height: 1.1;
-}
-.bela-subtitle {
-  font-size: 0.82rem;
-  color: var(--text-l);
-  margin: 0;
-}
-.bela-subtitle strong { color: var(--cyan); -webkit-text-fill-color: var(--cyan); }
+.bela-header { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:32px; }
+.bela-title  { font-family:'Syne',sans-serif;font-size:clamp(1.4rem,3vw,2rem);font-weight:800;
+  background:linear-gradient(135deg,#ffd04a,#ff8800,#ff4488);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;margin:0 0 4px;line-height:1.1; }
+.bela-subtitle { font-size:.82rem;color:var(--text-l);margin:0; }
+.bela-subtitle strong { color:var(--cyan);-webkit-text-fill-color:var(--cyan); }
 
-.bela-status-pill {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 0.78rem;
-  color: var(--text-l);
-  transition: all .3s;
-  white-space: nowrap;
-}
-.bela-status-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #555;
-  transition: background .3s, box-shadow .3s;
-}
-.bela-status-pill.listening {
-  border-color: rgba(0,212,255,0.4);
-  background: rgba(0,212,255,0.06);
-  color: var(--cyan);
-}
-.bela-status-pill.listening .bela-status-dot {
-  background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan);
-  animation: bela-blink 1s infinite;
-}
-.bela-status-pill.speaking {
-  border-color: rgba(255,170,0,0.4);
-  background: rgba(255,170,0,0.06);
-  color: #ffaa00;
-}
-.bela-status-pill.speaking .bela-status-dot {
-  background: #ffaa00;
-  box-shadow: 0 0 8px #ffaa00;
-  animation: bela-blink .6s infinite;
-}
-.bela-status-pill.thinking {
-  border-color: rgba(167,139,250,0.4);
-  background: rgba(167,139,250,0.06);
-  color: var(--purple);
-}
-.bela-status-pill.thinking .bela-status-dot {
-  background: var(--purple);
-  box-shadow: 0 0 8px var(--purple);
-  animation: bela-spin-dot 1s linear infinite;
-}
-@keyframes bela-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-@keyframes bela-spin-dot { to { transform: rotate(360deg); } }
+.bela-status-pill { display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:.78rem;
+  color:var(--text-l);transition:all .35s;white-space:nowrap; }
+.bela-status-dot  { width:8px;height:8px;border-radius:50%;background:#555;transition:all .35s; }
+
+/* Status pills estados */
+.bela-status-pill.listening  { border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.06);color:var(--cyan); }
+.bela-status-pill.listening  .bela-status-dot { background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:bela-blink .9s infinite; }
+.bela-status-pill.speaking   { border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.06);color:#00ff88; }
+.bela-status-pill.speaking   .bela-status-dot { background:#00ff88;box-shadow:0 0 10px #00ff88;animation:bela-blink .5s infinite; }
+.bela-status-pill.thinking   { border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.06);color:var(--purple); }
+.bela-status-pill.thinking   .bela-status-dot { background:var(--purple);box-shadow:0 0 8px var(--purple);animation:bela-blink .4s infinite; }
 
 /* Stage */
-.bela-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 28px;
-}
+.bela-stage { display:flex;flex-direction:column;align-items:center;gap:0;margin-bottom:28px; }
 
 /* Nucleus wrap */
 .bela-nucleus-wrap {
-  position: relative;
-  width: 280px;
-  height: 280px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position:relative;width:300px;height:300px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
 }
-@media(max-width:480px) {
-  .bela-nucleus-wrap { width: 220px; height: 220px; }
+@media(max-width:480px){ .bela-nucleus-wrap{width:240px;height:240px;} }
+
+/* Canvas de partículas */
+#bela-canvas {
+  position:absolute;inset:0;width:100%;height:100%;
+  border-radius:50%;pointer-events:none;z-index:1;
 }
 
-/* Rings */
+/* Anéis — 4 anéis tipo átomo */
 .bela-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(0,212,255,0.18);
-  pointer-events: none;
+  position:absolute;border-radius:50%;pointer-events:none;z-index:2;
+  border:1px solid transparent;transition:border-color .6s, width .6s, height .6s, opacity .6s;
 }
-.bela-ring-1 { width: 96%;  height: 96%;  animation: bela-ring-rot 18s linear infinite; border-color: rgba(0,212,255,0.22); }
-.bela-ring-2 { width: 80%;  height: 80%;  animation: bela-ring-rot 12s linear infinite reverse; border-color: rgba(167,139,250,0.18); }
-.bela-ring-3 { width: 110%; height: 110%; animation: bela-ring-rot 28s linear infinite; border-color: rgba(255,170,0,0.1); border-style: dashed; }
-@keyframes bela-ring-rot {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
+.bela-ring-1 { width:88%; height:88%; animation:bela-ring-rot 20s linear infinite; }
+.bela-ring-2 { width:72%; height:72%; animation:bela-ring-rot-rev 14s linear infinite; }
+.bela-ring-3 { width:56%; height:56%; animation:bela-ring-rot 9s linear infinite; }
+.bela-ring-4 { width:104%;height:104%;animation:bela-ring-rot-rev 32s linear infinite;border-style:dashed; }
 
-/* Particle orbits */
-.bela-orbit {
-  position: absolute;
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.bela-orbit-1 { animation: bela-ring-rot 8s  linear infinite; }
-.bela-orbit-2 { animation: bela-ring-rot 13s linear infinite reverse; width: 80%; height: 80%; }
-.bela-orbit-3 { animation: bela-ring-rot 6s  linear infinite; width: 60%; height: 60%; }
-.bela-orbit-4 { animation: bela-ring-rot 20s linear infinite; width: 90%; height: 90%; }
-.bela-orbit-5 { animation: bela-ring-rot 10s linear infinite reverse; width: 70%; height: 70%; }
+/* Idle — anéis dourados suaves */
+.bela-nucleus-wrap          .bela-ring-1 { border-color:rgba(255,180,0,.18); }
+.bela-nucleus-wrap          .bela-ring-2 { border-color:rgba(255,150,0,.12); }
+.bela-nucleus-wrap          .bela-ring-3 { border-color:rgba(255,200,50,.08); }
+.bela-nucleus-wrap          .bela-ring-4 { border-color:rgba(255,140,0,.07); }
 
-.bela-particle {
-  position: absolute;
-  top: 0; left: 50%;
-  transform: translateX(-50%) translateY(-50%);
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 6px var(--cyan), 0 0 12px rgba(0,212,255,0.5);
-}
-.bela-particle.p2 { background: #ffaa00; box-shadow: 0 0 6px #ffaa00, 0 0 12px rgba(255,170,0,0.5); width:4px; height:4px; }
-.bela-particle.p3 { background: var(--purple); box-shadow: 0 0 6px var(--purple); width:3px; height:3px; }
-.bela-particle.p4 { background: var(--green); box-shadow: 0 0 6px var(--green); width:4px; height:4px; }
-.bela-particle.p5 { background: #ff6688; box-shadow: 0 0 6px #ff6688; width:3px; height:3px; }
+/* Listening — azul ciano */
+.bela-nucleus-wrap.active   .bela-ring-1 { border-color:rgba(0,212,255,.45); }
+.bela-nucleus-wrap.active   .bela-ring-2 { border-color:rgba(0,180,255,.3); }
+.bela-nucleus-wrap.active   .bela-ring-3 { border-color:rgba(100,220,255,.2); }
+.bela-nucleus-wrap.active   .bela-ring-4 { border-color:rgba(0,212,255,.12); }
 
-/* Audio wave rings */
+/* Speaking — verde */
+.bela-nucleus-wrap.speaking .bela-ring-1 { border-color:rgba(0,255,136,.5); }
+.bela-nucleus-wrap.speaking .bela-ring-2 { border-color:rgba(0,220,100,.35); }
+.bela-nucleus-wrap.speaking .bela-ring-3 { border-color:rgba(50,255,150,.25); }
+.bela-nucleus-wrap.speaking .bela-ring-4 { border-color:rgba(0,255,136,.12); }
+
+/* Thinking — roxo */
+.bela-nucleus-wrap.thinking .bela-ring-1 { border-color:rgba(167,139,250,.5); animation-duration:7s; }
+.bela-nucleus-wrap.thinking .bela-ring-2 { border-color:rgba(140,100,255,.35); animation-duration:5s; }
+.bela-nucleus-wrap.thinking .bela-ring-3 { border-color:rgba(200,160,255,.25); animation-duration:3s; }
+.bela-nucleus-wrap.thinking .bela-ring-4 { border-color:rgba(167,139,250,.12); }
+
+/* Ondas de áudio */
 .bela-wave-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid rgba(0,212,255,0.5);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .3s;
+  position:absolute;border-radius:50%;border:2px solid transparent;
+  pointer-events:none;z-index:3;opacity:0;
 }
-.bw1 { width: 58%; height: 58%; }
-.bw2 { width: 72%; height: 72%; }
-.bw3 { width: 86%; height: 86%; }
+.bw1 { width:50%;height:50%; } .bw2 { width:65%;height:65%; }
+.bw3 { width:80%;height:80%; } .bw4 { width:95%;height:95%; }
 
-.bela-nucleus-wrap.active .bw1 { opacity:1; animation: bela-wave 1.2s ease-out infinite; }
-.bela-nucleus-wrap.active .bw2 { opacity:1; animation: bela-wave 1.2s ease-out .2s infinite; }
-.bela-nucleus-wrap.active .bw3 { opacity:1; animation: bela-wave 1.2s ease-out .4s infinite; }
-.bela-nucleus-wrap.speaking .bw1 { opacity:1; animation: bela-wave 0.8s ease-out infinite; border-color: rgba(255,170,0,0.6); }
-.bela-nucleus-wrap.speaking .bw2 { opacity:1; animation: bela-wave 0.8s ease-out .15s infinite; border-color: rgba(255,170,0,0.4); }
-.bela-nucleus-wrap.speaking .bw3 { opacity:1; animation: bela-wave 0.8s ease-out .3s infinite; border-color: rgba(255,170,0,0.25); }
+/* Ondas ouvindo — azul */
+.bela-nucleus-wrap.active .bw1 { opacity:1;border-color:rgba(0,212,255,.6);animation:bela-wave-out 1.4s ease-out infinite; }
+.bela-nucleus-wrap.active .bw2 { opacity:1;border-color:rgba(0,212,255,.4);animation:bela-wave-out 1.4s ease-out .25s infinite; }
+.bela-nucleus-wrap.active .bw3 { opacity:1;border-color:rgba(0,212,255,.25);animation:bela-wave-out 1.4s ease-out .5s infinite; }
+.bela-nucleus-wrap.active .bw4 { opacity:1;border-color:rgba(0,212,255,.12);animation:bela-wave-out2 1.8s ease-out .1s infinite; }
 
-@keyframes bela-wave {
-  0%   { transform: scale(1);   opacity: .8; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
+/* Ondas falando — verde, mais rápidas */
+.bela-nucleus-wrap.speaking .bw1 { opacity:1;border-color:rgba(0,255,136,.7);animation:bela-wave-out .85s ease-out infinite; }
+.bela-nucleus-wrap.speaking .bw2 { opacity:1;border-color:rgba(0,255,136,.5);animation:bela-wave-out .85s ease-out .15s infinite; }
+.bela-nucleus-wrap.speaking .bw3 { opacity:1;border-color:rgba(0,255,136,.3);animation:bela-wave-out .85s ease-out .3s infinite; }
+.bela-nucleus-wrap.speaking .bw4 { opacity:1;border-color:rgba(0,255,136,.15);animation:bela-wave-out2 1.1s ease-out .05s infinite; }
 
 /* Core */
 .bela-core {
-  position: relative;
-  z-index: 10;
-  width: 48%; height: 48%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .3s;
+  position:relative;z-index:10;width:42%;height:42%;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  transition:transform .4s cubic-bezier(.16,1,.3,1);
 }
-.bela-nucleus-wrap:hover .bela-core { transform: scale(1.05); }
-.bela-nucleus-wrap.active .bela-core { transform: scale(1.08); }
+.bela-nucleus-wrap:hover .bela-core          { transform:scale(1.06); }
+.bela-nucleus-wrap.active .bela-core         { transform:scale(1.09); }
+.bela-nucleus-wrap.speaking .bela-core       { transform:scale(1.13); }
+.bela-nucleus-wrap.thinking .bela-core       { transform:scale(1.05); }
 
-.bela-core-inner {
-  position: relative;
-  width: 100%; height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.bela-core-inner { position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center; }
+
 .bela-core-glow {
-  position: absolute;
-  inset: -20%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,170,30,0.35) 0%, rgba(255,100,0,0.15) 50%, transparent 75%);
-  animation: bela-pulse 3s ease-in-out infinite;
-  pointer-events: none;
+  position:absolute;inset:-25%;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,170,30,.32) 0%,rgba(255,100,0,.12) 50%,transparent 75%);
+  animation:bela-pulse-idle 3.5s ease-in-out infinite;transition:all .6s;
 }
-.bela-nucleus-wrap.active .bela-core-glow {
-  animation: bela-pulse-fast 1.5s ease-in-out infinite;
-}
-@keyframes bela-pulse {
-  0%,100% { opacity: .6; transform: scale(1); }
-  50%      { opacity: 1;  transform: scale(1.15); }
-}
-@keyframes bela-pulse-fast {
-  0%,100% { opacity: .7; transform: scale(1); }
-  50%      { opacity: 1;  transform: scale(1.2); }
-}
+.bela-nucleus-wrap.active   .bela-core-glow { background:radial-gradient(circle,rgba(0,212,255,.28) 0%,rgba(0,150,255,.1) 50%,transparent 75%);animation:bela-pulse-listen 1.2s ease-in-out infinite; }
+.bela-nucleus-wrap.speaking .bela-core-glow { background:radial-gradient(circle,rgba(0,255,136,.35) 0%,rgba(0,200,80,.12) 50%,transparent 75%);animation:bela-pulse-speak .8s ease-in-out infinite; }
+.bela-nucleus-wrap.thinking .bela-core-glow { background:radial-gradient(circle,rgba(167,139,250,.32) 0%,rgba(120,80,240,.12) 50%,transparent 75%);animation:bela-pulse-think 1s ease-in-out infinite; }
 
+/* SVG core */
 .bela-core-svg {
-  width: 82%; height: 82%;
-  filter: drop-shadow(0 0 18px rgba(255,160,0,0.7)) drop-shadow(0 0 40px rgba(255,80,0,0.4));
-  animation: bela-core-breathe 4s ease-in-out infinite;
+  width:88%;height:88%;
+  filter:drop-shadow(0 0 16px rgba(255,160,0,.65)) drop-shadow(0 0 36px rgba(255,80,0,.35));
+  animation:bela-pulse-idle 4s ease-in-out infinite;transition:filter .6s;
 }
-.bela-nucleus-wrap.active .bela-core-svg {
-  filter: drop-shadow(0 0 28px rgba(255,200,0,0.9)) drop-shadow(0 0 60px rgba(255,100,0,0.6));
-  animation: bela-core-breathe-fast 1.5s ease-in-out infinite;
+.bela-nucleus-wrap.active   .bela-core-svg { filter:drop-shadow(0 0 20px rgba(0,212,255,.8)) drop-shadow(0 0 44px rgba(0,150,255,.4));animation:bela-pulse-listen 1.2s ease-in-out infinite; }
+.bela-nucleus-wrap.speaking .bela-core-svg { filter:drop-shadow(0 0 24px rgba(0,255,136,.9)) drop-shadow(0 0 50px rgba(0,200,80,.5));animation:bela-pulse-speak .8s ease-in-out infinite; }
+.bela-nucleus-wrap.thinking .bela-core-svg { filter:drop-shadow(0 0 18px rgba(167,139,250,.8)) drop-shadow(0 0 40px rgba(120,80,240,.4));animation:bela-pulse-think 1s ease-in-out infinite; }
+
+/* Estado label — abaixo do núcleo */
+.bela-state-label {
+  display:flex;align-items:center;gap:8px;
+  margin-top:14px;padding:7px 20px;
+  border-radius:999px;
+  font-size:.82rem;font-weight:600;letter-spacing:.4px;
+  font-family:'DM Sans',sans-serif;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--text-l);
+  transition:all .4s cubic-bezier(.16,1,.3,1);
+  animation:bela-state-fade .3s ease-out;
+  user-select:none;
 }
-@keyframes bela-core-breathe {
-  0%,100% { transform: scale(1);    filter: drop-shadow(0 0 18px rgba(255,160,0,.7)) drop-shadow(0 0 40px rgba(255,80,0,.4)); }
-  50%      { transform: scale(1.05); filter: drop-shadow(0 0 28px rgba(255,200,0,.9)) drop-shadow(0 0 60px rgba(255,100,0,.5)); }
-}
-@keyframes bela-core-breathe-fast {
-  0%,100% { transform: scale(1);    }
-  50%      { transform: scale(1.1); }
+.bela-state-dot {
+  width:8px;height:8px;border-radius:50%;
+  background:#555;flex-shrink:0;transition:all .4s;
 }
 
-/* Click hint */
-.bela-click-hint {
-  position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.72rem;
-  color: var(--text-l);
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-  opacity: 0.6;
-  transition: opacity .3s;
-}
-.bela-nucleus-wrap.active .bela-click-hint { opacity: 0; }
+/* Label estados */
+.bela-nucleus-wrap.active   ~ .bela-state-label { border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.06);color:var(--cyan); }
+.bela-nucleus-wrap.active   ~ .bela-state-label .bela-state-dot { background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:bela-blink .9s infinite; }
+.bela-nucleus-wrap.speaking ~ .bela-state-label { border-color:rgba(0,255,136,.35);background:rgba(0,255,136,.07);color:#00ff88; }
+.bela-nucleus-wrap.speaking ~ .bela-state-label .bela-state-dot { background:#00ff88;box-shadow:0 0 10px #00ff88;animation:bela-blink .5s infinite; }
+.bela-nucleus-wrap.thinking ~ .bela-state-label { border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.07);color:var(--purple); }
+.bela-nucleus-wrap.thinking ~ .bela-state-label .bela-state-dot { background:var(--purple);box-shadow:0 0 8px var(--purple);animation:bela-blink .4s infinite; }
 
 /* Transcript */
-.bela-transcript {
-  min-height: 28px;
-  text-align: center;
-  font-family: 'Syne', sans-serif;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--cyan);
-  letter-spacing: 0.5px;
-  opacity: 0;
-  transition: opacity .3s;
-  max-width: 500px;
-}
-.bela-transcript.visible { opacity: 1; }
+.bela-transcript { min-height:22px;text-align:center;font-family:'DM Sans',sans-serif;
+  font-size:.88rem;font-weight:600;color:var(--cyan);letter-spacing:.3px;
+  opacity:0;transition:opacity .3s;max-width:500px;margin-top:8px; }
+.bela-transcript.visible { opacity:1; }
 
-/* Response cards */
-.bela-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 24px;
-}
+/* Cards */
+.bela-cards { display:flex;flex-direction:column;gap:14px;margin-bottom:24px; }
 .bela-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(0,212,255,0.15);
-  border-radius: 18px;
-  padding: 20px 22px;
-  position: relative;
-  overflow: hidden;
-  animation: bela-card-in .4s cubic-bezier(.16,1,.3,1) both;
+  background:rgba(255,255,255,.04);border:1px solid rgba(0,212,255,.15);
+  border-radius:18px;padding:20px 22px;position:relative;overflow:hidden;
+  animation:bela-card-in .4s cubic-bezier(.16,1,.3,1) both;
 }
 .bela-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--cyan), var(--purple), #ffaa00);
-  opacity: .7;
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--purple),#ffaa00);opacity:.7;
 }
-@keyframes bela-card-in {
-  from { opacity:0; transform: translateY(20px) scale(.97); }
-  to   { opacity:1; transform: translateY(0) scale(1); }
-}
-.bela-card-q {
-  font-size: 0.72rem;
-  color: var(--text-l);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.bela-card-answer {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(1rem, 2.5vw, 1.3rem);
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.5;
-  margin-bottom: 6px;
-}
-.bela-card-answer .highlight {
-  background: linear-gradient(135deg, #ffd04a, #ff8800);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.bela-card-sub {
-  font-size: 0.76rem;
-  color: var(--text-l);
-}
-.bela-card-list {
-  list-style: none;
-  padding: 0; margin: 8px 0 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.bela-card-list li {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 0.82rem;
-  color: var(--text);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.bela-card-list li span { color: var(--text-l); font-size: 0.75rem; }
+.bela-card-q    { font-size:.72rem;color:var(--text-l);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px; }
+.bela-card-answer { font-family:'Syne',sans-serif;font-size:clamp(1rem,2.5vw,1.3rem);font-weight:700;color:var(--text);line-height:1.5;margin-bottom:6px; }
+.bela-card-answer .highlight { background:linear-gradient(135deg,#ffd04a,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+.bela-card-sub  { font-size:.76rem;color:var(--text-l); }
+.bela-card-list { list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px; }
+.bela-card-list li { background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;padding:8px 12px;font-size:.82rem;color:var(--text);
+  display:flex;justify-content:space-between;align-items:center;gap:12px; }
+.bela-card-list li span { color:var(--text-l);font-size:.75rem; }
 
 /* Chips */
-.bela-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-}
+.bela-chips { display:flex;flex-wrap:wrap;gap:8px;justify-content:center; }
 .bela-chip {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 0.78rem;
-  color: var(--text-l);
-  cursor: pointer;
-  transition: all .2s;
-  font-family: 'DM Sans', sans-serif;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;
+  padding:8px 16px;font-size:.78rem;color:var(--text-l);cursor:pointer;
+  transition:all .2s;font-family:'DM Sans',sans-serif;
 }
-.bela-chip:hover {
-  background: rgba(0,212,255,0.08);
-  border-color: rgba(0,212,255,0.3);
-  color: var(--cyan);
-  transform: translateY(-1px);
-}
+.bela-chip:hover { background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.3);color:var(--cyan);transform:translateY(-1px); }
 
-/* Light mode overrides */
-[data-theme="light"] .bela-card { background: rgba(255,255,255,0.9); border-color: rgba(0,153,204,0.2); }
-[data-theme="light"] .bela-card-answer { color: #1a2332; }
-[data-theme="light"] .bela-card-sub { color: #718096; }
-[data-theme="light"] .bela-card-list li { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.07); color: #2d3748; }
-[data-theme="light"] .bela-chip { background: rgba(255,255,255,0.9); color: #4a5568; border-color: rgba(0,0,0,0.1); }
-[data-theme="light"] .bela-chip:hover { background: rgba(0,153,204,0.08); color: #0077aa; }
+/* Light mode */
+[data-theme="light"] .bela-card         { background:rgba(255,255,255,.9);border-color:rgba(0,153,204,.2); }
+[data-theme="light"] .bela-card-answer  { color:#1a2332; }
+[data-theme="light"] .bela-card-sub     { color:#718096; }
+[data-theme="light"] .bela-card-list li { background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.07);color:#2d3748; }
+[data-theme="light"] .bela-chip         { background:rgba(255,255,255,.9);color:#4a5568;border-color:rgba(0,0,0,.1); }
+[data-theme="light"] .bela-chip:hover   { background:rgba(0,153,204,.08);color:#0077aa; }
+[data-theme="light"] .bela-state-label  { background:rgba(255,255,255,.8);border-color:rgba(0,0,0,.1);color:#4a5568; }
 
 /* Voice panel */
-.bela-voice-panel {
-  margin-top: 28px;
-  border: 1px solid rgba(0,212,255,0.12);
-  border-radius: 16px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.02);
-}
-.bela-voice-panel-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  font-size: 0.8rem;
-  color: var(--text-l);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-.bela-voice-toggle-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 0.72rem;
-  color: var(--cyan);
-  cursor: pointer;
-  transition: all .2s;
-}
-.bela-voice-toggle-btn:hover { background: rgba(0,212,255,0.08); }
-.bvt-open { display: none; }
-.bela-voice-panel.open .bvt-closed { display: none; }
-.bela-voice-panel.open .bvt-open   { display: inline; }
-
-.bela-voice-body {
-  display: none;
-  padding: 0 18px 18px;
-  flex-direction: column;
-  gap: 14px;
-}
-.bela-voice-panel.open .bela-voice-body { display: flex; }
-
-.bela-voice-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.bela-voice-row label {
-  font-size: 0.78rem;
-  color: var(--text-l);
-  min-width: 90px;
-  font-weight: 600;
-}
-[data-theme="light"] .bela-voice-panel { background: rgba(255,255,255,0.7); border-color: rgba(0,153,204,0.15); }
-[data-theme="light"] .bela-voice-panel-title { color: #4a5568; }
-[data-theme="light"] .bela-voice-row label { color: #718096; }
+.bela-voice-panel { margin-top:28px;border:1px solid rgba(0,212,255,.12);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.02); }
+.bela-voice-panel-title { display:flex;align-items:center;justify-content:space-between;padding:12px 18px;font-size:.8rem;color:var(--text-l);font-weight:600;letter-spacing:.3px; }
+.bela-voice-toggle-btn { background:none;border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:.72rem;color:var(--cyan);cursor:pointer;transition:all .2s; }
+.bela-voice-toggle-btn:hover { background:rgba(0,212,255,.08); }
+.bvt-open { display:none; }
+.bela-voice-panel.open .bvt-closed { display:none; }
+.bela-voice-panel.open .bvt-open   { display:inline; }
+.bela-voice-body { display:none;padding:0 18px 18px;flex-direction:column;gap:14px; }
+.bela-voice-panel.open .bela-voice-body { display:flex; }
+.bela-voice-row { display:flex;align-items:center;gap:14px; }
+.bela-voice-row label { font-size:.78rem;color:var(--text-l);min-width:90px;font-weight:600; }
+[data-theme="light"] .bela-voice-panel       { background:rgba(255,255,255,.7);border-color:rgba(0,153,204,.15); }
+[data-theme="light"] .bela-voice-panel-title { color:#4a5568; }
+[data-theme="light"] .bela-voice-row label   { color:#718096; }
 </style>
 </head>
 <body>
@@ -3347,62 +3144,89 @@ select option{background:#060d14;color:#e8f4ff;}
           </div>
         </div>
 
-        <!-- Central nucleus -->
+        <!-- Central nucleus — estado reativo -->
         <div class="bela-stage">
           <div class="bela-nucleus-wrap" id="bela-nucleus-wrap" onclick="belaToggle()">
+
+            <!-- Canvas para partículas JS -->
+            <canvas id="bela-canvas" width="320" height="320"></canvas>
+
+            <!-- Anéis orbitais (tipo átomo) -->
             <div class="bela-ring bela-ring-1"></div>
             <div class="bela-ring bela-ring-2"></div>
             <div class="bela-ring bela-ring-3"></div>
-            <div class="bela-orbit bela-orbit-1"><span class="bela-particle"></span></div>
-            <div class="bela-orbit bela-orbit-2"><span class="bela-particle p2"></span></div>
-            <div class="bela-orbit bela-orbit-3"><span class="bela-particle p3"></span></div>
-            <div class="bela-orbit bela-orbit-4"><span class="bela-particle p4"></span></div>
-            <div class="bela-orbit bela-orbit-5"><span class="bela-particle p5"></span></div>
-            <div class="bela-wave-ring bw1" id="bela-wave-1"></div>
-            <div class="bela-wave-ring bw2" id="bela-wave-2"></div>
-            <div class="bela-wave-ring bw3" id="bela-wave-3"></div>
+            <div class="bela-ring bela-ring-4"></div>
+
+            <!-- Ondas de áudio (falando/ouvindo) -->
+            <div class="bela-wave-ring bw1"></div>
+            <div class="bela-wave-ring bw2"></div>
+            <div class="bela-wave-ring bw3"></div>
+            <div class="bela-wave-ring bw4"></div>
+
+            <!-- Núcleo central -->
             <div class="bela-core" id="bela-core">
               <div class="bela-core-inner">
-                <div class="bela-core-glow"></div>
-                <svg class="bela-core-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <div class="bela-core-glow" id="bela-core-glow"></div>
+                <svg class="bela-core-svg" id="bela-core-svg" viewBox="0 0 120 120" fill="none">
                   <defs>
-                    <radialGradient id="bglow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#ffcc44" stop-opacity="1"/>
-                      <stop offset="35%" stop-color="#ff8800" stop-opacity="0.85"/>
-                      <stop offset="70%" stop-color="#cc4400" stop-opacity="0.5"/>
-                      <stop offset="100%" stop-color="#220000" stop-opacity="0"/>
-                    </radialGradient>
-                    <radialGradient id="bcoreglow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#fff8e0" stop-opacity="1"/>
-                      <stop offset="60%" stop-color="#ffcc44" stop-opacity="0.9"/>
+                    <radialGradient id="gc_idle" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#fff8e0"/>
+                      <stop offset="40%" stop-color="#ffcc44"/>
                       <stop offset="100%" stop-color="#ff6600" stop-opacity="0"/>
                     </radialGradient>
-                    <filter id="bblur"><feGaussianBlur stdDeviation="3"/></filter>
-                    <filter id="bglow2">
-                      <feGaussianBlur stdDeviation="6" result="blur"/>
+                    <radialGradient id="gc_listen" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#e0f8ff"/>
+                      <stop offset="40%" stop-color="#00d4ff"/>
+                      <stop offset="100%" stop-color="#0066cc" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="gc_speak" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#e0ffe8"/>
+                      <stop offset="40%" stop-color="#00ff88"/>
+                      <stop offset="100%" stop-color="#006633" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="gc_think" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#f0e0ff"/>
+                      <stop offset="40%" stop-color="#a78bfa"/>
+                      <stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/>
+                    </radialGradient>
+                    <filter id="bblur2"><feGaussianBlur stdDeviation="4"/></filter>
+                    <filter id="bglow3">
+                      <feGaussianBlur stdDeviation="7" result="blur"/>
                       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                     </filter>
                   </defs>
-                  <circle cx="60" cy="60" r="54" fill="url(#bglow)" opacity="0.55"/>
-                  <g opacity="0.6" filter="url(#bblur)">
-                    <line x1="60" y1="6" x2="60" y2="22" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="60" y1="98" x2="60" y2="114" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="6" y1="60" x2="22" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="98" y1="60" x2="114" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="18" y1="18" x2="29" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="91" y1="91" x2="102" y2="102" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="102" y1="18" x2="91" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="18" y1="102" x2="29" y2="91" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                  <!-- Halo externo -->
+                  <circle id="bc-halo" cx="60" cy="60" r="52" fill="url(#gc_idle)" opacity="0.45"/>
+                  <!-- Raios de corona -->
+                  <g id="bc-rays" opacity="0.5" filter="url(#bblur2)">
+                    <line x1="60" y1="8" x2="60" y2="22" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="60" y1="98" x2="60" y2="112" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="8" y1="60" x2="22" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="98" y1="60" x2="112" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="19" y1="19" x2="29" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="91" y1="91" x2="101" y2="101" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="101" y1="19" x2="91" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="19" y1="101" x2="29" y2="91" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
                   </g>
-                  <circle cx="60" cy="60" r="36" fill="url(#bglow)" opacity="0.7"/>
-                  <circle cx="60" cy="60" r="22" fill="url(#bcoreglow)" filter="url(#bglow2)"/>
-                  <circle cx="60" cy="60" r="10" fill="#fffbe0" opacity="0.95"/>
-                  <circle cx="57" cy="57" r="4" fill="#ffffff" opacity="0.8"/>
+                  <!-- Glow médio -->
+                  <circle id="bc-mid" cx="60" cy="60" r="34" fill="url(#gc_idle)" opacity="0.65"/>
+                  <!-- Esfera principal -->
+                  <circle id="bc-sphere" cx="60" cy="60" r="21" fill="url(#gc_idle)" filter="url(#bglow3)"/>
+                  <!-- Centro brilhante -->
+                  <circle id="bc-center" cx="60" cy="60" r="9" fill="#fffbe0" opacity="0.96"/>
+                  <circle cx="56" cy="56" r="4" fill="#ffffff" opacity="0.75"/>
                 </svg>
               </div>
             </div>
-            <div class="bela-click-hint" id="bela-click-hint">Clique para ativar</div>
+
           </div>
+
+          <!-- Status text abaixo do núcleo, conforme design -->
+          <div class="bela-state-label" id="bela-state-label">
+            <span class="bela-state-dot" id="bela-state-dot-vis"></span>
+            <span id="bela-state-label-txt">Clique para ativar</span>
+          </div>
+
           <div class="bela-transcript" id="bela-transcript"></div>
         </div>
 
@@ -3418,7 +3242,7 @@ select option{background:#060d14;color:#e8f4ff;}
           <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
           <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
           <button class="bela-chip" onclick="belaAskText('resumo geral')">📊 Resumo geral</button>
-          <button class="bela-chip" onclick="belaAskText('status pagamentos')">💳 Pagamentos</button>
+          <button class="bela-chip" onclick="belaAskText('todos os pagamentos')">💳 Pagamentos</button>
           <button class="bela-chip" onclick="belaAskText('ticket medio')">🎯 Ticket médio</button>
           <button class="bela-chip" onclick="belaAskText('despesas do ano')">📉 Despesas anuais</button>
         </div>
@@ -9097,10 +8921,41 @@ function belaSetTranscript(txt) {
   if (txt) { el.innerHTML=txt; el.classList.add('visible'); }
   else { el.innerHTML=''; el.classList.remove('visible'); }
 }
+// Paleta de cores por estado
+const BELA_STATES = {
+  '':        { grad:'gc_idle',  label:'Clique para ativar', labelClass:'' },
+  'active':  { grad:'gc_listen',label:'🎙️ Ouvindo…',        labelClass:'active' },
+  'speaking':{ grad:'gc_speak', label:'✨ Falando…',         labelClass:'speaking' },
+  'thinking':{ grad:'gc_think', label:'⚡ Processando…',    labelClass:'thinking' },
+};
+
 function belaNucleusState(state) {
   const w = $b('bela-nucleus-wrap');
   if (!w) return;
   w.className = 'bela-nucleus-wrap'+(state?' '+state:'');
+
+  // Atualiza gradiente do SVG
+  const info = BELA_STATES[state] || BELA_STATES[''];
+  ['bc-halo','bc-mid','bc-sphere'].forEach(id => {
+    const el = $b(id);
+    if (el) el.setAttribute('fill', 'url(#'+info.grad+')');
+  });
+  // Atualiza raios de corona com a cor do estado
+  const rayColors = { '':'#ffcc44','active':'#00d4ff','speaking':'#00ff88','thinking':'#a78bfa' };
+  const rayColor = rayColors[state] || '#ffcc44';
+  const rays = document.querySelectorAll('#bc-rays line');
+  rays.forEach(r => r.setAttribute('stroke', rayColor));
+
+  // Atualiza label de estado
+  const lbl = $b('bela-state-label-txt');
+  if (lbl) {
+    lbl.textContent = info.label;
+  }
+
+  // Informa o canvas de partículas
+  if (window._belaParticles) window._belaParticles.setState(state);
+
+  // Legacy hint
   const h = $b('bela-click-hint');
   if (h) h.style.display = state?'none':'';
 }
@@ -9370,19 +9225,32 @@ function belaResumoGeral(){
   belaSpeak('Recebido até agora: '+fmtBRL(recebido)+'. Previsto: '+fmtBRL(previsto)+'. '+pend+(pend===1?' pendência.':' pendências.'));
 }
 
-function belaStatusPagamentos(){
+function belaStatusPagamentos(mostrarTodas){
   const ativas=belaGetReservas().filter(r=>r.status!=='cancelada');
   const pagas=ativas.filter(r=>r.pagamento==='pago');
   const pend=ativas.filter(r=>r.pagamento!=='pago');
-  const itens=pend.slice(0,5).map(r=>({
+  const limite = mostrarTodas ? pend.length : 10;
+  // Pendentes ordenadas por valor a receber (maior primeiro)
+  const pendOrdem = [...pend].sort((a,b)=>
+    Math.max(0,(Number(b.total)||0)-(Number(b.sinal)||0)) -
+    Math.max(0,(Number(a.total)||0)-(Number(a.sinal)||0))
+  );
+  const itensPend=pendOrdem.slice(0,limite).map(r=>({
     name:r.nome||'—',
     detail:fmtBRL(Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)))+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')
   }));
-  belaShowCard('💳','Pagamentos',
+  const itensPagas=pagas.slice(0,5).map(r=>({
+    name:'✅ '+( r.nome||'—'),
+    detail:fmtBRL(Number(r.total)||0)+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')
+  }));
+  const todosItens=[...itensPend,...(mostrarTodas?itensPagas:[])];
+  const aReceber=pend.reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0);
+  belaShowCard('💳','Todos os Pagamentos',
     '<span style="color:var(--green);font-weight:800">'+pagas.length+' pagas</span> · <span style="color:var(--amber);font-weight:800">'+pend.length+' pendentes</span>',
-    'A receber: '+fmtBRL(pend.reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0)),itens);
+    'A receber: '+fmtBRL(aReceber)+(pend.length>limite?' · mostrando '+limite+' de '+pend.length:''),todosItens);
   belaSetTranscript('');
-  belaSpeak(pagas.length+' reservas pagas e '+pend.length+(pend.length===1?' pendente.':' pendentes.'));
+  belaMemoria.registrar('pagamentos', pagas.length+' pagas, '+pend.length+' pendentes');
+  belaSpeak(pagas.length+(pagas.length===1?' reserva paga':' reservas pagas')+' e '+pend.length+(pend.length===1?' pendente':' pendentes')+'. A receber: '+fmtBRL(aReceber)+'.');
 }
 
 function belaTicketMedio(){
@@ -9436,37 +9304,144 @@ function belaHistorico(){
 }
 
 // ══════════════════════════════════════════════════════════════
-// NLP
+// RESPOSTAS VARIADAS — nunca a mesma frase duas vezes
+// ══════════════════════════════════════════════════════════════
+function sorteio(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Hora do dia para contextualizar
+function perioDia() {
+  const h = new Date().getHours();
+  return h < 12 ? 'manhã' : h < 18 ? 'tarde' : 'noite';
+}
+function saudHora() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+}
+
+// Pool de respostas humanizadas por intenção
+const BELA_RESPOSTAS = {
+
+  saudacao: [
+    ()=> saudHora()+'! Tudo nos conformes por aqui. O que vai querer saber hoje?',
+    ()=> saudHora()+'! Sistemas ativos, dados carregados, pronta pra trabalhar. Manda ver.',
+    ()=> 'Oi! Tava só aqui processando umas análises. Em que posso ajudar?',
+    ()=> saudHora()+'! Que bom ter você por aqui. O que precisa?',
+    ()=> 'Presente! Pode falar, tô toda ouvidos.',
+    ()=> 'Oi! Tudo certo por aqui. Pode mandar a pergunta.',
+    ()=> saudHora()+'! Pronta e em modo de alerta. O que quer saber?',
+    ()=> 'Por aqui tudo tranquilo. E aí, qual é a consulta de hoje?',
+  ],
+
+  comoVai: [
+    ()=> 'Funcionando perfeitamente, obrigada por perguntar! Dados todos sincronizados. E você, tudo bem?',
+    ()=> 'Estou ótima! Processadores em dia, banco de dados respondendo rápido. Pode me usar à vontade.',
+    ()=> 'Bem, bem. Aqui a '+ perioDia() +' tá tranquila. Você que sabe como está o negócio melhor do que eu!',
+    ()=> 'Tô bem! Só aguardando suas perguntas. Faz tempo que não me consulta sobre faturamento.',
+    ()=> 'Funcionando nos 100%. Aliás, queria te contar que acabei de atualizar os dados do Firebase. Tudo fresquinho.',
+    ()=> 'Bem, obrigada! Carregada de informações e pronta pra ajudar.',
+  ],
+
+  obrigado: [
+    ()=> 'De nada! Fico aqui se precisar de mais alguma coisa.',
+    ()=> 'Imagina, pra isso que estou aqui!',
+    ()=> 'Por nada! Se tiver mais alguma dúvida sobre o negócio, é só chamar.',
+    ()=> 'Disponha! Qualquer coisa, é só falar meu nome.',
+    ()=> 'Que isso! Foi um prazer. Mais alguma coisa posso analisar pra você?',
+    ()=> 'Pra isso que eu existo! Se precisar de mais dados, é só pedir.',
+    ()=> 'Com prazer! O negócio vai bem, continue assim.',
+  ],
+
+  elogio: [
+    ()=> 'Boa, obrigada! Fico feliz quando consigo ajudar bem.',
+    ()=> 'Que legal! Fico motivada quando recebo esse feedback.',
+    ()=> 'Obrigada! Tô sempre aprendendo as perguntas que você mais faz pra melhorar.',
+    ()=> 'Fico contente! Tô aqui pra facilitar sua vida.',
+  ],
+
+  despedida: [
+    ()=> 'Até logo! Fico aqui de plantão se precisar.',
+    ()=> 'Tchau! Pode me chamar a qualquer hora, tô sempre de olho nos dados.',
+    ()=> 'Até mais! Qualquer consulta financeira é só falar.',
+    ()=> 'Fui! Mas continuo rodando em segundo plano. Cuida do negócio!',
+    ()=> 'Até! Vou aproveitar pra analisar mais alguns dados enquanto você vai.',
+  ],
+
+  naoEntendeu: [
+    ()=> 'Hmm, não entendi bem. Pode reformular? Perguntas sobre faturamento, reservas ou despesas funcionam bem pra mim.',
+    ()=> 'Essa eu não peguei. Tenta de outro jeito?',
+    ()=> 'Não sei responder isso ainda. Mas se quiser saber algo financeiro do negócio, aí sou boa.',
+    ()=> 'Foge do meu escopo por enquanto. Mas faturamento, reservas e despesas eu domino!',
+    ()=> 'Essa pergunta me pegou de surpresa. Foca no financeiro e aí eu voo!',
+  ],
+
+  ativacao: [
+    ()=> 'Pronta! Pode falar.',
+    ()=> 'Ativa! O que precisa?',
+    ()=> 'Aqui! Manda a pergunta.',
+    ()=> 'Funcionando. Pode consultar.',
+    ()=> 'Em modo de escuta. Fala comigo.',
+  ],
+
+  semComando: [
+    ()=> 'Tô te ouvindo. Qual é a consulta?',
+    ()=> 'Aqui! Pode falar o que precisa saber.',
+    ()=> 'Presente. Fala a pergunta.',
+    ()=> 'Diz aí, o que quer saber?',
+  ],
+};
+
+// ══════════════════════════════════════════════════════════════
+// NLP — interpreta e responde com personalidade
 // ══════════════════════════════════════════════════════════════
 function belaInterpret(rawText) {
   const t = normTxt(rawText);
   const mesInfo = extrairMesAno(t);
 
-  // SAUDAÇÕES
-  if (/^(oi|ola|ei|hey|bela|ola bela)$/.test(t.replace(/\bbela\b/,'').trim())||
-      /bom\s*dia|boa\s*tarde|boa\s*noite|tudo\s*(bem|bom)|como\s*(vai|esta)|ta\s*ai|esta\s*ai|me\s*ouve|ativo|funcionando/.test(t)) {
-    const h=new Date().getHours();
-    const s=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  // ── AGRADECIMENTO ─────────────────────────────────────────
+  if (/^obrigad|valeu|thanks|vlw|muito\s*bom|excelente\s*(resposta|analise)|otimo|perfeito/.test(t)) {
     return ()=>{
-      belaShowCard('👋','Olá!',s+'!','Pergunte sobre faturamento, reservas, despesas ou pagamentos.');
-      belaSpeak(s+'! Estou aqui. O que precisa saber?');
+      belaProcessando = false;
+      belaSpeak(sorteio(BELA_RESPOSTAS.obrigado)());
     };
   }
 
-  // HISTÓRICO / MEMÓRIA
-  if (/historico|ultimas|anteriores|ja perguntei|lembra|memoria/.test(t))
+  // ── ELOGIO ────────────────────────────────────────────────
+  if (/voce\s*e\s*(boa|incrivel|otima|demais|fera|top)|que\s*(bela|legal|otimo|incrivel|massa)|adorei|gostei|sensacional/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.elogio)()); };
+  }
+
+  // ── DESPEDIDA ─────────────────────────────────────────────
+  if (/^(tchau|xau|ate\s*(logo|mais|amanha|breve)|fui|bye|good\s*bye|boa\s*noite$|descansando|vou\s*(sair|embora|parar))/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.despedida)()); };
+  }
+
+  // ── SAUDAÇÕES / VERIFICAÇÃO DE PRESENÇA ───────────────────
+  if (/^(oi|ola|ei|hey)$/.test(t.replace(/bela/,'').trim()) ||
+      /bom\s*dia|boa\s*tarde|boa\s*noite|ta\s*(ai|aí)|esta\s*(ai|aí)|me\s*ouve|funcionando|ativo|acorda/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.saudacao)()); };
+  }
+
+  // ── COMO ESTÁ / TUDO BEM ──────────────────────────────────
+  if (/como\s*(vai|esta|vc|voce|ta)|tudo\s*(bem|bom|certo|ok|otimo|tranquilo)|e\s*ai|qual\s*(e\s*a\s*vida|novidade)/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.comoVai)()); };
+  }
+
+  // ── HISTÓRICO / MEMÓRIA ───────────────────────────────────
+  if (/historico|ultimas|anteriores|ja\s*perguntei|lembra|memoria/.test(t))
     return belaHistorico;
 
-  // FATURAMENTO / RECEITA
-  if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada|quanto fiz|quanto foi/.test(t)&&!/despesa|gasto/.test(t)) {
+  // ── FATURAMENTO / RECEITA ─────────────────────────────────
+  if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada|quanto\s*(fiz|foi|ganhei|recebi)|rendimento/.test(t)&&!/despesa|gasto/.test(t)) {
     const meses=[];
     for (const[nome,num] of Object.entries(MESES_MAP))
-      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+      if(new RegExp('\b'+nome+'\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
     if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
     return ()=>belaFaturamentoMes(mesInfo);
   }
 
-  // RESERVAS
+  // ── RESERVAS ──────────────────────────────────────────────
   if (/reserva/.test(t)) {
     const nm=t.match(/(?:reservas?\s+d[ao]s?\s+|cliente\s+|para\s+o\s+|para\s+a\s+)([a-z]{3,}(?:\s+[a-z]{2,})?)/);
     if(nm) return ()=>belaReservasNome(nm[1]);
@@ -9476,35 +9451,38 @@ function belaInterpret(rawText) {
     return ()=>belaReservasMes(mesInfo);
   }
 
-  // PRÓXIMAS (sem "reserva")
+  // ── PRÓXIMAS ──────────────────────────────────────────────
   if (/proxim|agenda/.test(t)&&!/despesa/.test(t)) return belaProximasReservas;
 
-  // SEMANA
+  // ── SEMANA ────────────────────────────────────────────────
   if (/semana/.test(t)) return belaReservasSemana;
 
-  // DESPESAS
+  // ── DESPESAS ──────────────────────────────────────────────
   if (/despesa|gasto|custo|saiu|saida|gastei/.test(t)) {
     if(/ano|anual/.test(t)) return belaDespesasAno;
     return ()=>belaDespesasMes(mesInfo);
   }
 
-  // PAGAMENTOS
-  if (/pagament|pago|pendente|deve|inadim|cobrar/.test(t)) return belaStatusPagamentos;
+  // ── PAGAMENTOS ────────────────────────────────────────────
+  if (/pagament|pago|pendente|deve|inadim|cobrar|receber|quem\s*pag|quem\s*deve|lista.*pag|todos.*pag|pag.*todos|mostrar.*pag/.test(t)) {
+    const todos=/todos|todas|completo|completa|lista|mostrar|ver\s*todos|tudo/.test(t);
+    return ()=>belaStatusPagamentos(todos);
+  }
 
-  // MELHOR MÊS
+  // ── MELHOR MÊS ────────────────────────────────────────────
   if (/melhor|record|maior|top\s*mes/.test(t)) return belaMelhorMes;
 
-  // TICKET
+  // ── TICKET ────────────────────────────────────────────────
   if (/ticket|media|medio/.test(t)) return belaTicketMedio;
 
-  // RESUMO
-  if (/resumo|geral|tudo|status|overview/.test(t)) return belaResumoGeral;
+  // ── RESUMO ────────────────────────────────────────────────
+  if (/resumo|geral|tudo|overview/.test(t)) return belaResumoGeral;
 
-  // COMPARATIVO
+  // ── COMPARATIVO ───────────────────────────────────────────
   if (/compar|versus|vs|contra/.test(t)) {
     const meses=[];
     for(const[nome,num] of Object.entries(MESES_MAP))
-      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+      if(new RegExp('\b'+nome+'\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
     if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
   }
 
@@ -9537,8 +9515,8 @@ window.belaAskText = function(text) {
     if(fn) fn();
     else {
       belaProcessando=false;
-      belaShowCard('🤔','Não entendi','Reformule a pergunta.','');
-      belaSpeak('Não entendi. Pode reformular?');
+      belaShowCard('🤔','Não entendi','Tente reformular a pergunta.','');
+      belaSpeak(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.naoEntendeu)() : 'Não entendi. Pode reformular?');
     }
   },150);
 };
@@ -9602,11 +9580,8 @@ function belaStartRecognition() {
       belaSetStatus('thinking','⚡ Processando…');
       fn();
     } else if(hasWake) {
-      // Wake word sem comando → pergunta breve, SEM resposta "pode repetir"
       belaProcessando=false;
-      belaShowCard('👂','Ouvindo…','O que deseja consultar?',
-        'Exemplos: "faturamento de março" · "despesas de fevereiro" · "próximas reservas"');
-      belaSpeak('O que deseja consultar?');
+      belaSpeak(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.semComando)() : 'Aqui! Pode falar.');
     }
     // Se está em contexto mas sem comando → silêncio (não fala nada, só reinicia mic)
     // Isso evita o loop de "pode repetir"
@@ -9722,7 +9697,7 @@ window.belaToggle=function(){
   } else {
     belaAtivo=true;belaProcessando=false;
     belaNucleusState('active');belaSetStatus('listening','🎙️ Ouvindo…');
-    belaSpeak('Pronto! Diga Bela e sua pergunta.',()=>{if(belaAtivo)belaStartRecognition();});
+    belaSpeak(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.ativacao)() : 'Pronta!',()=>{if(belaAtivo)belaStartRecognition();});
   }
 };
 
@@ -9732,6 +9707,7 @@ window.belaToggle=function(){
 document.addEventListener('DOMContentLoaded',function(){
   belaMemoria.carregar();
   belaCriarIndicadorGlobal();
+  belaIniciarParticulas();
   if(belaSynth){
     if(belaSynth.getVoices().length)belaLoadVoices();
     if(belaSynth.onvoiceschanged!==undefined)belaSynth.onvoiceschanged=belaLoadVoices;
@@ -9764,7 +9740,603 @@ document.addEventListener('DOMContentLoaded',function(){
   },800);
 });
 
+
+// ══════════════════════════════════════════════════════════════
+// PARTICLE ENGINE — Canvas de partículas tipo átomo
+// ══════════════════════════════════════════════════════════════
+function belaIniciarParticulas() {
+  const canvas = document.getElementById('bela-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2;
+
+  const CONFIGS = {
+    '':        { count:18, speed:.4,  orbitMin:.16, orbitMax:.44, szMin:1.5, szMax:3,   alpha:.35, clr:function(){ return 'rgba(255,'+(160+Math.random()*60|0)+',0,'; } },
+    'active':  { count:30, speed:.75, orbitMin:.13, orbitMax:.47, szMin:1.5, szMax:3.5, alpha:.55, clr:function(){ return 'rgba(0,'+(180+Math.random()*75|0)+',255,'; } },
+    'speaking':{ count:38, speed:1.2, orbitMin:.11, orbitMax:.50, szMin:2,   szMax:4.5, alpha:.72, clr:function(){ return 'rgba(0,'+(215+Math.random()*40|0)+','+(90+Math.random()*60|0)+','; } },
+    'thinking':{ count:24, speed:.95, orbitMin:.13, orbitMax:.46, szMin:1.5, szMax:4,   alpha:.62, clr:function(){ return 'rgba('+(130+Math.random()*70|0)+','+(90+Math.random()*80|0)+',255,'; } },
+  };
+
+  var state = '';
+  var particles = [];
+  var raf = null;
+
+  function mkP(cfg) {
+    var orbitR = (cfg.orbitMin + Math.random()*(cfg.orbitMax-cfg.orbitMin)) * (W/2);
+    var angle  = Math.random() * Math.PI * 2;
+    var dir    = Math.random() < .5 ? 1 : -1;
+    var speed  = (0.3 + Math.random()*0.9) * cfg.speed * dir * .009;
+    var sz     = cfg.szMin + Math.random()*(cfg.szMax-cfg.szMin);
+    var alpha  = (.2 + Math.random()*.8) * cfg.alpha;
+    var incline= (Math.random()-.5) * .55;
+    var pulse  = Math.random()*Math.PI*2;
+    var pspeed = .018 + Math.random()*.04;
+    return { orbitR:orbitR, angle:angle, speed:speed, sz:sz, alpha:alpha,
+             incline:incline, clr:cfg.clr, pulse:pulse, pspeed:pspeed };
+  }
+
+  function build(s) {
+    var cfg = CONFIGS[s] || CONFIGS[''];
+    particles = [];
+    for (var i=0; i<cfg.count; i++) particles.push(mkP(cfg));
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    for (var i=0; i<particles.length; i++) {
+      var p = particles[i];
+      p.angle += p.speed;
+      p.pulse += p.pspeed;
+      var x  = CX + Math.cos(p.angle) * p.orbitR;
+      var y  = CY + Math.sin(p.angle) * p.orbitR * (1 - Math.abs(p.incline)*.7);
+      var sz = p.sz * (.75 + .25*Math.sin(p.pulse));
+      var a  = p.alpha * (.55 + .45*Math.sin(p.pulse + 1.2));
+      var clr = p.clr();
+      // Glow halo
+      var grd = ctx.createRadialGradient(x,y,0,x,y,sz*3.5);
+      grd.addColorStop(0, clr + (a*.85).toFixed(2)+')');
+      grd.addColorStop(1, clr + '0)');
+      ctx.beginPath(); ctx.arc(x, y, sz*3.5, 0, Math.PI*2);
+      ctx.fillStyle = grd; ctx.fill();
+      // Core dot
+      ctx.beginPath(); ctx.arc(x, y, sz, 0, Math.PI*2);
+      ctx.fillStyle = clr + a.toFixed(2) + ')';
+      ctx.fill();
+    }
+    raf = requestAnimationFrame(draw);
+  }
+
+  build(state);
+  draw();
+
+  window._belaParticles = {
+    setState: function(s) {
+      if (s === state) return;
+      state = s;
+      build(s);
+    }
+  };
+}
+
 })();
 </script>
+
+<!-- ============================================================
+     BELA CHAT — Widget flutuante de texto
+============================================================ -->
+<div id="bela-chat-widget">
+  <!-- Botão toggle -->
+  <button id="bela-chat-toggle" onclick="belaChatToggle()" title="Chat com a Bela">
+    <span id="bela-chat-toggle-icon">
+      <svg width="22" height="22" viewBox="0 0 120 120" fill="none">
+        <circle cx="60" cy="60" r="50" fill="url(#cg)" opacity="0.9"/>
+        <circle cx="60" cy="60" r="20" fill="#ffcc44" opacity="0.95"/>
+        <circle cx="55" cy="55" r="8" fill="#fff" opacity="0.8"/>
+        <defs><radialGradient id="cg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffcc44"/>
+          <stop offset="100%" stop-color="#ff6600" stop-opacity="0.3"/>
+        </radialGradient></defs>
+      </svg>
+    </span>
+    <span id="bela-chat-badge" style="display:none"></span>
+  </button>
+
+  <!-- Painel do chat -->
+  <div id="bela-chat-panel">
+    <div id="bela-chat-header">
+      <div style="display:flex;align-items:center;gap:9px">
+        <svg width="20" height="20" viewBox="0 0 120 120" fill="none">
+          <circle cx="60" cy="60" r="50" fill="url(#cg2)" opacity="0.9"/>
+          <circle cx="60" cy="60" r="18" fill="#ffcc44"/>
+          <circle cx="55" cy="55" r="7" fill="#fff" opacity="0.8"/>
+          <defs><radialGradient id="cg2" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffcc44"/>
+            <stop offset="100%" stop-color="#ff6600" stop-opacity="0.3"/>
+          </radialGradient></defs>
+        </svg>
+        <div>
+          <div style="font-weight:700;font-size:0.85rem;color:#fff;line-height:1.1">Bela</div>
+          <div id="bela-chat-status-txt" style="font-size:0.65rem;color:rgba(255,210,80,.7)">Assistente financeira</div>
+        </div>
+      </div>
+      <button onclick="belaChatToggle()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:1.1rem;cursor:pointer;padding:4px 8px;border-radius:6px;transition:.2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">✕</button>
+    </div>
+
+    <div id="bela-chat-messages">
+      <div class="bela-chat-msg bela-msg-bela">
+        <div class="bela-msg-bubble">Olá! Pode digitar qualquer pergunta sobre faturamento, reservas, despesas ou pagamentos. 💰</div>
+        <div class="bela-msg-time" id="bela-chat-init-time"></div>
+      </div>
+    </div>
+
+    <div id="bela-chat-input-wrap">
+      <input id="bela-chat-input" type="text" placeholder="Digite sua pergunta…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();belaChatEnviar();}"
+        oninput="belaChatInputChange(this)">
+      <button id="bela-chat-send" onclick="belaChatEnviar()" title="Enviar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+
+    <!-- Sugestões rápidas -->
+    <div id="bela-chat-suggestions">
+      <button onclick="belaChatSugerir('faturamento deste mês')">💰 Este mês</button>
+      <button onclick="belaChatSugerir('próximas reservas')">📋 Próximas</button>
+      <button onclick="belaChatSugerir('todos os pagamentos')">💳 Pagamentos</button>
+      <button onclick="belaChatSugerir('melhor mês')">🏆 Melhor mês</button>
+      <button onclick="belaChatSugerir('despesas do mês')">💸 Despesas</button>
+      <button onclick="belaChatSugerir('resumo geral')">📊 Resumo</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── CHAT WIDGET ─────────────────────────────────────────── */
+#bela-chat-widget {
+  position: fixed;
+  bottom: 86px;
+  left: 18px;
+  z-index: 9998;
+  font-family: 'DM Sans', sans-serif;
+}
+@media(max-width:640px) { #bela-chat-widget { bottom: 80px; left: 10px; } }
+
+/* Toggle button */
+#bela-chat-toggle {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(30,20,0,.92), rgba(50,30,0,.95));
+  border: 1.5px solid rgba(255,180,0,.45);
+  box-shadow: 0 4px 20px rgba(255,140,0,.25), 0 0 0 0 rgba(255,180,0,.4);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .25s;
+  position: relative;
+}
+#bela-chat-toggle:hover {
+  transform: scale(1.08);
+  border-color: rgba(255,180,0,.8);
+  box-shadow: 0 6px 24px rgba(255,140,0,.4), 0 0 0 4px rgba(255,180,0,.15);
+}
+#bela-chat-toggle.active {
+  background: linear-gradient(135deg, rgba(255,140,0,.2), rgba(255,80,0,.15));
+  border-color: rgba(255,180,0,.7);
+}
+#bela-chat-badge {
+  position: absolute; top: -3px; right: -3px;
+  background: #ff4466; color: #fff;
+  border-radius: 50%; width: 18px; height: 18px;
+  font-size: .65rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg, #020609);
+  animation: bela-badge-pop .3s cubic-bezier(.16,1,.3,1);
+}
+@keyframes bela-badge-pop { from{transform:scale(0)} to{transform:scale(1)} }
+
+/* Panel */
+#bela-chat-panel {
+  position: absolute;
+  bottom: 62px; left: 0;
+  width: 320px;
+  background: linear-gradient(160deg, rgba(18,12,2,.97), rgba(10,8,2,.99));
+  border: 1px solid rgba(255,180,0,.25);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.55), 0 0 0 1px rgba(255,180,0,.08);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  animation: bela-panel-in .25s cubic-bezier(.16,1,.3,1);
+  max-height: 480px;
+}
+#bela-chat-panel.open { display: flex; }
+@keyframes bela-panel-in {
+  from { opacity:0; transform: translateY(12px) scale(.97); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+@media(max-width:400px) { #bela-chat-panel { width: calc(100vw - 28px); } }
+
+/* Header */
+#bela-chat-header {
+  padding: 12px 14px;
+  background: linear-gradient(90deg, rgba(255,160,0,.12), rgba(255,80,0,.06));
+  border-bottom: 1px solid rgba(255,180,0,.12);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* Messages */
+#bela-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 160px;
+  max-height: 260px;
+  scroll-behavior: smooth;
+}
+#bela-chat-messages::-webkit-scrollbar { width: 4px; }
+#bela-chat-messages::-webkit-scrollbar-thumb { background: rgba(255,180,0,.2); border-radius: 2px; }
+
+.bela-chat-msg { display: flex; flex-direction: column; gap: 2px; }
+.bela-msg-bela { align-items: flex-start; }
+.bela-msg-user { align-items: flex-end; }
+
+.bela-msg-bubble {
+  max-width: 84%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: .82rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.bela-msg-bela .bela-msg-bubble {
+  background: rgba(255,180,0,.1);
+  border: 1px solid rgba(255,180,0,.18);
+  color: rgba(255,230,150,.95);
+  border-bottom-left-radius: 4px;
+}
+.bela-msg-user .bela-msg-bubble {
+  background: rgba(0,212,255,.12);
+  border: 1px solid rgba(0,212,255,.2);
+  color: rgba(200,240,255,.9);
+  border-bottom-right-radius: 4px;
+}
+.bela-msg-time {
+  font-size: .62rem;
+  color: rgba(255,255,255,.25);
+  padding: 0 4px;
+}
+
+/* Typing indicator */
+.bela-typing .bela-msg-bubble {
+  padding: 10px 16px;
+}
+.bela-typing-dots { display: flex; gap: 4px; align-items: center; }
+.bela-typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,180,0,.6);
+  animation: bela-dot-bounce .9s ease-in-out infinite;
+}
+.bela-typing-dots span:nth-child(2) { animation-delay: .15s; }
+.bela-typing-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes bela-dot-bounce {
+  0%,80%,100% { transform: translateY(0); }
+  40%          { transform: translateY(-5px); }
+}
+
+/* Input */
+#bela-chat-input-wrap {
+  display: flex; gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255,180,0,.1);
+  flex-shrink: 0;
+}
+#bela-chat-input {
+  flex: 1;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,180,0,.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: .82rem;
+  color: rgba(255,230,150,.9);
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color .2s;
+}
+#bela-chat-input::placeholder { color: rgba(255,180,0,.3); }
+#bela-chat-input:focus { border-color: rgba(255,180,0,.5); }
+#bela-chat-send {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, rgba(255,160,0,.3), rgba(255,80,0,.2));
+  border: 1px solid rgba(255,180,0,.35);
+  border-radius: 10px;
+  color: rgba(255,200,80,.9);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; flex-shrink: 0;
+}
+#bela-chat-send:hover { background: rgba(255,160,0,.4); transform: scale(1.05); }
+#bela-chat-send:disabled { opacity: .4; cursor: default; }
+
+/* Suggestions */
+#bela-chat-suggestions {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid rgba(255,180,0,.07);
+  flex-shrink: 0;
+}
+#bela-chat-suggestions button {
+  background: rgba(255,180,0,.07);
+  border: 1px solid rgba(255,180,0,.18);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .7rem;
+  color: rgba(255,200,80,.8);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all .15s;
+}
+#bela-chat-suggestions button:hover {
+  background: rgba(255,180,0,.18);
+  color: rgba(255,220,100,1);
+}
+
+/* Light mode */
+[data-theme="light"] #bela-chat-panel {
+  background: rgba(255,252,240,.98);
+  border-color: rgba(200,130,0,.3);
+  box-shadow: 0 16px 48px rgba(0,0,0,.18);
+}
+[data-theme="light"] #bela-chat-toggle {
+  background: linear-gradient(135deg, rgba(255,200,50,.15), rgba(255,120,0,.1));
+  border-color: rgba(200,130,0,.5);
+}
+[data-theme="light"] #bela-chat-header {
+  background: rgba(255,180,0,.08);
+  border-color: rgba(200,130,0,.15);
+}
+[data-theme="light"] .bela-msg-bela .bela-msg-bubble {
+  background: rgba(255,180,0,.1); border-color: rgba(200,130,0,.2);
+  color: #7a4800;
+}
+[data-theme="light"] .bela-msg-user .bela-msg-bubble {
+  background: rgba(0,153,204,.1); border-color: rgba(0,153,204,.2);
+  color: #005580;
+}
+[data-theme="light"] #bela-chat-input {
+  background: #fff; border-color: rgba(200,130,0,.3); color: #4a3000;
+}
+[data-theme="light"] #bela-chat-input::placeholder { color: rgba(180,120,0,.4); }
+[data-theme="light"] #bela-chat-suggestions button { color: #7a5000; border-color: rgba(200,130,0,.25); }
+</style>
+
+<script>
+// ── BELA CHAT ─────────────────────────────────────────────────
+(function(){
+'use strict';
+let chatAberto = false;
+let msgNaoLidas = 0;
+
+function agora(){
+  return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function belaChatToggle(){
+  chatAberto = !chatAberto;
+  const panel = document.getElementById('bela-chat-panel');
+  const btn   = document.getElementById('bela-chat-toggle');
+  const badge = document.getElementById('bela-chat-badge');
+  if(!panel||!btn) return;
+  if(chatAberto){
+    panel.classList.add('open');
+    btn.classList.add('active');
+    badge.style.display='none';
+    msgNaoLidas=0;
+    setTimeout(()=>{ const inp=document.getElementById('bela-chat-input'); if(inp) inp.focus(); },200);
+    // Scroll to bottom
+    const msgs=document.getElementById('bela-chat-messages');
+    if(msgs) setTimeout(()=>{msgs.scrollTop=msgs.scrollHeight;},100);
+  } else {
+    panel.classList.remove('open');
+    btn.classList.remove('active');
+  }
+}
+window.belaChatToggle = belaChatToggle;
+
+function belaChatSugerir(txt){
+  const inp=document.getElementById('bela-chat-input');
+  if(inp){ inp.value=txt; inp.focus(); }
+  belaChatEnviar();
+}
+window.belaChatSugerir = belaChatSugerir;
+
+function belaChatInputChange(el){
+  const btn=document.getElementById('bela-chat-send');
+  if(btn) btn.disabled = !el.value.trim();
+}
+window.belaChatInputChange = belaChatInputChange;
+
+function belaChatAdicionarMsg(texto, tipo, html){
+  const msgs=document.getElementById('bela-chat-messages');
+  if(!msgs) return;
+  const div=document.createElement('div');
+  div.className='bela-chat-msg bela-msg-'+tipo;
+  if(html){
+    div.innerHTML='<div class="bela-msg-bubble">'+html+'</div><div class="bela-msg-time">'+agora()+'</div>';
+  } else {
+    const bubble=document.createElement('div');
+    bubble.className='bela-msg-bubble';
+    bubble.textContent=texto;
+    const time=document.createElement('div');
+    time.className='bela-msg-time';
+    time.textContent=agora();
+    div.appendChild(bubble);
+    div.appendChild(time);
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  // Badge se fechado
+  if(!chatAberto && tipo==='bela'){
+    msgNaoLidas++;
+    const badge=document.getElementById('bela-chat-badge');
+    if(badge){ badge.style.display='flex'; badge.textContent=msgNaoLidas>9?'9+':msgNaoLidas; }
+  }
+  return div;
+}
+
+function belaChatTyping(){
+  const msgs=document.getElementById('bela-chat-messages');
+  if(!msgs) return null;
+  const div=document.createElement('div');
+  div.className='bela-chat-msg bela-msg-bela bela-typing';
+  div.innerHTML='<div class="bela-msg-bubble"><div class="bela-typing-dots"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+// Formata resposta de consulta em HTML para o chat
+function belaChatFormatarResposta(fn, pergunta){
+  // Intercepta belaShowCard para capturar dados e formatar para chat
+  const origCard = window._belaShowCardOrig || belaShowCard;
+
+  let htmlResposta='';
+  const origSpeak = belaSpeak;
+
+  // Monkey-patch temporário para capturar o conteúdo
+  const patchedShowCard = function(icon,title,answerHTML,subtext,listItems){
+    let html = '<strong>'+icon+' '+title+'</strong><br>'+answerHTML;
+    if(subtext) html += '<br><small style="opacity:.7">'+subtext+'</small>';
+    if(listItems&&listItems.length){
+      html += '<ul style="margin:6px 0 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px">';
+      listItems.forEach(it=>{
+        html += '<li style="display:flex;justify-content:space-between;font-size:.78rem;padding:3px 0;border-bottom:1px solid rgba(255,180,0,.1)"><span>'+it.name+'</span><span style="opacity:.7">'+it.detail+'</span></li>';
+      });
+      html += '</ul>';
+    }
+    htmlResposta = html;
+    origCard(icon,title,answerHTML,subtext,listItems);
+  };
+
+  // Temporarily replace
+  window.belaShowCard_chat = belaShowCard;
+  // Call the function with patched card
+  const origRef = belaShowCard;
+  try {
+    // We run fn() but capture its card output
+    // Since fn() is synchronous for data queries, this works
+    window._belaChatCapturing = true;
+    window._belaChatHtml = '';
+    fn();
+    window._belaChatCapturing = false;
+  } catch(e){}
+
+  return htmlResposta;
+}
+
+function belaChatEnviar(){
+  const inp=document.getElementById('bela-chat-input');
+  if(!inp) return;
+  const texto=inp.value.trim();
+  if(!texto) return;
+  inp.value='';
+  const sendBtn=document.getElementById('bela-chat-send');
+  if(sendBtn) sendBtn.disabled=true;
+
+  belaChatAdicionarMsg(texto,'user');
+
+  // Abre o chat se fechado
+  if(!chatAberto) belaChatToggle();
+
+  // Mostra digitando...
+  const typing=belaChatTyping();
+
+  setTimeout(()=>{
+    if(typing) typing.remove();
+
+    // Usa o mesmo belaInterpret da Bela
+    if(typeof belaInterpret !== 'function'){
+      belaChatAdicionarMsg('Ainda estou carregando. Tente novamente em instantes.','bela');
+      return;
+    }
+
+    const fn=belaInterpret(texto);
+    if(!fn){
+      belaChatAdicionarMsg(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.naoEntendeu)() : 'Não entendi. Tenta de outro jeito?','bela');
+      return;
+    }
+
+    // Intercepta belaShowCard para capturar resposta em HTML
+    const origShow = belaShowCard;
+    const origSpeak = belaSpeak;
+    let html='';
+
+    window.belaShowCard = function(icon,title,answerHTML,subtext,listItems){
+      // Constrói HTML para o chat
+      let h='<strong style="font-size:.84rem">'+icon+' '+title+'</strong>';
+      // Strip highlight span para pegar só o texto
+      const txt=answerHTML.replace(/<[^>]+>/g,'');
+      h+='<div style="font-size:1rem;font-weight:700;margin:4px 0;color:rgba(255,220,100,1)">'+txt+'</div>';
+      if(subtext) h+='<div style="font-size:.72rem;opacity:.65;margin-bottom:4px">'+subtext+'</div>';
+      if(listItems&&listItems.length){
+        h+='<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">';
+        listItems.forEach(it=>{
+          h+='<div style="display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;border-bottom:1px solid rgba(255,180,0,.1)"><span>'+it.name+'</span><span style="opacity:.65">'+it.detail+'</span></div>';
+        });
+        h+='</div>';
+      }
+      html=h;
+      origShow(icon,title,answerHTML,subtext,listItems);
+    };
+
+    // Silencia belaSpeak durante chat (não vocaliza — só texto)
+    window.belaSpeak = function(text, onEnd){
+      // Só adiciona ao chat se não tiver card (fallback)
+      if(!html) html=text;
+      window.belaSpeak = origSpeak;
+      window.belaShowCard = origShow;
+      if(onEnd) onEnd();
+    };
+
+    try {
+      fn();
+    } catch(e){
+      window.belaSpeak = origSpeak;
+      window.belaShowCard = origShow;
+      belaChatAdicionarMsg('Ocorreu um erro ao processar. Tente novamente.','bela');
+      return;
+    }
+
+    // Restaura imediatamente após execução síncrona
+    window.belaSpeak = origSpeak;
+    window.belaShowCard = origShow;
+
+    if(html){
+      belaChatAdicionarMsg('',  'bela', html);
+    } else {
+      belaChatAdicionarMsg('Aqui está a resposta. Confira os cards acima.','bela');
+    }
+
+    // Atualiza status
+    const st=document.getElementById('bela-chat-status-txt');
+    if(st) st.textContent='Respondeu agora';
+    setTimeout(()=>{ if(st) st.textContent='Assistente financeira'; },3000);
+
+  }, 600 + Math.random()*300); // delay natural
+}
+window.belaChatEnviar = belaChatEnviar;
+
+// Init — define hora da msg de boas-vindas
+document.addEventListener('DOMContentLoaded',function(){
+  const el=document.getElementById('bela-chat-init-time');
+  if(el) el.textContent=agora();
+});
+
+})();
+</script>
+
 </body>
 </html>
