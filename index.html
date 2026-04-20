@@ -3235,16 +3235,28 @@ select option{background:#060d14;color:#e8f4ff;}
 
         <!-- Suggestion chips -->
         <div class="bela-chips">
-          <button class="bela-chip" onclick="belaAskText('quanto faturei esse mês')">💰 Faturamento este mês</button>
-          <button class="bela-chip" onclick="belaAskText('quanto faturei no mês passado')">📅 Mês passado</button>
-          <button class="bela-chip" onclick="belaAskText('quais são minhas próximas reservas')">📋 Próximas reservas</button>
-          <button class="bela-chip" onclick="belaAskText('quantas reservas tenho essa semana')">📆 Esta semana</button>
-          <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
+          <button class="bela-chip" onclick="belaAskText('faturamento total histórico')">💰 Faturamento total</button>
+          <button class="bela-chip" onclick="belaAskText('quanto faturei esse mês')">📅 Este mês</button>
+          <button class="bela-chip" onclick="belaAskText('todas as reservas já feitas')">📋 Todas as reservas</button>
+          <button class="bela-chip" onclick="belaAskText('próximas reservas')">🗓️ Próximas</button>
+          <button class="bela-chip" onclick="belaAskText('todos os pagamentos pendentes')">💳 Pagamentos</button>
+          <button class="bela-chip" onclick="belaAskText('todas as despesas histórico')">💸 Total despesas</button>
+          <button class="bela-chip" onclick="belaAskText('3 maiores despesas')">📈 3 maiores despesas</button>
+          <button class="bela-chip" onclick="belaAskText('5 menores despesas')">📉 5 menores despesas</button>
+          <button class="bela-chip" onclick="belaAskText('5 maiores reservas')">💎 5 maiores reservas</button>
+          <button class="bela-chip" onclick="belaAskText('3 menores reservas')">🔻 3 menores reservas</button>
+          <button class="bela-chip" onclick="belaAskText('estou lucrando ou no prejuízo')">🏦 Lucro atual</button>
+          <button class="bela-chip" onclick="belaAskText('lucro total histórico')">📊 Lucro total histórico</button>
+          <button class="bela-chip" onclick="belaAskText('despesas por categoria')">🗂️ Por categoria</button>
+          <button class="bela-chip" onclick="belaAskText('reservas por tipo de evento')">🎉 Por tipo evento</button>
+          <button class="bela-chip" onclick="belaAskText('top clientes que mais reservaram')">👥 Top clientes</button>
+          <button class="bela-chip" onclick="belaAskText('projeção anual')">🚀 Projeção anual</button>
+          <button class="bela-chip" onclick="belaAskText('evolução mensal histórico')">📈 Evolução mensal</button>
+          <button class="bela-chip" onclick="belaAskText('média mensal')">📊 Médias</button>
+          <button class="bela-chip" onclick="belaAskText('reservas canceladas')">❌ Canceladas</button>
           <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
-          <button class="bela-chip" onclick="belaAskText('resumo geral')">📊 Resumo geral</button>
-          <button class="bela-chip" onclick="belaAskText('todos os pagamentos')">💳 Pagamentos</button>
           <button class="bela-chip" onclick="belaAskText('ticket medio')">🎯 Ticket médio</button>
-          <button class="bela-chip" onclick="belaAskText('despesas do ano')">📉 Despesas anuais</button>
+          <button class="bela-chip" onclick="belaAskText('resumo geral')">📊 Resumo geral</button>
         </div>
 
         <!-- Global mic toggle -->
@@ -9276,6 +9288,80 @@ function belaReservasMes(mesInfo){
   belaSpeak('Em '+nome+' há '+lista.length+(lista.length===1?' reserva.':' reservas.'));
 }
 
+
+function belaFaturamentoTotal(){
+  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
+  if(!ativas.length){
+    belaShowCard('💰','Faturamento Total','Nenhuma reserva encontrada.','');
+    belaSpeak('Ainda não há reservas no sistema.');
+    return;
+  }
+  const totalGeral = ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
+  const totalRecebido = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
+  const totalSinais = ativas.filter(r=>r.pagamento!=='pago').reduce((s,r)=>s+(Number(r.sinal)||0),0);
+  const aReceber = ativas.filter(r=>r.pagamento!=='pago').reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0);
+  const pagas = ativas.filter(r=>r.pagamento==='pago').length;
+
+  // Agrupa por ano-mês para mostrar breakdown
+  const porMes={};
+  ativas.forEach(r=>{
+    const d=belaDatasEvento(r)[0]||'';
+    if(!d) return;
+    const k=d.substring(0,7);
+    if(!porMes[k]) porMes[k]={total:0,qtd:0};
+    porMes[k].total+=(Number(r.total)||0);
+    porMes[k].qtd++;
+  });
+  const mesesOrdem=Object.entries(porMes).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
+  const itens=mesesOrdem.map(([k,v])=>{
+    const[y,m]=k.split('-');
+    return{name:MESES_NOME[parseInt(m)-1]+' '+y, detail:fmtBRL(v.total)+' · '+v.qtd+(v.qtd===1?' reserva':' reservas')};
+  });
+
+  belaShowCard('💰','Faturamento Total — Histórico',
+    '<span class="highlight">'+fmtBRL(totalGeral)+'</span>',
+    'Recebido: '+fmtBRL(totalRecebido)+' · Sinais: '+fmtBRL(totalSinais)+' · A receber: '+fmtBRL(aReceber)+' · '+ativas.length+' reservas / '+pagas+' pagas',
+    itens);
+  belaMemoria.registrar('faturamento total', fmtBRL(totalGeral));
+  belaSetTranscript('');
+  belaSpeak('No total, o faturamento de todas as reservas é '+fmtBRL(totalGeral)+
+    '. Já recebido: '+fmtBRL(totalRecebido)+'. Ainda a receber: '+fmtBRL(aReceber)+'.');
+}
+
+function belaTodasReservas(){
+  const todas = belaGetReservas();
+  const ativas = todas.filter(r=>r.status!=='cancelada');
+  const canceladas = todas.filter(r=>r.status==='cancelada').length;
+  if(!todas.length){
+    belaShowCard('📋','Todas as Reservas','Nenhuma reserva encontrada.','');
+    belaSpeak('Não há reservas no sistema.');
+    return;
+  }
+  // Ordena por data mais recente
+  const ordenadas=[...ativas].sort((a,b)=>{
+    const da=belaDatasEvento(a)[0]||'';
+    const db=belaDatasEvento(b)[0]||'';
+    return db.localeCompare(da);
+  });
+  const itens=ordenadas.slice(0,10).map(r=>({
+    name: r.nome||'—',
+    detail: (belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · '+fmtBRL(r.total)+' · '+r.pagamento
+  }));
+  const totalVal=ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
+  const pagas=ativas.filter(r=>r.pagamento==='pago').length;
+  const pend=ativas.filter(r=>r.pagamento!=='pago').length;
+
+  belaShowCard('📋','Todas as Reservas',
+    '<span class="highlight">'+ativas.length+'</span> reserva'+(ativas.length===1?'':'s')+' ativas',
+    'Total: '+fmtBRL(totalVal)+' · '+pagas+' pagas · '+pend+' pendentes'+(canceladas>0?' · '+canceladas+' canceladas':''),
+    itens);
+  belaMemoria.registrar('todas reservas', ativas.length+' ativas');
+  belaSetTranscript('');
+  const mostradas=Math.min(10,ativas.length);
+  belaSpeak('Você tem '+ativas.length+(ativas.length===1?' reserva ativa':' reservas ativas')+
+    ' no total, somando '+fmtBRL(totalVal)+
+    '. Mostrando as '+mostradas+' mais recentes.');
+}
 function belaReservasNome(nome){
   const n=normTxt(nome);
   const enc=belaGetReservas().filter(r=>r.status!=='cancelada'&&normTxt(r.nome||'').includes(n));
@@ -9294,6 +9380,416 @@ function belaComparaMeses(m1,m2){
   belaSetTranscript('');
   belaSpeak(m1.nome+': '+fmtBRL(t1)+'. '+m2.nome+': '+fmtBRL(t2)+'. '+(t1>=t2?m1.nome:m2.nome)+' foi melhor.');
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// CONSULTAS EXPANDIDAS — Máxima cobertura do banco
+// ══════════════════════════════════════════════════════════════
+
+// Todas as despesas — histórico completo
+function belaTodasDespesas(){
+  const all = belaGetDespesas();
+  if(!all.length){ belaShowCard('💸','Despesas','Nenhuma despesa registrada.',''); belaSpeak('Nenhuma despesa encontrada.'); return; }
+  const total = all.reduce((s,d)=>s+(Number(d.valor)||0),0);
+  const porCat = {};
+  all.forEach(d=>{ const cat=d.cat||d.categoria||'outros'; porCat[cat]=(porCat[cat]||0)+(Number(d.valor)||0); });
+  const itens = Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>({name:c,detail:fmtBRL(v)+' ('+Math.round(v/total*100)+'%)'}));
+  belaShowCard('💸','Despesas — Histórico Completo',
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+fmtBRL(total)+'</span>',
+    all.length+' lançamentos no total', itens);
+  belaSetTranscript('');
+  belaSpeak('O total de todas as despesas é '+fmtBRL(total)+', em '+all.length+' lançamentos.');
+}
+
+// Maior despesa já registrada
+function belaMaiorDespesa(){
+  const all = belaGetDespesas();
+  if(!all.length){ belaSpeak('Nenhuma despesa encontrada.'); return; }
+  const maior = all.reduce((m,d)=>Number(d.valor)>Number(m.valor)?d:m, all[0]);
+  const itens=[{name:maior.desc||maior.cat||'—', detail:fmtBRL(maior.valor)+' · '+(maior.data||'').split('-').reverse().join('/')+' · '+(maior.cat||'—')}];
+  belaShowCard('📈','Maior Despesa Registrada',
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.5rem">'+fmtBRL(maior.valor)+'</span>',
+    (maior.desc||maior.cat||'Sem descrição')+' · '+(maior.data||'').split('-').reverse().join('/'), itens);
+  belaSetTranscript('');
+  belaSpeak('A maior despesa foi '+fmtBRL(maior.valor)+', referente a '+(maior.desc||maior.cat||'lançamento sem descrição')+'.');
+}
+
+// Menor despesa já registrada
+function belaMenorDespesa(){
+  const all = belaGetDespesas().filter(d=>Number(d.valor)>0);
+  if(!all.length){ belaSpeak('Nenhuma despesa encontrada.'); return; }
+  const menor = all.reduce((m,d)=>Number(d.valor)<Number(m.valor)?d:m, all[0]);
+  const itens=[{name:menor.desc||menor.cat||'—', detail:fmtBRL(menor.valor)+' · '+(menor.data||'').split('-').reverse().join('/')+' · '+(menor.cat||'—')}];
+  belaShowCard('📉','Menor Despesa Registrada',
+    '<span class="highlight">'+fmtBRL(menor.valor)+'</span>',
+    (menor.desc||menor.cat||'Sem descrição')+' · '+(menor.data||'').split('-').reverse().join('/'), itens);
+  belaSetTranscript('');
+  belaSpeak('A menor despesa foi '+fmtBRL(menor.valor)+', referente a '+(menor.desc||menor.cat||'lançamento sem descrição')+'.');
+}
+
+// Maior receita (reserva de maior valor)
+function belaMaiorReserva(){
+  const all = belaGetReservas().filter(r=>r.status!=='cancelada'&&Number(r.total)>0);
+  if(!all.length){ belaSpeak('Nenhuma reserva encontrada.'); return; }
+  const maior = all.reduce((m,r)=>Number(r.total)>Number(m.total)?r:m, all[0]);
+  const itens=[{name:maior.nome||'—', detail:fmtBRL(maior.total)+' · '+(belaDatasEvento(maior)[0]||'').split('-').reverse().join('/')+' · '+maior.pagamento}];
+  belaShowCard('💎','Maior Reserva Já Feita',
+    '<span class="highlight">'+fmtBRL(maior.total)+'</span>',
+    (maior.nome||'—')+' · '+(maior.tipo||'—'), itens);
+  belaSetTranscript('');
+  belaSpeak('A maior reserva foi de '+fmtBRL(maior.total)+', do cliente '+(maior.nome||'desconhecido')+'.');
+}
+
+// Menor reserva
+function belaMenorReserva(){
+  const all = belaGetReservas().filter(r=>r.status!=='cancelada'&&Number(r.total)>0);
+  if(!all.length){ belaSpeak('Nenhuma reserva encontrada.'); return; }
+  const menor = all.reduce((m,r)=>Number(r.total)<Number(m.total)?r:m, all[0]);
+  const itens=[{name:menor.nome||'—', detail:fmtBRL(menor.total)+' · '+(belaDatasEvento(menor)[0]||'').split('-').reverse().join('/')+' · '+menor.pagamento}];
+  belaShowCard('🔻','Menor Reserva Já Feita',
+    '<span class="highlight">'+fmtBRL(menor.total)+'</span>',
+    (menor.nome||'—')+' · '+(menor.tipo||'—'), itens);
+  belaSetTranscript('');
+  belaSpeak('A menor reserva foi de '+fmtBRL(menor.total)+', do cliente '+(menor.nome||'desconhecido')+'.');
+}
+
+// Despesas por categoria (todas as categorias)
+function belaDespesasPorCategoria(){
+  const all = belaGetDespesas();
+  if(!all.length){ belaSpeak('Nenhuma despesa encontrada.'); return; }
+  const porCat={};
+  all.forEach(d=>{ const cat=d.cat||d.categoria||'outros'; if(!porCat[cat]) porCat[cat]={total:0,qtd:0}; porCat[cat].total+=(Number(d.valor)||0); porCat[cat].qtd++; });
+  const total=all.reduce((s,d)=>s+(Number(d.valor)||0),0);
+  const itens=Object.entries(porCat).sort((a,b)=>b[1].total-a[1].total)
+    .map(([c,v])=>({name:c,detail:fmtBRL(v.total)+' · '+v.qtd+' lançamentos ('+Math.round(v.total/total*100)+'%)'}));
+  belaShowCard('🗂️','Despesas por Categoria','<span class="highlight">'+fmtBRL(total)+'</span>',itens.length+' categorias', itens);
+  belaSetTranscript('');
+  const top=itens[0];
+  belaSpeak('Maior categoria: '+top.name+' com '+fmtBRL(porCat[top.name].total)+'. Total geral: '+fmtBRL(total)+'.');
+}
+
+// Reservas por tipo de evento
+function belaReservasPorTipo(){
+  const all = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const porTipo={};
+  all.forEach(r=>{ const tipo=r.tipo||'Não informado'; if(!porTipo[tipo]) porTipo[tipo]={qtd:0,total:0}; porTipo[tipo].qtd++; porTipo[tipo].total+=(Number(r.total)||0); });
+  const itens=Object.entries(porTipo).sort((a,b)=>b[1].qtd-a[1].qtd)
+    .map(([t,v])=>({name:t,detail:v.qtd+' reserva'+(v.qtd>1?'s':'')+' · '+fmtBRL(v.total)}));
+  belaShowCard('🎉','Reservas por Tipo de Evento','<span class="highlight">'+all.length+'</span> reservas',itens.length+' tipos', itens);
+  belaSetTranscript('');
+  const top=itens[0];
+  belaSpeak('O evento mais comum é '+top.name+', com '+porTipo[top.name].qtd+' reservas.');
+}
+
+// Clientes que mais reservaram
+function belaTopClientes(){
+  const all = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const porCliente={};
+  all.forEach(r=>{ const n=r.nome||'Desconhecido'; if(!porCliente[n]) porCliente[n]={qtd:0,total:0}; porCliente[n].qtd++; porCliente[n].total+=(Number(r.total)||0); });
+  const itens=Object.entries(porCliente).sort((a,b)=>b[1].qtd-a[1].qtd).slice(0,8)
+    .map(([n,v])=>({name:n,detail:v.qtd+' reserva'+(v.qtd>1?'s':'')+' · '+fmtBRL(v.total)}));
+  if(!itens.length){ belaSpeak('Nenhum dado encontrado.'); return; }
+  belaShowCard('👥','Top Clientes','<span class="highlight">'+itens[0].name+'</span>',itens[0].detail, itens);
+  belaSetTranscript('');
+  belaSpeak('O cliente que mais reservou foi '+itens[0].name+', com '+porCliente[itens[0].name].qtd+' reservas.');
+}
+
+// Lucro: receita - despesas (por período)
+function belaLucro(mesInfo){
+  const {prefix,nome} = mesInfo || mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
+  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const doMes  = ativas.filter(r=>belaDatasEvento(r).some(d=>d&&d.startsWith(prefix)));
+
+  // Cenário ATUAL: só o que já entrou de fato
+  const recebido   = doMes.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0)
+                   + doMes.filter(r=>r.pagamento!=='pago').reduce((s,r)=>s+(Number(r.sinal)||0),0);
+  // Cenário PROJETADO: se todas as pendentes forem pagas
+  const confirmado = doMes.reduce((s,r)=>s+(Number(r.total)||0),0);
+  // Despesas do mesmo período
+  const despTotal  = belaGetDespesas().filter(d=>d.data&&d.data.startsWith(prefix))
+    .reduce((s,d)=>s+(Number(d.valor)||0),0);
+
+  const lucroAtual = recebido   - despTotal;
+  const lucroProj  = confirmado - despTotal;
+  const margemAtual = recebido>0   ? Math.round(lucroAtual/recebido*100)   : 0;
+  const margemProj  = confirmado>0 ? Math.round(lucroProj/confirmado*100)  : 0;
+
+  const corA = lucroAtual>=0 ? 'var(--green)' : '#ff4466';
+  const corP = lucroProj>=0  ? 'var(--cyan)'  : '#ffaa00';
+
+  const itens = [
+    {name:'💰 Receita confirmada',     detail: fmtBRL(confirmado)+' ('+doMes.length+' reservas)'},
+    {name:'✅ Já recebido (atual)',     detail: fmtBRL(recebido)},
+    {name:'💸 Despesas do período',    detail: fmtBRL(despTotal)},
+    {name:'📊 Lucro líquido ATUAL',    detail: (lucroAtual>=0?'+':'')+fmtBRL(lucroAtual)+' (margem '+margemAtual+'%)'},
+    {name:'🚀 Lucro PROJETADO (se tudo pago)', detail: (lucroProj>=0?'+':'')+fmtBRL(lucroProj)+' (margem '+margemProj+'%)'},
+  ];
+
+  belaShowCard('📊','Lucro — '+nome,
+    '<span style="color:'+corA+';font-family:Syne,sans-serif;font-weight:800;font-size:1.3rem">'+(lucroAtual>=0?'+':'')+fmtBRL(lucroAtual)+'</span>'+
+    ' <span style="font-size:.8rem;color:var(--text-l)">atual</span> &nbsp;'+
+    '<span style="color:'+corP+';font-family:Syne,sans-serif;font-weight:700;font-size:1.1rem">'+(lucroProj>=0?'+':'')+fmtBRL(lucroProj)+'</span>'+
+    ' <span style="font-size:.75rem;color:var(--text-l)">se tudo pago</span>',
+    'Despesas: '+fmtBRL(despTotal)+' · Margem atual: '+margemAtual+'%', itens);
+  belaSetTranscript('');
+
+  // Fala natural explicando os dois cenários
+  const situacaoAtual = lucroAtual>=0
+    ? 'No momento você está com lucro de '+fmtBRL(lucroAtual)
+    : 'No momento você está no prejuízo de '+fmtBRL(Math.abs(lucroAtual));
+  const situacaoProj  = lucroProj>=0
+    ? 'Se todas as pendentes pagarem, o lucro sobe para '+fmtBRL(lucroProj)
+    : 'Mesmo que tudo seja pago, o resultado seria prejuízo de '+fmtBRL(Math.abs(lucroProj));
+
+  belaSpeak('Em '+nome+': despesas de '+fmtBRL(despTotal)+'. '+situacaoAtual+', margem de '+margemAtual+' porcento. '+situacaoProj+'.');
+}
+
+// Lucro total histórico — dois cenários: atual e projetado
+function belaLucroTotal(){
+  const ativas      = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const despTotal   = belaGetDespesas().reduce((s,d)=>s+(Number(d.valor)||0),0);
+
+  // Receita CONFIRMADA total (soma de tudo previsto)
+  const recConfirm  = ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
+
+  // Receita JÁ RECEBIDA (pagas + sinais das pendentes)
+  const recRecebido = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0)
+                    + ativas.filter(r=>r.pagamento!=='pago').reduce((s,r)=>s+(Number(r.sinal)||0),0);
+
+  // A receber (saldo das pendentes)
+  const aReceber    = ativas.filter(r=>r.pagamento!=='pago')
+                    .reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0);
+
+  const lucroAtual  = recRecebido - despTotal;
+  const lucroProj   = recConfirm  - despTotal;
+  const margAtual   = recRecebido>0  ? Math.round(lucroAtual/recRecebido*100) : 0;
+  const margProj    = recConfirm>0   ? Math.round(lucroProj/recConfirm*100)   : 0;
+
+  const corA = lucroAtual>=0 ? 'var(--green)' : '#ff4466';
+  const corP = lucroProj>=0  ? 'var(--cyan)'  : '#ffaa00';
+
+  const itens = [
+    {name:'💰 Receita confirmada total', detail: fmtBRL(recConfirm)+' ('+ativas.length+' reservas)'},
+    {name:'✅ Já recebido',              detail: fmtBRL(recRecebido)},
+    {name:'⏳ Ainda a receber',          detail: fmtBRL(aReceber)},
+    {name:'💸 Total de despesas',        detail: fmtBRL(despTotal)},
+    {name:'📊 Lucro líquido AGORA',      detail: (lucroAtual>=0?'+':'')+fmtBRL(lucroAtual)+' · margem '+margAtual+'%'},
+    {name:'🚀 Lucro PROJETADO',          detail: (lucroProj>=0?'+':'')+fmtBRL(lucroProj)+' · se tudo pago · margem '+margProj+'%'},
+  ];
+
+  belaShowCard('📊','Situação Financeira Completa',
+    '<span style="color:'+corA+';font-family:Syne,sans-serif;font-weight:800;font-size:1.3rem">'+(lucroAtual>=0?'+':'')+fmtBRL(lucroAtual)+'</span>'+
+    ' <span style="font-size:.78rem;color:var(--text-l)">agora</span>&nbsp;&nbsp;'+
+    '<span style="color:'+corP+';font-family:Syne,sans-serif;font-weight:700;font-size:1.1rem">'+(lucroProj>=0?'+':'')+fmtBRL(lucroProj)+'</span>'+
+    ' <span style="font-size:.75rem;color:var(--text-l)">se tudo pago</span>',
+    'Recebido: '+fmtBRL(recRecebido)+' · A receber: '+fmtBRL(aReceber)+' · Despesas: '+fmtBRL(despTotal), itens);
+  belaSetTranscript('');
+
+  const sitAtual = lucroAtual>=0
+    ? 'No momento você está com lucro líquido de '+fmtBRL(lucroAtual)+', margem de '+margAtual+' porcento'
+    : 'No momento você está no prejuízo de '+fmtBRL(Math.abs(lucroAtual))+', margem negativa de '+Math.abs(margAtual)+' porcento';
+  const sitProj = lucroProj>=0
+    ? 'Se todos os pendentes pagarem, o lucro sobe para '+fmtBRL(lucroProj)+', margem de '+margProj+' porcento'
+    : 'Mesmo que tudo seja pago, o resultado seria prejuízo de '+fmtBRL(Math.abs(lucroProj));
+
+  belaSpeak(sitAtual+'. '+sitProj+'. Total de despesas: '+fmtBRL(despTotal)+'.');
+}
+
+// Projeção anual baseada na média mensal
+function belaProjecaoAnual(){
+  const ano = new Date().getFullYear();
+  const mesAtual = new Date().getMonth()+1;
+  const reservas = belaGetReservas().filter(r=>r.status!=='cancelada');
+  // Receita por mês este ano
+  const porMes={};
+  reservas.forEach(r=>{
+    belaDatasEvento(r).forEach(d=>{
+      if(d&&d.startsWith(String(ano))){ const m=d.substring(0,7); porMes[m]=(porMes[m]||0)+(Number(r.total)||0); }
+    });
+  });
+  const mesesComDados = Object.keys(porMes).length||1;
+  const totalAteAgora = Object.values(porMes).reduce((s,v)=>s+v,0);
+  const mediaMensal = totalAteAgora/mesesComDados;
+  const mesesRestantes = 12-mesAtual;
+  const projecao = totalAteAgora + (mediaMensal*mesesRestantes);
+  belaShowCard('🚀','Projeção Anual '+ano,
+    '<span class="highlight">'+fmtBRL(projecao)+'</span>',
+    'Realizado: '+fmtBRL(totalAteAgora)+' ('+mesesComDados+' meses) · Média mensal: '+fmtBRL(mediaMensal)+' · '+mesesRestantes+' meses restantes');
+  belaSetTranscript('');
+  belaSpeak('Com base na média de '+fmtBRL(mediaMensal)+' por mês, a projeção para '+ano+' é de '+fmtBRL(projecao)+'.');
+}
+
+// Reservas canceladas
+function belaReservasCanceladas(){
+  const all = belaGetReservas();
+  const canc = all.filter(r=>r.status==='cancelada');
+  const itens=canc.slice(0,8).map(r=>({name:r.nome||'—',detail:(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · '+fmtBRL(r.total)}));
+  const perdido = canc.reduce((s,r)=>s+(Number(r.total)||0),0);
+  belaShowCard('❌','Reservas Canceladas',
+    '<span style="color:#ff4466;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+canc.length+'</span>'+(canc.length===1?' cancelada':' canceladas'),
+    'Receita perdida: '+fmtBRL(perdido), itens);
+  belaSetTranscript('');
+  belaSpeak('Há '+canc.length+' reserva'+(canc.length===1?' cancelada':' canceladas')+', representando '+fmtBRL(perdido)+' em receita perdida.');
+}
+
+// Evolução mensal completa (ano a ano)
+function belaEvolucaoMensal(){
+  const porMes={};
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r=>{
+    const d=belaDatasEvento(r)[0]||''; if(!d) return;
+    const k=d.substring(0,7);
+    if(!porMes[k]) porMes[k]={rec:0,qtd:0};
+    porMes[k].rec+=(Number(r.total)||0); porMes[k].qtd++;
+  });
+  const keys=Object.keys(porMes).sort();
+  if(!keys.length){ belaSpeak('Sem dados de evolução ainda.'); return; }
+  const itens=keys.slice(-12).map(k=>{
+    const[y,m]=k.split('-');
+    return{name:MESES_NOME[parseInt(m)-1].substring(0,3)+' '+y, detail:fmtBRL(porMes[k].rec)+' · '+porMes[k].qtd+(porMes[k].qtd===1?' reserva':' reservas')};
+  });
+  const melhor=keys.reduce((a,b)=>porMes[a].rec>=porMes[b].rec?a:b);
+  const[my,mm]=melhor.split('-');
+  belaShowCard('📈','Evolução Mensal — Últimos 12 Meses',MESES_NOME[parseInt(mm)-1]+' '+my+' foi o melhor','',itens.reverse());
+  belaSetTranscript('');
+  belaSpeak('Mostrando a evolução dos últimos '+Math.min(12,keys.length)+' meses. O melhor foi '+MESES_NOME[parseInt(mm)-1]+' de '+my+'.');
+}
+
+// Média de reservas por mês
+function belaMediaMensal(){
+  const porMes={};
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r=>{
+    const d=belaDatasEvento(r)[0]||''; if(!d) return;
+    const k=d.substring(0,7);
+    if(!porMes[k]) porMes[k]={rec:0,qtd:0};
+    porMes[k].rec+=(Number(r.total)||0); porMes[k].qtd++;
+  });
+  const meses=Object.keys(porMes);
+  if(!meses.length){ belaSpeak('Sem dados suficientes.'); return; }
+  const totalRec=meses.reduce((s,k)=>s+porMes[k].rec,0);
+  const totalQtd=meses.reduce((s,k)=>s+porMes[k].qtd,0);
+  const mediaRec=totalRec/meses.length, mediaQtd=totalQtd/meses.length;
+  belaShowCard('📊','Médias Mensais',
+    '<span class="highlight">'+fmtBRL(mediaRec)+'</span>',
+    'Média de receita/mês · '+mediaQtd.toFixed(1)+' reservas/mês · '+meses.length+' meses analisados');
+  belaSetTranscript('');
+  belaSpeak('A média mensal de receita é '+fmtBRL(mediaRec)+', com '+mediaQtd.toFixed(1)+' reservas por mês, em '+meses.length+' meses analisados.');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MOTOR DE CONSULTA UNIVERSAL — qualquer número, campo, ordem
+// ══════════════════════════════════════════════════════════════
+
+// Extrai número de uma frase: "3 maiores", "as 5", "top 10", "duas", etc.
+function extrairNumero(t) {
+  // Extensos
+  const ext = {uma:1,um:1,dois:2,duas:2,tres:3,quatro:4,cinco:5,seis:6,
+               sete:7,oito:8,nove:9,dez:10,doze:12,quinze:15,vinte:20};
+  for (const [k,v] of Object.entries(ext))
+    if (new RegExp('\\b'+k+'\\b').test(t)) return v;
+  // Dígitos
+  const m = t.match(/\b(\d+)\b/);
+  return m ? parseInt(m[1]) : null;
+}
+
+// ── DESPESAS RANKEADAS ────────────────────────────────────────
+function belaDespesasRank(n, ordem) {
+  // ordem: 'maior' | 'menor'
+  n = n || 5;
+  const all = belaGetDespesas().filter(d => Number(d.valor) > 0);
+  if (!all.length) { belaSpeak('Nenhuma despesa encontrada.'); return; }
+
+  const sorted = [...all].sort((a, b) =>
+    ordem === 'menor'
+      ? Number(a.valor) - Number(b.valor)
+      : Number(b.valor) - Number(a.valor)
+  );
+  const top = sorted.slice(0, Math.min(n, sorted.length));
+  const total = top.reduce((s, d) => s + Number(d.valor), 0);
+
+  const itens = top.map((d, i) => ({
+    name: (i+1)+'º · '+(d.desc || d.cat || 'Sem descrição'),
+    detail: fmtBRL(d.valor)+' · '+(d.cat||'—')+' · '+(d.data||'').split('-').reverse().join('/')
+  }));
+
+  const titulo = n+' '+(ordem==='menor'?'Menores':'Maiores')+' Despesas';
+  belaShowCard('💸', titulo,
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.3rem">'+fmtBRL(total)+'</span>',
+    'Total das '+top.length+' '+( ordem==='menor'?'menores':'maiores'), itens);
+  belaSetTranscript('');
+
+  const nomes = top.slice(0, 3).map(d => (d.desc||d.cat||'sem descrição')+' de '+fmtBRL(d.valor)).join(', ');
+  belaSpeak('As '+top.length+' '+(ordem==='menor'?'menores':'maiores')+
+    ' despesas são: '+nomes+(top.length > 3 ? ' e mais '+(top.length-3)+'.' : '.'));
+}
+
+// ── RESERVAS RANKEADAS ────────────────────────────────────────
+function belaReservasRank(n, ordem, campo) {
+  // campo: 'valor' | 'sinal' | 'data'
+  n = n || 5;
+  campo = campo || 'valor';
+  const all = belaGetReservas().filter(r => r.status !== 'cancelada');
+  if (!all.length) { belaSpeak('Nenhuma reserva encontrada.'); return; }
+
+  let sorted;
+  if (campo === 'data') {
+    sorted = [...all].sort((a, b) => {
+      const da = belaDatasEvento(a)[0] || '';
+      const db = belaDatasEvento(b)[0] || '';
+      return ordem === 'menor' ? da.localeCompare(db) : db.localeCompare(da);
+    });
+  } else {
+    sorted = [...all].sort((a, b) =>
+      ordem === 'menor'
+        ? Number(a[campo]||0) - Number(b[campo]||0)
+        : Number(b[campo]||0) - Number(a[campo]||0)
+    );
+  }
+
+  const top = sorted.slice(0, Math.min(n, sorted.length));
+  const totalVal = top.reduce((s, r) => s + (Number(r.total)||0), 0);
+
+  const itens = top.map((r, i) => ({
+    name: (i+1)+'º · '+(r.nome||'—'),
+    detail: fmtBRL(r.total)+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · '+r.pagamento
+  }));
+
+  const ordemLabel = ordem === 'menor' ? 'Menores' : 'Maiores';
+  const campoLabel = campo === 'data' ? 'Mais Antigas' : ordemLabel+' Valores';
+  const titulo = n+' Reservas — '+campoLabel;
+
+  belaShowCard('📋', titulo,
+    '<span class="highlight">'+fmtBRL(totalVal)+'</span>',
+    'Total das '+top.length+' reservas', itens);
+  belaSetTranscript('');
+
+  const nomes = top.slice(0, 3).map(r => r.nome+' ('+fmtBRL(r.total)+')').join(', ');
+  belaSpeak('As '+top.length+' reservas de '+(ordem==='menor'?'menor':'maior')+
+    ' valor são: '+nomes+(top.length > 3 ? ' e mais '+(top.length-3)+'.' : '.'));
+}
+
+// ── CONSULTA UNIVERSAL — interpreta qualquer pedido livre ─────
+function belaConsultaUniversal(t) {
+  const n      = extrairNumero(t);
+  const eMaior = /maior|alto|cara|valiosa|top|mais\s*alto|mais\s*caro/.test(t);
+  const eMenor = /menor|barato|baixo|minimo|mais\s*barato|mais\s*baixo/.test(t);
+  const eDespesa  = /despesa|gasto|custo|lancamento/.test(t);
+  const eReserva  = /reserva|evento|cliente/.test(t);
+  const ePagamento = /pago|pagamento|pend|inadim/.test(t);
+  const eValor  = /valor|total|preco/.test(t);
+  const eData   = /data|antiga|recente|nova|velha/.test(t);
+
+  if (eDespesa) {
+    const ordem = eMenor ? 'menor' : 'maior';
+    return () => belaDespesasRank(n || 5, ordem);
+  }
+  if (eReserva || ePagamento) {
+    const ordem = eMenor ? 'menor' : 'maior';
+    const campo = eData ? 'data' : 'total';
+    return () => belaReservasRank(n || 5, ordem, campo);
+  }
+  return null;
+}
+
 
 function belaHistorico(){
   const h=belaMemoria.historico.slice(-5).reverse();
@@ -9424,73 +9920,115 @@ function belaInterpret(rawText) {
   const t = normTxt(rawText);
   const mesInfo = extrairMesAno(t);
 
-  // ── AGRADECIMENTO ─────────────────────────────────────────
-  if (/^obrigad|valeu|thanks|vlw|muito\s*bom|excelente\s*(resposta|analise)|otimo|perfeito/.test(t)) {
-    return ()=>{
-      belaProcessando = false;
-      belaSpeak(sorteio(BELA_RESPOSTAS.obrigado)());
-    };
+  // ── CONSULTA UNIVERSAL COM NÚMERO (ex: "3 maiores despesas") ─
+  // Detecta padrões com número + maior/menor + despesa/reserva
+  if (extrairNumero(t) !== null &&
+      /(maior|menor|alto|baixo|caro|barato|top|minimo|maximo)/.test(t) &&
+      /(despesa|gasto|reserva|evento|cliente|custo|lancamento)/.test(t)) {
+    const fn = belaConsultaUniversal(t);
+    if (fn) return fn;
+  }
+  // Também pega sem número explícito: "maiores despesas", "menores reservas"
+  if (/(maiores|menores|mais\s*caras?|mais\s*baratas?|top\s*\d)/.test(t) &&
+      /(despesa|gasto|reserva|evento|custo)/.test(t)) {
+    const fn = belaConsultaUniversal(t);
+    if (fn) return fn;
   }
 
+  // ── AGRADECIMENTO ─────────────────────────────────────────
+  if (/^obrigad|valeu|thanks|vlw|muito\s*bom|excelente|otimo|perfeito/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.obrigado)()); };
+  }
   // ── ELOGIO ────────────────────────────────────────────────
   if (/voce\s*e\s*(boa|incrivel|otima|demais|fera|top)|que\s*(bela|legal|otimo|incrivel|massa)|adorei|gostei|sensacional/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.elogio)()); };
   }
-
   // ── PIADAS ────────────────────────────────────────────────
-  if (/piad|conta\s*(uma|uma\s*piad|algo\s*engraçad|algo\s*engracad)|me\s*faz\s*rir|algo\s*engraçad|me\s*divirt|humor|engracad|joke/.test(t)) {
+  if (/piad|conta\s*(uma|algo)|me\s*faz\s*rir|algo\s*engraçad|algo\s*engracad|me\s*divirt|humor|engracad|joke/.test(t)) {
     return ()=>{
       belaProcessando=false;
-      const piad = sorteio(BELA_RESPOSTAS.piadas)();
-      belaShowCard('😄','Momento de leveza', piad, '');
+      const piad=sorteio(BELA_RESPOSTAS.piadas)();
+      belaShowCard('😄','Momento de leveza',piad,'');
       belaSpeak(piad);
     };
   }
-
-  // ── RISO / REAÇÃO AO HUMOR ────────────────────────────────
-  if (/^(ha|haha|kkk|rsrs|lol|hehe|😂|que\s*(engraçad|engracad|funny|bom)|boa|morte\s*de\s*rir|tô\s*rindo|to\s*rindo|ri\s*muito|que\s*piada)/.test(t)||
+  // ── RISO ──────────────────────────────────────────────────
+  if (/^(ha|haha|kkk|rsrs|lol|hehe|que\s*(engraçad|engracad|funny|bom)|boa|morte\s*de\s*rir|to\s*rindo|ri\s*muito)/.test(t)||
       /hahaha|kkkk|rsrsrs|muito\s*engraçad|to\s*morrendo|tô\s*morrendo/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.riso)()); };
   }
-
   // ── DESPEDIDA ─────────────────────────────────────────────
-  if (/^(tchau|xau|ate\s*(logo|mais|amanha|breve)|fui|bye|good\s*bye|boa\s*noite$|descansando|vou\s*(sair|embora|parar))/.test(t)) {
+  if (/^(tchau|xau|ate\s*(logo|mais|amanha)|fui|bye|boa\s*noite$|vou\s*(sair|embora))/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.despedida)()); };
   }
-
-  // ── SAUDAÇÕES / VERIFICAÇÃO DE PRESENÇA ───────────────────
-  if (/^(oi|ola|ei|hey)$/.test(t.replace(/bela/,'').trim()) ||
-      /bom\s*dia|boa\s*tarde|boa\s*noite|ta\s*(ai|aí)|esta\s*(ai|aí)|me\s*ouve|funcionando|ativo|acorda/.test(t)) {
+  // ── SAUDAÇÕES ─────────────────────────────────────────────
+  if (/^(oi|ola|ei|hey)$/.test(t.replace(/\bbela\b/,'').trim())||
+      /bom\s*dia|boa\s*tarde|boa\s*noite|ta\s*ai|esta\s*ai|me\s*ouve|funcionando|ativo|acorda/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.saudacao)()); };
   }
-
-  // ── COMO ESTÁ / TUDO BEM ──────────────────────────────────
-  if (/como\s*(vai|esta|vc|voce|ta)|tudo\s*(bem|bom|certo|ok|otimo|tranquilo)|e\s*ai|qual\s*(e\s*a\s*vida|novidade)/.test(t)) {
+  // ── COMO ESTÁ ─────────────────────────────────────────────
+  if (/como\s*(vai|esta|ta)|tudo\s*(bem|bom|certo|ok)|e\s*ai|qual\s*(e\s*a\s*vida|novidade)/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.comoVai)()); };
   }
 
   // ── HISTÓRICO / MEMÓRIA ───────────────────────────────────
-  if (/historico|ultimas|anteriores|ja\s*perguntei|lembra|memoria/.test(t))
+  if (/historico\s*de\s*consult|ultimas\s*consult|ja\s*perguntei|lembra\s*o\s*que|memoria/.test(t))
     return belaHistorico;
+
+  // ── LUCRO / SITUAÇÃO FINANCEIRA ─────────────────────────────
+  if (/lucro|resultado|sobrou|margem|prejuizo|lucrando|perdendo|ganhand|situacao\s*financ|como\s*(estou|ta|tou)\s*(financ|o\s*negocio|a\s*empresa)|no\s*positivo|no\s*negativo|saldo\s*final/.test(t)) {
+    // Sempre mostra os DOIS cenários (atual + projetado)
+    if (/total|geral|historico|completo|tudo|acumulado|geral|tudo/.test(t)) return belaLucroTotal;
+    // "Estou lucrando?", "tô no prejuízo?", "como está o negócio?" → usa mês atual
+    const mesL = extrairMesAno(t);
+    return ()=>belaLucro(mesL);
+  }
+
+  // ── PROJEÇÃO ──────────────────────────────────────────────
+  if (/proj|prever|estimat|previsao|expectativa|meta|tendencia/.test(t)) return belaProjecaoAnual;
 
   // ── FATURAMENTO / RECEITA ─────────────────────────────────
   if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada|quanto\s*(fiz|foi|ganhei|recebi)|rendimento/.test(t)&&!/despesa|gasto/.test(t)) {
+    if (/total|tudo|historico|geral|completo|acumulado|ate\s*(hoje|agora|o\s*momento)|desde\s*(sempre|o\s*inicio)|todos\s*os\s*meses|ao\s*longo/.test(t))
+      return belaFaturamentoTotal;
     const meses=[];
-    for (const[nome,num] of Object.entries(MESES_MAP))
-      if(new RegExp('\b'+nome+'\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+    for(const[nome,num] of Object.entries(MESES_MAP))
+      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
     if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
     return ()=>belaFaturamentoMes(mesInfo);
   }
+
+  // ── MAIOR / MENOR RESERVA ─────────────────────────────────
+  if (/maior\s*reserva|reserva\s*maior|reserva\s*mais\s*(cara|alta|valiosa)|melhor\s*reserva/.test(t))
+    return () => belaReservasRank(1, 'maior', 'total');
+  if (/menor\s*reserva|reserva\s*menor|reserva\s*mais\s*(barata|baixa)|menor\s*valor/.test(t))
+    return () => belaReservasRank(1, 'menor', 'total');
 
   // ── RESERVAS ──────────────────────────────────────────────
   if (/reserva/.test(t)) {
     const nm=t.match(/(?:reservas?\s+d[ao]s?\s+|cliente\s+|para\s+o\s+|para\s+a\s+)([a-z]{3,}(?:\s+[a-z]{2,})?)/);
     if(nm) return ()=>belaReservasNome(nm[1]);
-    if(/semana/.test(t)) return belaReservasSemana;
-    if(/proxim|futur|agenda|vindo/.test(t)) return belaProximasReservas;
-    if(/pag|pago|pend|deve|inadim/.test(t)) return belaStatusPagamentos;
+    if (/cancelad/.test(t)) return belaReservasCanceladas;
+    if (/tipo|event/.test(t)) return belaReservasPorTipo;
+    if (/semana/.test(t)) return belaReservasSemana;
+    if (/proxim|futur|agenda|vindo/.test(t)) return belaProximasReservas;
+    if (/pag|pago|pend|deve|inadim/.test(t)) return belaStatusPagamentos;
+    if (/todas|todos|total|historico|completo|feita|realizad|geral|ate\s*(hoje|agora)|desde\s*(sempre|o\s*inicio)|ja\s*fiz|ja\s*feita|tudo/.test(t))
+      return belaTodasReservas;
     return ()=>belaReservasMes(mesInfo);
   }
+
+  // ── EVOLUÇÃO ──────────────────────────────────────────────
+  if (/evoluc|crescimento|tendencia|historico\s*mensal|mes\s*a\s*mes|ao\s*longo/.test(t)) return belaEvolucaoMensal;
+
+  // ── MÉDIA ─────────────────────────────────────────────────
+  if (/media|medio|average|por\s*mes\s*em\s*media/.test(t)&&!/ticket/.test(t)) return belaMediaMensal;
+
+  // ── CLIENTES / TOP ────────────────────────────────────────
+  if (/cliente|quem\s*mais\s*reserv|top\s*client|melhores\s*client|mais\s*frequente/.test(t)) return belaTopClientes;
+
+  // ── TIPOS DE EVENTO ───────────────────────────────────────
+  if (/tipo|event|anivers|casamento|formatura|confrat|batizado/.test(t)) return belaReservasPorTipo;
 
   // ── PRÓXIMAS ──────────────────────────────────────────────
   if (/proxim|agenda/.test(t)&&!/despesa/.test(t)) return belaProximasReservas;
@@ -9498,32 +10036,45 @@ function belaInterpret(rawText) {
   // ── SEMANA ────────────────────────────────────────────────
   if (/semana/.test(t)) return belaReservasSemana;
 
+  // ── CANCELADAS ────────────────────────────────────────────
+  if (/cancelad/.test(t)) return belaReservasCanceladas;
+
+  // ── MAIOR / MENOR DESPESA ─────────────────────────────────
+  if (/maior\s*despesa|despesa\s*maior|gasto\s*maior|mais\s*caro\s*(gasto|custo|despesa)/.test(t))
+    return () => belaDespesasRank(1, 'maior');
+  if (/menor\s*despesa|despesa\s*menor|gasto\s*menor|mais\s*barato/.test(t))
+    return () => belaDespesasRank(1, 'menor');
+
   // ── DESPESAS ──────────────────────────────────────────────
   if (/despesa|gasto|custo|saiu|saida|gastei/.test(t)) {
-    if(/ano|anual/.test(t)) return belaDespesasAno;
+    if (/maior/.test(t)) return belaMaiorDespesa;
+    if (/menor/.test(t)) return belaMenorDespesa;
+    if (/categor|tipo/.test(t)) return belaDespesasPorCategoria;
+    if (/total|tudo|historico|geral|completo|todas|todos|acumulado/.test(t)) return belaTodasDespesas;
+    if (/ano|anual/.test(t)) return belaDespesasAno;
     return ()=>belaDespesasMes(mesInfo);
   }
 
   // ── PAGAMENTOS ────────────────────────────────────────────
-  if (/pagament|pago|pendente|deve|inadim|cobrar|receber|quem\s*pag|quem\s*deve|lista.*pag|todos.*pag|pag.*todos|mostrar.*pag/.test(t)) {
-    const todos=/todos|todas|completo|completa|lista|mostrar|ver\s*todos|tudo/.test(t);
+  if (/pagament|pago|pendente|deve|inadim|cobrar|receber|quem\s*pag|quem\s*deve|lista.*pag|todos.*pag/.test(t)) {
+    const todos=/todos|todas|completo|lista|mostrar|tudo/.test(t);
     return ()=>belaStatusPagamentos(todos);
   }
 
   // ── MELHOR MÊS ────────────────────────────────────────────
-  if (/melhor|record|maior|top\s*mes/.test(t)) return belaMelhorMes;
+  if (/melhor|record|maior.*mes|top\s*mes/.test(t)) return belaMelhorMes;
 
   // ── TICKET ────────────────────────────────────────────────
-  if (/ticket|media|medio/.test(t)) return belaTicketMedio;
+  if (/ticket|valor\s*medio|media\s*valor/.test(t)) return belaTicketMedio;
 
   // ── RESUMO ────────────────────────────────────────────────
   if (/resumo|geral|tudo|overview/.test(t)) return belaResumoGeral;
 
   // ── COMPARATIVO ───────────────────────────────────────────
-  if (/compar|versus|vs|contra/.test(t)) {
+  if (/compar|versus|vs\b|contra/.test(t)) {
     const meses=[];
     for(const[nome,num] of Object.entries(MESES_MAP))
-      if(new RegExp('\b'+nome+'\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
+      if(new RegExp('\\b'+nome+'\\b').test(t)){meses.push(mkPrefix(new Date().getFullYear(),num));if(meses.length===2)break;}
     if(meses.length===2) return ()=>belaComparaMeses(meses[0],meses[1]);
   }
 
