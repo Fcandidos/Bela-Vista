@@ -3138,9 +3138,9 @@ select option{background:#060d14;color:#e8f4ff;}
             <p class="bela-subtitle">Assistente de voz inteligente · Diga <strong>"Bela"</strong> para começar</p>
         <p id="bela-data-status" style="font-size:0.7rem;color:var(--text-l);margin:4px 0 0;opacity:0.6"></p>
           </div>
-          <div class="bela-status-pill" id="bela-status-pill">
-            <span class="bela-status-dot" id="bela-status-dot"></span>
-            <span id="bela-status-txt">Aguardando</span>
+          <div id="bela-status-pill" style="display:none">
+            <span id="bela-status-dot"></span>
+            <span id="bela-status-txt"></span>
           </div>
         </div>
 
@@ -9024,14 +9024,15 @@ function belaSpeak(text, onEnd) {
     const finish = () => {
       if (!belaFalando) return;
       belaFalando = false;
-      belaProcessando = false;
+      belaProcessando = false; // SEMPRE reseta — seja qual aba estiver
       if (onEnd) onEnd();
       // Aguarda silêncio para não capturar eco
       belaSpeakTimeout = setTimeout(()=>{
-        if (belaAtivo||belaGlobalAtivo) {
-          const naAbaBela=(sessionStorage.getItem('vf_tab')||'')==='bela';
-          if(naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
-          belaStartRecognition();
+        if (belaAtivo || belaGlobalAtivo) {
+          const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
+          if (naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
+          // Só reinicia mic se não está já ouvindo
+          if (!belaOuvindo) belaStartRecognition();
         } else {
           belaNucleusState(''); belaSetStatus('','Aguardando');
         }
@@ -9376,6 +9377,30 @@ const BELA_RESPOSTAS = {
     ()=> 'Essa pergunta me pegou de surpresa. Foca no financeiro e aí eu voo!',
   ],
 
+  // Piadas variadas — nunca repete
+  piadas: [
+    ()=> 'Por que o contador ficou triste? Porque a conta não fechou! Assim como algumas reservas que conheço...',
+    ()=> 'Sabe por que eu nunca minto sobre faturamento? Porque os números sempre aparecem no extrato!',
+    ()=> 'Qual é o músico favorito do empresário? O Caixa do Sertanejo!',
+    ()=> 'Por que o dinheiro foi ao médico? Estava com o fluxo irregular!',
+    ()=> 'Programador, economista e eu andando na rua... O programador viu um bug, o economista viu inflação, e eu vi uma despesa não categorizada.',
+    ()=> 'Por que o balancete foi à terapia? Porque nunca conseguia fechar!',
+    ()=> 'Qual a diferença entre mim e um banco? O banco te cobra juros. Eu só te cobro atenção!',
+    ()=> 'Um empresário perguntou ao contador: "E aí, como está minha empresa?" O contador respondeu: "Entre aspas."',
+    ()=> 'Sabe o que tem em comum uma piada ruim e uma projeção financeira errada? Os dois não têm graça nenhuma no final!',
+    ()=> 'Por que o Excel chorou? Porque alguém dividiu por zero... assim como alguns meses aqui no seu histórico!',
+  ],
+
+  // Reação ao riso
+  riso: [
+    ()=> 'Que bom que consegui arrancar um sorriso! Me faz bem saber que fui útil de alguma forma.',
+    ()=> 'Ahh, adorei! Quando você ri, meu processador fica mais leve.',
+    ()=> 'Boa! Risada é a melhor medicina, dizem por aí. Posso continuar com outra?',
+    ()=> 'Fico feliz quando consigo animar! Agora, de volta ao trabalho?',
+    ()=> 'Missão cumprida! Humor e finanças combinam melhor do que parece.',
+    ()=> 'Tô guardando mais algumas no repertório. Se precisar de outra, é só pedir!',
+  ],
+
   ativacao: [
     ()=> 'Pronta! Pode falar.',
     ()=> 'Ativa! O que precisa?',
@@ -9410,6 +9435,22 @@ function belaInterpret(rawText) {
   // ── ELOGIO ────────────────────────────────────────────────
   if (/voce\s*e\s*(boa|incrivel|otima|demais|fera|top)|que\s*(bela|legal|otimo|incrivel|massa)|adorei|gostei|sensacional/.test(t)) {
     return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.elogio)()); };
+  }
+
+  // ── PIADAS ────────────────────────────────────────────────
+  if (/piad|conta\s*(uma|uma\s*piad|algo\s*engraçad|algo\s*engracad)|me\s*faz\s*rir|algo\s*engraçad|me\s*divirt|humor|engracad|joke/.test(t)) {
+    return ()=>{
+      belaProcessando=false;
+      const piad = sorteio(BELA_RESPOSTAS.piadas)();
+      belaShowCard('😄','Momento de leveza', piad, '');
+      belaSpeak(piad);
+    };
+  }
+
+  // ── RISO / REAÇÃO AO HUMOR ────────────────────────────────
+  if (/^(ha|haha|kkk|rsrs|lol|hehe|😂|que\s*(engraçad|engracad|funny|bom)|boa|morte\s*de\s*rir|tô\s*rindo|to\s*rindo|ri\s*muito|que\s*piada)/.test(t)||
+      /hahaha|kkkk|rsrsrs|muito\s*engraçad|to\s*morrendo|tô\s*morrendo/.test(t)) {
+    return ()=>{ belaProcessando=false; belaSpeak(sorteio(BELA_RESPOSTAS.riso)()); };
   }
 
   // ── DESPEDIDA ─────────────────────────────────────────────
@@ -9583,8 +9624,10 @@ function belaStartRecognition() {
       belaProcessando=false;
       belaSpeak(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.semComando)() : 'Aqui! Pode falar.');
     }
-    // Se está em contexto mas sem comando → silêncio (não fala nada, só reinicia mic)
-    // Isso evita o loop de "pode repetir"
+    // Se está em contexto mas sem comando → silêncio, reseta flag e reinicia mic
+    else {
+      belaProcessando = false;
+    }
   };
 
   belaRecog.onerror=(e)=>{
@@ -9641,16 +9684,7 @@ function belaCriarIndicadorGlobal(){
   document.body.appendChild(div);
   const style=document.createElement('style');
   style.textContent=`
-    #bela-global-indicator{display:none;position:fixed;bottom:80px;right:18px;z-index:9999;
-      align-items:center;gap:7px;background:rgba(10,8,0,.88);border:1px solid rgba(255,180,0,.4);
-      border-radius:999px;padding:7px 14px 7px 10px;font-size:.72rem;color:rgba(255,210,80,.9);
-      font-family:'DM Sans',sans-serif;cursor:pointer;backdrop-filter:blur(8px);
-      box-shadow:0 0 20px rgba(255,160,0,.25);transition:all .3s;user-select:none;}
-    #bela-global-indicator:hover{background:rgba(20,15,0,.95);border-color:rgba(255,180,0,.7);}
-    #bela-global-indicator.listening svg{animation:bela-glow .8s ease-in-out infinite;}
-    #bela-global-indicator.speaking{border-color:rgba(0,212,255,.5);}
-    @keyframes bela-glow{0%,100%{filter:drop-shadow(0 0 4px rgba(255,180,0,.6))}50%{filter:drop-shadow(0 0 12px rgba(255,180,0,1))}}
-    @media(max-width:640px){#bela-global-indicator{bottom:76px;right:10px;}}
+    #bela-global-indicator{display:none!important;}
   `;
   document.head.appendChild(style);
 }
@@ -9659,7 +9693,15 @@ function belaCriarIndicadorGlobal(){
 // TOGGLES
 // ══════════════════════════════════════════════════════════════
 window.belaToggleGlobal=function(silencioso){
-  if(!belaInitDone){belaInitDone=true;belaLoadVoices();if(belaSynth.onvoiceschanged!==undefined)belaSynth.onvoiceschanged=belaLoadVoices;}
+  if(!belaInitDone){
+    belaInitDone=true;
+    // Load voices with retry for browsers that need interaction first
+    if(belaSynth){
+      if(belaSynth.getVoices().length) belaLoadVoices();
+      if(belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices;
+      else setTimeout(belaLoadVoices, 500);
+    }
+  }
   if(belaGlobalAtivo){
     belaGlobalAtivo=false;
     if(!belaAtivo)belaStopRecognition();
@@ -9728,16 +9770,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return orig.apply(this,arguments);
     };
   }
-  setTimeout(()=>{
-    const nav=document.querySelector('.admin-nav');
-    if(nav&&!$b('bela-global-btn')){
-      const btn=document.createElement('button');
-      btn.id='bela-global-btn';btn.className='admin-nav-btn';
-      btn.style.cssText='font-size:.72rem;padding:6px 12px;border:1px dashed rgba(255,180,0,.35);color:rgba(255,180,0,.8);';
-      btn.textContent='🎙️ Escuta global';btn.onclick=window.belaToggleGlobal;
-      nav.appendChild(btn);
-    }
-  },800);
+  // Botão de escuta global removido do nav — disponível na aba Bela
 });
 
 
@@ -10263,7 +10296,10 @@ function belaChatEnviar(){
       return;
     }
 
-    const fn=belaInterpret(texto);
+    // Força atualização dos dados antes de responder
+  window._belaReservas = (typeof reservas !== 'undefined' && reservas.length) ? reservas : (window._belaReservas || []);
+  window._belaDespesas = (typeof despesas !== 'undefined' && despesas.length) ? despesas : (window._belaDespesas || []);
+  const fn=belaInterpret(texto);
     if(!fn){
       belaChatAdicionarMsg(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.naoEntendeu)() : 'Não entendi. Tenta de outro jeito?','bela');
       return;
@@ -10300,6 +10336,12 @@ function belaChatEnviar(){
       window.belaShowCard = origShow;
       if(onEnd) onEnd();
     };
+
+    // Sync data one more time before executing
+    try {
+      if(typeof reservas!=='undefined'&&reservas.length) window._belaReservas=reservas;
+      if(typeof despesas!=='undefined'&&despesas.length) window._belaDespesas=despesas;
+    } catch(e){}
 
     try {
       fn();
