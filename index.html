@@ -2304,7 +2304,7 @@ select option{background:#060d14;color:#e8f4ff;}
         <div style="display:flex;justify-content:flex-end;margin-bottom:18px;margin-top:-6px">
           <button class="forgot-link" onclick="showLoginState('forgot')">Esqueci minha senha</button>
         </div>
-        <button class="btn btn-gold btn-full" onclick="doLogin()">Entrar no painel</button>
+        <button class="btn btn-gold btn-full" onclick="_belaUnlockAudio();doLogin()">Entrar no painel</button>
         <div id="login-bloqueio-aviso" style="display:none;margin-top:12px;background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.3);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:var(--err);text-align:center">
           🔒 Acesso temporariamente bloqueado.
           <button onclick="limparBloqueioLogin()" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:0.78rem;text-decoration:underline;margin-left:6px">Desbloquear agora</button>
@@ -8875,8 +8875,46 @@ let belaPitch       = 1.1;
 let belaInitDone    = false;
 let belaContextAtivo = false;
 let belaContextTimer = null;
-let belaProcessando  = false; // bloqueia novo processamento até fala terminar
-let belaSpeakTimeout = null;  // guarda timeout do silêncio pós-fala
+let belaProcessando  = false;
+let belaSpeakTimeout = null;
+let _belaAudioUnlocked = false;
+
+// ── Desbloqueio de áudio — obrigatório no mobile/browser moderno ──
+// O browser bloqueia SpeechSynthesis até o usuário interagir com a página.
+// Este handler escuta o PRIMEIRO toque/clique e faz um speak silencioso
+// para desbloquear o canal de áudio antes da Bela precisar falar.
+function _belaUnlockAudio() {
+  if (_belaAudioUnlocked) return;
+  _belaAudioUnlocked = true;
+  document.removeEventListener('touchstart', _belaUnlockAudio, true);
+  document.removeEventListener('mousedown',  _belaUnlockAudio, true);
+  document.removeEventListener('keydown',    _belaUnlockAudio, true);
+  try {
+    // Faz um utterance vazio e cancela imediatamente — só para "acordar" o sintetizador
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      u.rate   = 16;
+      u.onend  = function(){};
+      u.onerror= function(){};
+      window.speechSynthesis.speak(u);
+      setTimeout(function(){ window.speechSynthesis.cancel(); }, 50);
+    }
+    // AudioContext unlock (para o motor Three.js e qualquer Web Audio)
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const buf = ac.createBuffer(1,1,22050);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(ac.destination);
+    src.start(0);
+    setTimeout(function(){ try{ ac.close(); }catch(e){} }, 500);
+  } catch(e) {}
+}
+document.addEventListener('touchstart', _belaUnlockAudio, true);
+document.addEventListener('mousedown',  _belaUnlockAudio, true);
+document.addEventListener('keydown',    _belaUnlockAudio, true);
 
 // ── MEMÓRIA de conversa (últimas 50 interações) ──────────────
 const belaMemoria = {
@@ -9064,7 +9102,14 @@ function belaSpeak(text, onEnd) {
   belaSetStatus('speaking','✨ Falando…');
 
   clearTimeout(belaSpeakTimeout);
+
+  // Retoma o synth se estiver pausado (bug comum no Chrome/Android após inatividade)
+  if (belaSynth.paused) belaSynth.resume();
+
   setTimeout(()=>{
+    // Verifica novamente após o cancel() — às vezes fica em paused
+    if (belaSynth.paused) belaSynth.resume();
+
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang='pt-BR'; utt.rate=belaRate; utt.pitch=belaPitch;
     if(belaVoices[belaVoiceIdx]) utt.voice=belaVoices[belaVoiceIdx];
@@ -9072,14 +9117,12 @@ function belaSpeak(text, onEnd) {
     const finish = () => {
       if (!belaFalando) return;
       belaFalando = false;
-      belaProcessando = false; // SEMPRE reseta — seja qual aba estiver
+      belaProcessando = false;
       if (onEnd) onEnd();
-      // Aguarda silêncio para não capturar eco
       belaSpeakTimeout = setTimeout(()=>{
         if (belaAtivo || belaGlobalAtivo) {
           const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
           if (naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
-          // Só reinicia mic se não está já ouvindo
           if (!belaOuvindo) belaStartRecognition();
         } else {
           belaNucleusState(''); belaSetStatus('','Aguardando');
@@ -9088,8 +9131,33 @@ function belaSpeak(text, onEnd) {
     };
     const guard = setTimeout(()=>{ if(belaFalando) finish(); }, Math.max(text.length*75,2500));
     utt.onend  = ()=>{ clearTimeout(guard); finish(); };
-    utt.onerror= ()=>{ clearTimeout(guard); finish(); };
+    utt.onerror= (e)=>{
+      clearTimeout(guard);
+      // Se falhou por falta de interação do usuário, marca como não desbloqueado para tentar de novo
+      if (e.error === 'not-allowed' || e.error === 'interrupted') {
+        _belaAudioUnlocked = false;
+      }
+      finish();
+    };
     belaSynth.speak(utt);
+
+    // Watchdog: Chrome mobile às vezes "enguiça" o synth sem disparar onend
+    // Verifica após 500ms se realmente começou a falar
+    setTimeout(function() {
+      if (belaFalando && !belaSynth.speaking && !belaSynth.pending) {
+        // Synth travou — tenta novamente
+        belaSynth.cancel();
+        setTimeout(function() {
+          const utt2 = new SpeechSynthesisUtterance(text);
+          utt2.lang='pt-BR'; utt2.rate=belaRate; utt2.pitch=belaPitch;
+          if(belaVoices[belaVoiceIdx]) utt2.voice=belaVoices[belaVoiceIdx];
+          utt2.onend  = ()=>{ clearTimeout(guard); finish(); };
+          utt2.onerror= ()=>{ clearTimeout(guard); finish(); };
+          belaSynth.speak(utt2);
+        }, 200);
+      }
+    }, 500);
+
   }, 80);
 }
 
