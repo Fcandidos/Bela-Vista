@@ -10776,19 +10776,19 @@ function agora(){
 function belaChatToggle(){
   chatAberto = !chatAberto;
   const panel = document.getElementById('bela-chat-panel');
-  const btn   = document.getElementById('bela-chat-toggle');
+  const wrap  = document.getElementById('bela-pet-wrap');   // novo botão = pet
   const badge = document.getElementById('bela-chat-badge');
-  if(!panel||!btn) return;
+  if(!panel) return;
   if(chatAberto){
     panel.classList.add('open');
-    btn.classList.add('active');
+    if(wrap)  wrap.classList.add('active');
     if(badge){ badge.style.display='none'; msgNaoLidas=0; }
     setTimeout(()=>{ const inp=document.getElementById('bela-chat-input'); if(inp) inp.focus(); },200);
     const msgs=document.getElementById('bela-chat-messages');
     if(msgs) setTimeout(()=>{ msgs.scrollTop=msgs.scrollHeight; },100);
   } else {
     panel.classList.remove('open');
-    btn.classList.remove('active');
+    if(wrap) wrap.classList.remove('active');
   }
 }
 window.belaChatToggle = belaChatToggle;
