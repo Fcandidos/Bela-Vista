@@ -3418,6 +3418,19 @@ select option{background:#060d14;color:#e8f4ff;}
           <button class="bela-chip" onclick="belaAskText('qual é a despesa do mês')">💸 Despesas do mês</button>
           <button class="bela-chip" onclick="belaAskText('qual foi meu melhor mês')">🏆 Melhor mês</button>
           <button class="bela-chip" onclick="belaAskText('resumo geral')">📊 Resumo geral</button>
+          <button class="bela-chip" onclick="belaAskText('status pagamentos')">💳 Pagamentos</button>
+          <button class="bela-chip" onclick="belaAskText('ticket medio')">🎯 Ticket médio</button>
+          <button class="bela-chip" onclick="belaAskText('despesas do ano')">📉 Despesas anuais</button>
+        </div>
+
+        <!-- Global mic toggle -->
+        <div style="display:flex;justify-content:center;margin:16px 0 0">
+          <button id="bela-global-btn-tab" onclick="window.belaToggleGlobal()"
+            style="background:rgba(255,180,0,0.08);border:1.5px dashed rgba(255,180,0,0.4);border-radius:12px;padding:10px 24px;color:rgba(255,200,80,0.9);font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;font-weight:600;"
+            onmouseover="this.style.background='rgba(255,180,0,0.15)'"
+            onmouseout="this.style.background='rgba(255,180,0,0.08)'">
+            🎙️ Ativar escuta global — ouça "Bela" em qualquer aba
+          </button>
         </div>
 
         <!-- Voice settings panel -->
@@ -8944,7 +8957,7 @@ function alterarPermissoesComSeguranca(docId) {
 </script>
 
 <!-- ============================================================
-     BELA — Assistente de Voz Inteligente
+     BELA — Assistente de Voz · Sempre Ativa · NLP Completo
 ============================================================ -->
 <script>
 (function() {
@@ -8953,7 +8966,8 @@ function alterarPermissoesComSeguranca(docId) {
 // ══════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════
-let belaAtivo        = false;
+let belaAtivo        = false;   // aba bela aberta ou usuário ativou manualmente
+let belaGlobalAtivo  = false;   // microfone global (sempre ouvindo em qualquer aba)
 let belaOuvindo      = false;
 let belaFalando      = false;
 let belaRecog        = null;
@@ -8965,17 +8979,77 @@ let belaPitch        = 1.1;
 let belaInitDone     = false;
 let belaContextAtivo = false;
 let belaContextTimer = null;
-let belaRespondendo  = false; // flag para evitar dupla ativação
+let belaRespondendo  = false;
 
 // ══════════════════════════════════════════════════════════════
-// DOM
+// MESES — reconhece qualquer variação
+// ══════════════════════════════════════════════════════════════
+const MESES_MAP = {
+  'janeiro':1,'jan':1,'01':1,
+  'fevereiro':2,'fev':2,'02':2,
+  'marco':3,'março':3,'mar':3,'03':3,
+  'abril':4,'abr':4,'04':4,
+  'maio':5,'mai':5,'05':5,
+  'junho':6,'jun':6,'06':6,
+  'julho':7,'jul':7,'07':7,
+  'agosto':8,'ago':8,'08':8,
+  'setembro':9,'set':9,'09':9,
+  'outubro':10,'out':10,'10':10,
+  'novembro':11,'nov':11,'11':11,
+  'dezembro':12,'dez':12,'12':12
+};
+const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function normTxt(s) {
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// Extrai mês/ano de texto livre — retorna {m, y, prefix} ou null
+function extrairMesAno(t) {
+  const hoje = new Date();
+  // "mês passado" / "mês anterior"
+  if (/mes\s*(passado|anterior)/.test(t)) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1);
+    return mkPrefix(d.getFullYear(), d.getMonth()+1);
+  }
+  // "esse mês" / "este mês" / "mês atual"
+  if (/esse\s*mes|este\s*mes|mes\s*atual|mes\s*corrente/.test(t)) {
+    return mkPrefix(hoje.getFullYear(), hoje.getMonth()+1);
+  }
+  // Nome do mês + opcionalmente ano
+  for (const [nome, num] of Object.entries(MESES_MAP)) {
+    const re = new RegExp('\\b' + nome + '\\b');
+    if (re.test(t)) {
+      // tenta capturar ano junto: "janeiro 2025", "jan/25", "01/2024"
+      const anoMatch = t.match(/\b(20\d{2}|2\d)\b/);
+      let ano = hoje.getFullYear();
+      if (anoMatch) {
+        ano = parseInt(anoMatch[1]);
+        if (ano < 100) ano += 2000;
+      }
+      return mkPrefix(ano, num);
+    }
+  }
+  return null; // sem mês específico → mês atual
+}
+
+function mkPrefix(y, m) {
+  const prefix = y + '-' + String(m).padStart(2,'0');
+  return { y, m, prefix, nome: MESES_NOME[m-1] + ' de ' + y };
+}
+
+// ══════════════════════════════════════════════════════════════
+// DOM HELPERS
 // ══════════════════════════════════════════════════════════════
 const $b = id => document.getElementById(id);
 
 function belaSetStatus(state, txt) {
   const pill = $b('bela-status-pill');
   if (!pill) return;
-  pill.className = 'bela-status-pill' + (state ? ' ' + state : '');
+  pill.className = 'bela-status-pill' + (state ? ' '+state : '');
   const el = $b('bela-status-txt');
   if (el) el.textContent = txt || 'Aguardando';
 }
@@ -8984,16 +9058,26 @@ function belaSetTranscript(txt) {
   const el = $b('bela-transcript');
   if (!el) return;
   if (txt) { el.innerHTML = txt; el.classList.add('visible'); }
-  else     { el.innerHTML = ''; el.classList.remove('visible'); }
+  else { el.innerHTML = ''; el.classList.remove('visible'); }
 }
 
 function belaNucleusState(state) {
   const wrap = $b('bela-nucleus-wrap');
   if (!wrap) return;
-  wrap.className = 'bela-nucleus-wrap' + (state ? ' ' + state : '');
+  wrap.className = 'bela-nucleus-wrap' + (state ? ' '+state : '');
   const hint = $b('bela-click-hint');
   if (hint) hint.style.display = state ? 'none' : '';
 }
+
+window.belaAtualizarStatusDados = function() {
+  const el = $b('bela-data-status');
+  if (!el) return;
+  const nr = belaGetReservas().length;
+  const nd = belaGetDespesas().length;
+  el.textContent = nr > 0
+    ? '✅ ' + nr + ' reservas · ' + nd + ' despesas carregadas'
+    : '⚠️ Aguardando dados do Firebase…';
+};
 
 // ══════════════════════════════════════════════════════════════
 // VOICE SELECTOR
@@ -9004,429 +9088,472 @@ function belaLoadVoices() {
   const pt   = all.filter(v => v.lang.startsWith('pt'));
   const rest = all.filter(v => !v.lang.startsWith('pt'));
   belaVoices = [...pt, ...rest];
-
   const sel = $b('bela-voice-select');
-  if (!sel) return;
-  sel.innerHTML = '';
-  belaVoices.forEach((v, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' ☁️');
-    if (v.lang === 'pt-BR') opt.style.fontWeight = '700';
-    sel.appendChild(opt);
-  });
-
-  // Prefer female PT-BR, fallback to any PT-BR, then first available
-  const femIdx = belaVoices.findIndex(v =>
-    v.lang === 'pt-BR' && /luciana|vitoria|edith|luana|ana|female/i.test(v.name)
-  );
-  const ptIdx = belaVoices.findIndex(v => v.lang === 'pt-BR');
-  if (belaVoiceIdx < 0) {
-    belaVoiceIdx = femIdx >= 0 ? femIdx : (ptIdx >= 0 ? ptIdx : 0);
+  if (sel) {
+    sel.innerHTML = '';
+    belaVoices.forEach((v,i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' ☁️');
+      if (v.lang === 'pt-BR') opt.style.fontWeight = '700';
+      sel.appendChild(opt);
+    });
+    const femIdx = belaVoices.findIndex(v => v.lang==='pt-BR' && /luciana|vitoria|edith|luana|ana|female/i.test(v.name));
+    const ptIdx  = belaVoices.findIndex(v => v.lang==='pt-BR');
+    if (belaVoiceIdx < 0) belaVoiceIdx = femIdx>=0 ? femIdx : (ptIdx>=0 ? ptIdx : 0);
+    sel.value = belaVoiceIdx;
+    belaRenderVoiceInfo();
   }
-  sel.value = belaVoiceIdx;
-  belaRenderVoiceInfo();
 }
-
 function belaRenderVoiceInfo() {
   const v = belaVoices[belaVoiceIdx];
   const info = $b('bela-voice-info');
-  if (!info) return;
-  info.textContent = v ? v.lang + (v.localService ? ' · Local' : ' · Online') : '';
+  if (info) info.textContent = v ? v.lang+(v.localService?' · Local':' · Online') : '';
 }
-
 window.belaChangeVoice = function(idx) {
-  belaVoiceIdx = parseInt(idx);
-  belaRenderVoiceInfo();
-  belaSpeak('Pronto, senhor! Esta é minha voz. Está bom assim?');
+  belaVoiceIdx = parseInt(idx); belaRenderVoiceInfo();
+  belaSpeak('Pronto, senhor! Esta é minha voz. Ficou boa?');
 };
-
 window.belaChangeRate = function(val) {
   belaRate = parseFloat(val);
-  const el = $b('bela-rate-val');
-  if (el) el.textContent = parseFloat(val).toFixed(2) + 'x';
+  const el = $b('bela-rate-val'); if (el) el.textContent = parseFloat(val).toFixed(2)+'x';
 };
-
 window.belaChangePitch = function(val) {
   belaPitch = parseFloat(val);
-  const el = $b('bela-pitch-val');
-  if (el) el.textContent = parseFloat(val).toFixed(1);
+  const el = $b('bela-pitch-val'); if (el) el.textContent = parseFloat(val).toFixed(1);
 };
 
 // ══════════════════════════════════════════════════════════════
-// SPEECH SYNTHESIS — curta e funcional
+// SPEECH SYNTHESIS
 // ══════════════════════════════════════════════════════════════
 function belaSpeak(text, onEnd) {
   if (!belaSynth) { if (onEnd) onEnd(); return; }
-
-  // Cancela qualquer fala anterior imediatamente
   belaSynth.cancel();
   belaFalando = true;
   belaNucleusState('speaking');
   belaSetStatus('speaking', '✨ Bela falando…');
 
-  // Pequeno delay para o cancel() propagar no Chrome
   setTimeout(() => {
     const utt = new SpeechSynthesisUtterance(text);
-    utt.lang  = 'pt-BR';
-    utt.rate  = belaRate;
-    utt.pitch = belaPitch;
+    utt.lang = 'pt-BR'; utt.rate = belaRate; utt.pitch = belaPitch;
     if (belaVoices[belaVoiceIdx]) utt.voice = belaVoices[belaVoiceIdx];
-
     const finish = () => {
-      if (!belaFalando) return; // evita dupla chamada
-      belaFalando = false;
-      belaRespondendo = false;
-      if (belaAtivo) {
-        belaNucleusState('active');
-        belaSetStatus('listening', '🎙️ Ouvindo… diga "Bela"');
+      if (!belaFalando) return;
+      belaFalando = false; belaRespondendo = false;
+      const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
+      if (belaAtivo || belaGlobalAtivo) {
+        if (naAbaBela) { belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…'); }
         if (!belaOuvindo) setTimeout(() => belaStartRecognition(), 100);
       } else {
-        belaNucleusState('');
-        belaSetStatus('', 'Aguardando');
+        belaNucleusState(''); belaSetStatus('','Aguardando');
       }
       if (onEnd) onEnd();
     };
-
-    utt.onend   = finish;
-    utt.onerror = finish;
-
-    // Safeguard Chrome bug: onend não dispara em falas longas
-    const ms = Math.max(text.length * 75, 2500);
-    const guard = setTimeout(() => { if (belaFalando) finish(); }, ms);
-    utt.onend = () => { clearTimeout(guard); finish(); };
-
+    const guard = setTimeout(() => { if (belaFalando) finish(); }, Math.max(text.length*75, 2500));
+    utt.onend  = () => { clearTimeout(guard); finish(); };
+    utt.onerror = () => { clearTimeout(guard); finish(); };
     belaSynth.speak(utt);
   }, 80);
 }
 
 // ══════════════════════════════════════════════════════════════
-// CARDS DE RESPOSTA
+// CARDS
 // ══════════════════════════════════════════════════════════════
-function belaShowCard(icon, question, answerHTML, subtext, listItems) {
+function belaShowCard(icon, title, answerHTML, subtext, listItems) {
   const container = $b('bela-cards');
   if (!container) return;
   while (container.children.length >= 5) container.removeChild(container.firstChild);
-
   const card = document.createElement('div');
   card.className = 'bela-card';
-
   let listHTML = '';
   if (listItems && listItems.length) {
     listHTML = '<ul class="bela-card-list">' +
-      listItems.map(it =>
-        '<li><span style="font-weight:600;color:var(--text)">' + it.name + '</span><span>' + it.detail + '</span></li>'
-      ).join('') + '</ul>';
+      listItems.map(it => '<li><span style="font-weight:600;color:var(--text)">'+it.name+'</span><span>'+it.detail+'</span></li>').join('') +
+      '</ul>';
   }
-
   card.innerHTML =
-    '<div class="bela-card-q">' + icon + ' ' + question + '</div>' +
-    '<div class="bela-card-answer">' + answerHTML + '</div>' +
-    (subtext ? '<div class="bela-card-sub">' + subtext + '</div>' : '') +
+    '<div class="bela-card-q">'+icon+' '+title+'</div>'+
+    '<div class="bela-card-answer">'+answerHTML+'</div>'+
+    (subtext ? '<div class="bela-card-sub">'+subtext+'</div>' : '') +
     listHTML;
-
   container.appendChild(card);
-  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+  setTimeout(() => card.scrollIntoView({behavior:'smooth',block:'nearest'}), 50);
 }
 
 // ══════════════════════════════════════════════════════════════
-// DATA — usa MESMA lógica do sistema (allDatasReserva)
+// DATA ACCESS — tripla camada de fallback
 // ══════════════════════════════════════════════════════════════
+function belaGetReservas() {
+  if (window._belaReservas && window._belaReservas.length>0) return window._belaReservas;
+  try { if (typeof reservas!=='undefined' && Array.isArray(reservas) && reservas.length>0) return reservas; } catch(e){}
+  if (window._reservasNuvem && window._reservasNuvem.length>0) return window._reservasNuvem;
+  try { const r=localStorage.getItem('vf_reservas'); if(r){const a=JSON.parse(r);if(a.length)return a;} } catch(e){}
+  return [];
+}
+function belaGetDespesas() {
+  if (window._belaDespesas && window._belaDespesas.length>0) return window._belaDespesas;
+  try { if (typeof despesas!=='undefined' && Array.isArray(despesas) && despesas.length>0) return despesas; } catch(e){}
+  try { const d=localStorage.getItem('vf_despesas'); if(d){const a=JSON.parse(d);if(a.length)return a;} } catch(e){}
+  return [];
+}
+
 function fmtBRL(v) {
-  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
-
-// Espelha exatamente allDatasReserva() do sistema principal
 function belaDatasEvento(r) {
-  if (Array.isArray(r.datas) && r.datas.length > 0) return r.datas;
+  if (Array.isArray(r.datas) && r.datas.length>0) return r.datas;
   if (r.data) return [r.data];
   return [];
 }
 
-function getMesPrefix(offsetMeses) {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + offsetMeses);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  return { prefix: y + '-' + m, y, m };
-}
-
-function getNomeMes(y, m) {
-  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  return nomes[parseInt(m) - 1] + ' de ' + y;
-}
-
-function semanaAtual() {
-  const hoje = new Date();
-  const dom  = new Date(hoje); dom.setDate(hoje.getDate() - hoje.getDay());
-  const sab  = new Date(dom);  sab.setDate(dom.getDate() + 6);
-  const s = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  return { ini: s(dom), fim: s(sab) };
-}
-
-function belaGetReservas() {
-  // window._belaReservas é atualizado pelo listener Firebase toda vez que reservas muda
-  if (window._belaReservas && window._belaReservas.length > 0) return window._belaReservas;
-  // Fallback 1: variável global do script principal (mesmo módulo HTML)
-  try { if (typeof reservas !== 'undefined' && Array.isArray(reservas) && reservas.length > 0) return reservas; } catch(e){}
-  // Fallback 2: dados pré-carregados
-  if (window._reservasNuvem && window._reservasNuvem.length > 0) return window._reservasNuvem;
-  // Fallback 3: localStorage
-  try { const raw = localStorage.getItem('vf_reservas'); if (raw) { const arr = JSON.parse(raw); if (arr.length) return arr; } } catch(e){}
-  return [];
-}
-function belaGetDespesas() {
-  if (window._belaDespesas && window._belaDespesas.length > 0) return window._belaDespesas;
-  try { if (typeof despesas !== 'undefined' && Array.isArray(despesas) && despesas.length > 0) return despesas; } catch(e){}
-  try { const raw = localStorage.getItem('vf_despesas'); if (raw) { const arr = JSON.parse(raw); if (arr.length) return arr; } } catch(e){}
-  return [];
-}
-
 // ══════════════════════════════════════════════════════════════
-// QUERIES — corrigidas e tratando "senhor"
+// QUERIES — todos os meses, qualquer período
 // ══════════════════════════════════════════════════════════════
-function belaFaturamentoMes(offsetMeses) {
-  const { prefix, y, m } = getMesPrefix(offsetMeses);
-  const nome = getNomeMes(y, m);
+function belaFaturamentoMes(mesInfo) {
+  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
+  const { prefix, nome } = mesInfo;
   const todas = belaGetReservas().filter(r => r.status !== 'cancelada');
-
-  let total = 0, qtd = 0, pagas = 0;
+  let total=0, qtd=0, pagas=0, aReceber=0;
   todas.forEach(r => {
-    const datas = belaDatasEvento(r);
-    if (!datas.some(d => d && d.startsWith(prefix))) return;
+    if (!belaDatasEvento(r).some(d => d && d.startsWith(prefix))) return;
     qtd++;
-    if (r.pagamento === 'pago') { total += Number(r.total) || 0; pagas++; }
-    else { total += Number(r.sinal) || 0; }
+    const val  = Number(r.total)||0;
+    const sinal= Number(r.sinal)||0;
+    if (r.pagamento==='pago') { total+=val; pagas++; }
+    else { total+=sinal; aReceber+=(val-sinal); }
   });
-
-  const periodo = offsetMeses === 0 ? 'este mês' : 'no mês passado';
-  const speech = 'Em ' + nome + ', senhor, o faturamento foi de ' + fmtBRL(total) +
-    ', com ' + qtd + (qtd === 1 ? ' reserva' : ' reservas') + ', sendo ' +
-    pagas + (pagas === 1 ? ' paga.' : ' pagas.');
-
-  belaShowCard('💰', 'Faturamento — ' + nome,
-    '<span class="highlight">' + fmtBRL(total) + '</span>',
-    qtd + (qtd === 1 ? ' reserva · ' : ' reservas · ') + pagas + (pagas === 1 ? ' paga' : ' pagas'));
+  const speech = 'Em '+nome+', senhor, o faturamento foi de '+fmtBRL(total)+
+    ', com '+qtd+(qtd===1?' reserva':' reservas')+', sendo '+pagas+(pagas===1?' paga':' pagas')+
+    (aReceber>0?', e ainda há '+fmtBRL(aReceber)+' a receber.':'.');
+  belaShowCard('💰','Faturamento — '+nome,
+    '<span class="highlight">'+fmtBRL(total)+'</span>',
+    qtd+(qtd===1?' reserva · ':' reservas · ')+pagas+(pagas===1?' paga':' pagas')+
+    (aReceber>0?' · A receber: '+fmtBRL(aReceber):''));
   belaSetTranscript('');
   belaSpeak(speech);
 }
 
-function belaProximasReservas() {
+function belaProximasReservas(qtdMax) {
+  qtdMax = qtdMax || 5;
   const hoje = new Date();
-  const hojeStr = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
-
+  const hojeStr = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
   const proximas = [];
-  belaGetReservas().filter(r => r.status !== 'cancelada').forEach(r => {
-    belaDatasEvento(r).forEach(d => {
-      if (d >= hojeStr) proximas.push(Object.assign({}, r, { _d: d }));
-    });
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r => {
+    belaDatasEvento(r).forEach(d => { if(d>=hojeStr) proximas.push(Object.assign({},r,{_d:d})); });
   });
-  proximas.sort((a, b) => a._d.localeCompare(b._d));
-  const top = proximas.slice(0, 3);
-
+  proximas.sort((a,b)=>a._d.localeCompare(b._d));
+  const top = proximas.slice(0, qtdMax);
   if (!top.length) {
-    belaShowCard('📋', 'Próximas Reservas', 'Nenhuma reserva futura, senhor.', '');
-    belaSpeak('Não encontrei reservas futuras no sistema, senhor.');
-    return;
+    belaShowCard('📋','Próximas Reservas','Nenhuma reserva futura, senhor.','');
+    belaSpeak('Não encontrei reservas futuras no sistema, senhor.'); return;
   }
-
-  const listItems = top.map(r => ({
-    name: r.nome || '—',
-    detail: r._d.split('-').reverse().join('/') + (r.tipo ? ' · ' + r.tipo : '')
+  const listItems = top.map(r=>({
+    name: r.nome||'—',
+    detail: r._d.split('-').reverse().join('/')+(r.tipo?' · '+r.tipo:'')+(r.pagamento?' · '+r.pagamento:'')
   }));
-  const nomes = top.map(r => r.nome).join(', ');
-
-  belaShowCard('📋', 'Próximas Reservas',
-    top.length + (top.length === 1 ? ' reserva agendada' : ' reservas agendadas'), '', listItems);
+  const nomes = top.slice(0,3).map(r=>r.nome).join(', ')+(top.length>3?' e mais ':' ');
+  belaShowCard('📋','Próximas '+top.length+' Reservas',
+    top.length+(top.length===1?' reserva agendada':' reservas agendadas'),'',listItems);
   belaSetTranscript('');
-  belaSpeak('As próximas reservas do senhor são: ' + nomes + '.');
+  belaSpeak('As próximas reservas do senhor são: '+nomes+'.');
+}
+
+function belaReservasNome(nome) {
+  const n = normTxt(nome);
+  const encontradas = belaGetReservas().filter(r =>
+    r.status!=='cancelada' && normTxt(r.nome||'').includes(n)
+  );
+  if (!encontradas.length) {
+    belaShowCard('🔍','Busca por cliente','Nenhuma reserva para "'+nome+'", senhor.','');
+    belaSpeak('Não encontrei reservas para '+nome+', senhor.'); return;
+  }
+  const listItems = encontradas.slice(0,5).map(r=>({
+    name: r.nome||'—',
+    detail: (belaDatasEvento(r)[0]||'').split('-').reverse().join('/')+' · R$ '+(r.total||'0')+' · '+r.pagamento
+  }));
+  belaShowCard('🔍','Reservas — '+nome,
+    encontradas.length+(encontradas.length===1?' reserva encontrada':' reservas encontradas'),'',listItems);
+  belaSetTranscript('');
+  belaSpeak('Encontrei '+encontradas.length+(encontradas.length===1?' reserva':' reservas')+' para '+nome+', senhor.');
 }
 
 function belaReservasSemana() {
-  const { ini, fim } = semanaAtual();
-  const count = belaGetReservas()
-    .filter(r => r.status !== 'cancelada')
-    .filter(r => belaDatasEvento(r).some(d => d >= ini && d <= fim))
-    .length;
-
-  belaShowCard('📆', 'Reservas desta Semana',
-    '<span class="highlight">' + count + '</span>' + (count === 1 ? ' reserva' : ' reservas'),
-    ini.split('-').reverse().join('/') + ' a ' + fim.split('-').reverse().join('/'));
+  const hoje = new Date();
+  const dom = new Date(hoje); dom.setDate(hoje.getDate()-hoje.getDay());
+  const sab = new Date(dom);  sab.setDate(dom.getDate()+6);
+  const s = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const ini=s(dom), fim=s(sab);
+  const lista = belaGetReservas().filter(r=>r.status!=='cancelada')
+    .filter(r=>belaDatasEvento(r).some(d=>d>=ini&&d<=fim));
+  const listItems = lista.map(r=>({
+    name: r.nome||'—',
+    detail: (belaDatasEvento(r).find(d=>d>=ini&&d<=fim)||'').split('-').reverse().join('/')
+  }));
+  belaShowCard('📆','Reservas desta Semana',
+    '<span class="highlight">'+lista.length+'</span>'+(lista.length===1?' reserva':' reservas'),
+    ini.split('-').reverse().join('/')+' a '+fim.split('-').reverse().join('/'),
+    listItems.length ? listItems : undefined);
   belaSetTranscript('');
-  belaSpeak('O senhor tem ' + count + (count === 1 ? ' reserva' : ' reservas') + ' esta semana.');
+  belaSpeak('O senhor tem '+lista.length+(lista.length===1?' reserva':' reservas')+' esta semana.');
 }
 
-function belaDespesasMes() {
-  const { prefix, y, m } = getMesPrefix(0);
-  const nome = getNomeMes(y, m);
-  let total = 0, qtd = 0;
+function belaDespesasMes(mesInfo) {
+  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
+  const { prefix, nome } = mesInfo;
+  let total=0, qtd=0;
+  const porCat = {};
   belaGetDespesas().forEach(d => {
-    if (d.data && d.data.startsWith(prefix)) { total += Number(d.valor) || 0; qtd++; }
+    if (!(d.data && d.data.startsWith(prefix))) return;
+    total += Number(d.valor)||0; qtd++;
+    const cat = d.categoria||d.cat||'outros';
+    porCat[cat] = (porCat[cat]||0)+(Number(d.valor)||0);
   });
-
-  belaShowCard('💸', 'Despesas — ' + nome,
-    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">' + fmtBRL(total) + '</span>',
-    qtd + (qtd === 1 ? ' lançamento' : ' lançamentos'));
+  const topCat = Object.entries(porCat).sort((a,b)=>b[1]-a[1]).slice(0,3)
+    .map(([c,v])=>({name:c,detail:fmtBRL(v)}));
+  belaShowCard('💸','Despesas — '+nome,
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+fmtBRL(total)+'</span>',
+    qtd+(qtd===1?' lançamento':' lançamentos'), topCat.length ? topCat : undefined);
   belaSetTranscript('');
-  belaSpeak('As despesas de ' + nome + ' somam ' + fmtBRL(total) + ', senhor, com ' + qtd + (qtd === 1 ? ' lançamento.' : ' lançamentos.'));
+  belaSpeak('As despesas de '+nome+' somam '+fmtBRL(total)+', senhor, com '+qtd+(qtd===1?' lançamento.':' lançamentos.'));
 }
 
 function belaMelhorMes() {
   const totais = {};
-  belaGetReservas().filter(r => r.status !== 'cancelada').forEach(r => {
+  belaGetReservas().filter(r=>r.status!=='cancelada').forEach(r => {
     const datas = belaDatasEvento(r);
     if (!datas.length) return;
-    // Usa a primeira data do evento (igual ao dashboard)
-    const pref = datas[0].substring(0, 7);
-    totais[pref] = (totais[pref] || 0) + (Number(r.total) || 0);
+    const pref = datas[0].substring(0,7);
+    totais[pref] = (totais[pref]||0)+(Number(r.total)||0);
   });
-
   const entries = Object.entries(totais);
   if (!entries.length) {
-    belaShowCard('🏆', 'Melhor Mês', 'Sem dados suficientes, senhor.', '');
-    belaSpeak('Ainda não há dados suficientes para calcular o melhor mês, senhor.');
-    return;
+    belaShowCard('🏆','Melhor Mês','Sem dados ainda, senhor.','');
+    belaSpeak('Ainda não há dados suficientes, senhor.'); return;
   }
-
-  entries.sort((a, b) => b[1] - a[1]);
-  const [key, val] = entries[0];
-  const [y, mo] = key.split('-');
-  const nome = getNomeMes(y, mo);
-
-  // Top 3 meses para mostrar
-  const listItems = entries.slice(0, 3).map(([k, v]) => {
-    const [ky, km] = k.split('-');
-    return { name: getNomeMes(ky, km), detail: fmtBRL(v) };
+  entries.sort((a,b)=>b[1]-a[1]);
+  const top3 = entries.slice(0,3).map(([k,v])=>{
+    const [y,m]=k.split('-');
+    return { name:MESES_NOME[parseInt(m)-1]+' '+y, detail:fmtBRL(v) };
   });
-
-  belaShowCard('🏆', 'Melhor Mês Histórico',
-    '<span class="highlight">' + nome + '</span>',
-    'Receita: ' + fmtBRL(val), listItems);
+  const [y,mo] = entries[0][0].split('-');
+  belaShowCard('🏆','Melhor Mês Histórico',
+    '<span class="highlight">'+MESES_NOME[parseInt(mo)-1]+' de '+y+'</span>',
+    'Receita: '+fmtBRL(entries[0][1]), top3);
   belaSetTranscript('');
-  belaSpeak('O melhor mês do senhor foi ' + nome + ', com ' + fmtBRL(val) + ' em faturamento.');
+  belaSpeak('O melhor mês do senhor foi '+MESES_NOME[parseInt(mo)-1]+' de '+y+', com '+fmtBRL(entries[0][1])+' em faturamento.');
 }
 
 function belaResumoGeral() {
-  const ativas = belaGetReservas().filter(r => r.status !== 'cancelada');
-  const recebido  = ativas.filter(r => r.pagamento === 'pago').reduce((s, r) => s + (Number(r.total) || 0), 0);
-  const pendentes = ativas.filter(r => r.pagamento !== 'pago').length;
-  const previsto  = ativas.reduce((s, r) => s + (Number(r.total) || 0), 0);
-
-  belaShowCard('📊', 'Resumo Geral',
-    '<span class="highlight">' + fmtBRL(recebido) + '</span>',
-    'Já recebido · ' + pendentes + (pendentes === 1 ? ' pendente' : ' pendentes') + ' · Previsto: ' + fmtBRL(previsto));
+  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const recebido  = ativas.filter(r=>r.pagamento==='pago').reduce((s,r)=>s+(Number(r.total)||0),0);
+  const pendentes = ativas.filter(r=>r.pagamento!=='pago').length;
+  const previsto  = ativas.reduce((s,r)=>s+(Number(r.total)||0),0);
+  const canceladas = belaGetReservas().filter(r=>r.status==='cancelada').length;
+  belaShowCard('📊','Resumo Geral',
+    '<span class="highlight">'+fmtBRL(recebido)+'</span>',
+    'Já recebido · '+pendentes+(pendentes===1?' pendente':' pendentes')+' · Previsto: '+fmtBRL(previsto)+' · '+canceladas+' canceladas');
   belaSetTranscript('');
-  belaSpeak('Senhor, o resumo: já recebido ' + fmtBRL(recebido) + ', com ' + pendentes + (pendentes === 1 ? ' reserva pendente' : ' reservas pendentes') + ' de pagamento.');
+  belaSpeak('Senhor, o resumo: já recebido '+fmtBRL(recebido)+', previsto '+fmtBRL(previsto)+', com '+pendentes+(pendentes===1?' reserva pendente':' reservas pendentes')+'.');
+}
+
+function belaComparaMeses(mes1, mes2) {
+  function totalMes(prefix) {
+    return belaGetReservas().filter(r=>r.status!=='cancelada')
+      .filter(r=>belaDatasEvento(r).some(d=>d.startsWith(prefix)))
+      .reduce((s,r)=>s+(Number(r.total)||0),0);
+  }
+  const t1=totalMes(mes1.prefix), t2=totalMes(mes2.prefix);
+  const diff = t1-t2;
+  const melhor = diff>=0 ? mes1.nome : mes2.nome;
+  belaShowCard('📈','Comparativo',
+    '<span class="highlight">'+melhor+'</span>',
+    mes1.nome+': '+fmtBRL(t1)+' · '+mes2.nome+': '+fmtBRL(t2));
+  belaSetTranscript('');
+  belaSpeak('Senhor, '+mes1.nome+' teve '+fmtBRL(t1)+' e '+mes2.nome+' teve '+fmtBRL(t2)+'. '+melhor+' foi melhor.');
+}
+
+function belaStatusPagamentos() {
+  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada');
+  const pagas  = ativas.filter(r=>r.pagamento==='pago');
+  const pend   = ativas.filter(r=>r.pagamento!=='pago');
+  const listItems = pend.slice(0,5).map(r=>({
+    name: r.nome||'—',
+    detail: fmtBRL(Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)))+' · '+(belaDatasEvento(r)[0]||'').split('-').reverse().join('/')
+  }));
+  belaShowCard('💳','Status de Pagamentos',
+    '<span style="color:var(--green);font-weight:800">'+pagas.length+' pagas</span> · <span style="color:var(--amber);font-weight:800">'+pend.length+' pendentes</span>',
+    'Total a receber: '+fmtBRL(pend.reduce((s,r)=>s+Math.max(0,(Number(r.total)||0)-(Number(r.sinal)||0)),0)),
+    listItems);
+  belaSetTranscript('');
+  belaSpeak('Senhor, '+pagas.length+(pagas.length===1?' reserva paga':' reservas pagas')+' e '+pend.length+(pend.length===1?' pendente.':' pendentes.'));
+}
+
+function belaTicketMedio() {
+  const ativas = belaGetReservas().filter(r=>r.status!=='cancelada'&&Number(r.total)>0);
+  if (!ativas.length) { belaSpeak('Sem dados para calcular, senhor.'); return; }
+  const media = ativas.reduce((s,r)=>s+(Number(r.total)||0),0)/ativas.length;
+  belaShowCard('🎯','Ticket Médio','<span class="highlight">'+fmtBRL(media)+'</span>',
+    'Baseado em '+ativas.length+' reservas ativas');
+  belaSetTranscript('');
+  belaSpeak('O ticket médio do senhor é de '+fmtBRL(media)+', calculado sobre '+ativas.length+' reservas.');
+}
+
+function belaReservasMes(mesInfo) {
+  if (!mesInfo) mesInfo = mkPrefix(new Date().getFullYear(), new Date().getMonth()+1);
+  const { prefix, nome } = mesInfo;
+  const lista = belaGetReservas().filter(r=>r.status!=='cancelada')
+    .filter(r=>belaDatasEvento(r).some(d=>d&&d.startsWith(prefix)));
+  const listItems = lista.slice(0,5).map(r=>({
+    name: r.nome||'—',
+    detail: (belaDatasEvento(r).find(d=>d.startsWith(prefix))||'').split('-').reverse().join('/')+' · '+fmtBRL(r.total)+' · '+r.pagamento
+  }));
+  belaShowCard('📋','Reservas — '+nome,
+    '<span class="highlight">'+lista.length+'</span>'+(lista.length===1?' reserva':' reservas'),'',listItems);
+  belaSetTranscript('');
+  belaSpeak('Em '+nome+', senhor, há '+lista.length+(lista.length===1?' reserva.':' reservas.'));
+}
+
+function belaDespesasAno() {
+  const ano = new Date().getFullYear();
+  const prefix = String(ano);
+  let total=0, qtd=0;
+  const porMes = {};
+  belaGetDespesas().forEach(d => {
+    if (!(d.data&&d.data.startsWith(prefix))) return;
+    total+=Number(d.valor)||0; qtd++;
+    const m = d.data.substring(0,7);
+    porMes[m]=(porMes[m]||0)+(Number(d.valor)||0);
+  });
+  const topMeses = Object.entries(porMes).sort((a,b)=>b[1]-a[1]).slice(0,4)
+    .map(([k,v])=>{ const[,m]=k.split('-'); return {name:MESES_NOME[parseInt(m)-1],detail:fmtBRL(v)}; });
+  belaShowCard('💸','Despesas — '+ano,
+    '<span style="background:linear-gradient(135deg,#ff4466,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:Syne,sans-serif;font-weight:800;font-size:1.4rem">'+fmtBRL(total)+'</span>',
+    qtd+' lançamentos em '+ano, topMeses);
+  belaSetTranscript('');
+  belaSpeak('As despesas de '+ano+' somam '+fmtBRL(total)+', senhor.');
 }
 
 // ══════════════════════════════════════════════════════════════
-// NLP — interpreta o texto falado
+// NLP — reconhece centenas de variações
 // ══════════════════════════════════════════════════════════════
 function belaInterpret(rawText) {
-  const t = rawText.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9 ]/g, ' ');
+  const t = normTxt(rawText);
+  const mesInfo = extrairMesAno(t);
 
-  // Faturamento mês atual
-  if (/fatur|receita|ganh/.test(t) && !/passado|anterior/.test(t) && /mes|mensal/.test(t))
-    return belaFaturamentoMes.bind(null, 0);
-  if (/quanto (faturei|ganhei|recebi)$/.test(t))
-    return belaFaturamentoMes.bind(null, 0);
-
-  // Mês passado
-  if (/(mes|faturei|receita).*(passado|anterior)|(passado|anterior).*(mes|faturei)/.test(t))
-    return belaFaturamentoMes.bind(null, -1);
-
-  // Próximas reservas
-  if (/proxim|agenda|futur/.test(t) && /reserv/.test(t))
-    return belaProximasReservas;
-  if (/proxim/.test(t) && !/despesa/.test(t))
-    return belaProximasReservas;
-
-  // Semana
-  if (/semana/.test(t))
-    return belaReservasSemana;
-
-  // Despesas
-  if (/despesa|gasto|custo/.test(t))
-    return belaDespesasMes;
-
-  // Melhor mês
-  if (/melhor|record|maior.*fatur|mais.*fatur/.test(t))
-    return belaMelhorMes;
-
-  // Resumo
-  if (/resumo|geral|total/.test(t))
-    return belaResumoGeral;
-
-  // Saudação
-  if (/bom\s*dia|boa\s*tarde|boa\s*noite|^(oi|ola|hey|ei)$|tudo\s*bem|como\s*(vai|esta)/.test(t)) {
+  // ── SAUDAÇÕES / VERIFICAÇÃO ───────────────────────────────
+  if (/^(oi|ola|ei|hey|bela)$/.test(t.trim()) ||
+      /bom\s*dia|boa\s*tarde|boa\s*noite|tudo\s*(bem|bom|certo)|como\s*(vai|esta|vc|voce)|ta\s*ai|esta\s*ai|me\s*ouve|funcionando|ativo/.test(t)) {
     const h = new Date().getHours();
-    const s = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const s = h<12 ? 'Bom dia' : h<18 ? 'Boa tarde' : 'Boa noite';
     return () => {
-      belaShowCard('👋', 'Olá!', s + ', senhor!',
-        'Pergunte sobre faturamento, reservas, despesas ou meu melhor mês.');
-      belaSpeak(s + ', senhor! Estou pronta. Pode perguntar sobre faturamento, reservas, despesas ou o melhor mês.');
+      belaShowCard('👋','Olá, senhor!',s+', senhor!',
+        'Diga o que precisa saber: faturamento, reservas, despesas, pagamentos…');
+      belaSpeak(s+', senhor! Estou aqui e pronta. O que deseja saber?');
     };
+  }
+
+  // ── FATURAMENTO / RECEITA ─────────────────────────────────
+  if (/fatur|receita|ganhou|ganhei|recebeu|recebi|entrou|entrada/.test(t) && !/despesa|gasto/.test(t)) {
+    // Comparativo entre dois meses: "compare janeiro com fevereiro"
+    const meses = [];
+    for (const [nome,num] of Object.entries(MESES_MAP)) {
+      if (new RegExp('\\b'+nome+'\\b').test(t)) {
+        const anoM = t.match(/\b(20\d{2})\b/);
+        meses.push(mkPrefix(anoM?parseInt(anoM[1]):new Date().getFullYear(), num));
+        if (meses.length===2) break;
+      }
+    }
+    if (meses.length===2) return () => belaComparaMeses(meses[0], meses[1]);
+    return () => belaFaturamentoMes(mesInfo);
+  }
+
+  // ── RESERVAS ──────────────────────────────────────────────
+  if (/reserva/.test(t)) {
+    // Busca por nome: "reservas do joao" / "cliente maria"
+    const nomeMatch = t.match(/(?:reserva(?:s)?\s+d[ao]s?\s+|cliente\s+|para\s+)([a-z]{3,}(?:\s+[a-z]{3,})?)/);
+    if (nomeMatch) return () => belaReservasNome(nomeMatch[1]);
+    if (/semana/.test(t)) return belaReservasSemana;
+    if (/proxim|futur|agenda|vem\s*ai|vindo/.test(t)) return belaProximasReservas;
+    if (/pag|pago|pend|deve|devendo|inadim/.test(t)) return belaStatusPagamentos;
+    return () => belaReservasMes(mesInfo);
+  }
+
+  // ── PRÓXIMAS (sem palavra "reserva") ─────────────────────
+  if (/proxim|agenda/.test(t) && !/despesa/.test(t)) return belaProximasReservas;
+
+  // ── SEMANA ────────────────────────────────────────────────
+  if (/semana/.test(t)) return belaReservasSemana;
+
+  // ── DESPESAS / GASTOS ─────────────────────────────────────
+  if (/despesa|gasto|custo|pago|saiu|saida|gastei/.test(t)) {
+    if (/ano|anual/.test(t)) return belaDespesasAno;
+    return () => belaDespesasMes(mesInfo);
+  }
+
+  // ── PAGAMENTOS ────────────────────────────────────────────
+  if (/pagament|pag|pago|pendente|deve|inadim|cobrar/.test(t)) return belaStatusPagamentos;
+
+  // ── MELHOR MÊS ────────────────────────────────────────────
+  if (/melhor|record|maior.*fatur|mais.*fatur|top|peak/.test(t)) return belaMelhorMes;
+
+  // ── TICKET MÉDIO ──────────────────────────────────────────
+  if (/ticket|media|medio|valor.*medio|media.*valor/.test(t)) return belaTicketMedio;
+
+  // ── RESUMO / GERAL ────────────────────────────────────────
+  if (/resumo|geral|total|overview|tudo|status/.test(t)) return belaResumoGeral;
+
+  // ── COMPARATIVO ───────────────────────────────────────────
+  if (/compar|versus|vs|contra|diferenca/.test(t)) {
+    const meses = [];
+    for (const [nome,num] of Object.entries(MESES_MAP)) {
+      if (new RegExp('\\b'+nome+'\\b').test(t)) { meses.push(mkPrefix(new Date().getFullYear(),num)); if(meses.length===2) break; }
+    }
+    if (meses.length===2) return () => belaComparaMeses(meses[0],meses[1]);
   }
 
   return null;
 }
 
 function belaHasWakeWord(text) {
-  return /\bbela\b/.test(
-    text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  );
+  return /\bbela\b/.test(normTxt(text));
 }
 
 function belaRefreshContext() {
   belaContextAtivo = true;
   clearTimeout(belaContextTimer);
-  belaContextTimer = setTimeout(() => { belaContextAtivo = false; }, 15000);
+  belaContextTimer = setTimeout(() => { belaContextAtivo = false; }, 20000); // 20s de contexto
 }
 
 // ══════════════════════════════════════════════════════════════
 // CHIP BUTTONS
 // ══════════════════════════════════════════════════════════════
-window.belaAtualizarStatusDados = function() {
-  const el = document.getElementById('bela-data-status');
-  if (!el) return;
-  const nr = belaGetReservas().length;
-  const nd = belaGetDespesas().length;
-  el.textContent = nr > 0
-    ? '✅ ' + nr + ' reservas · ' + nd + ' despesas carregadas'
-    : '⚠️ Aguardando dados do Firebase…';
-};
-
 window.belaAskText = function(text) {
-  window.belaAtualizarStatusDados();
+  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
   if (belaRespondendo) return;
   belaRespondendo = true;
   if (belaFalando) belaSynth.cancel();
   belaSetTranscript('🎤 ' + text);
-  belaSetStatus('thinking', '⚡ Consultando…');
+  belaSetStatus('thinking','⚡ Consultando…');
   belaNucleusState('active');
   setTimeout(() => {
     const fn = belaInterpret(text);
     if (fn) fn();
     else {
       belaRespondendo = false;
-      belaShowCard('🤔', 'Não entendi', 'Tente reformular, senhor.', '');
-      belaSpeak('Desculpe, senhor, não entendi. Tente de outra forma.');
+      belaShowCard('🤔','Não entendi','Tente reformular, senhor.','');
+      belaSpeak('Desculpe, senhor, não entendi. Pode reformular?');
     }
   }, 150);
 };
 
 // ══════════════════════════════════════════════════════════════
-// RECONHECIMENTO DE VOZ — contínuo e robusto
+// RECONHECIMENTO — contínuo, robusto, global
 // ══════════════════════════════════════════════════════════════
 function belaStartRecognition() {
-  if (belaOuvindo || belaFalando || !belaAtivo) return;
+  if (belaOuvindo || belaFalando) return;
+  if (!belaAtivo && !belaGlobalAtivo) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
-
   try { if (belaRecog) { belaRecog.abort(); belaRecog = null; } } catch(e) {}
 
   belaRecog = new SR();
@@ -9437,120 +9564,180 @@ function belaStartRecognition() {
 
   belaRecog.onstart = () => {
     belaOuvindo = true;
-    if (!belaFalando && belaAtivo) {
+    const naAbaBela = (sessionStorage.getItem('vf_tab')||'') === 'bela';
+    if (!belaFalando && naAbaBela && belaAtivo) {
       belaNucleusState('active');
-      belaSetStatus('listening', '🎙️ Ouvindo…');
+      belaSetStatus('listening','🎙️ Ouvindo…');
     }
+    // Global: update floating indicator
+    belaUpdateGlobalIndicator();
   };
 
   belaRecog.onresult = (e) => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    let interim='', final='';
+    for (let i=e.resultIndex; i<e.results.length; i++) {
       if (e.results[i].isFinal) final += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
-
-    if (interim && !final) {
-      belaSetTranscript('🎤 <em style="opacity:.55">' + interim + '</em>');
-      return;
-    }
+    if (interim && !final) { belaSetTranscript('🎤 <em style="opacity:.55">'+interim+'</em>'); return; }
     if (!final) return;
 
     belaOuvindo = false;
     belaSetTranscript('🎤 ' + final);
-
     const hasWake = belaHasWakeWord(final);
 
-    // Sem wake word e fora de contexto → ignora, reinicia
+    // Sem wake word e fora de contexto → ignora
     if (!hasWake && !belaContextAtivo) {
       setTimeout(() => belaSetTranscript(''), 1800);
-      setTimeout(() => { if (belaAtivo && !belaFalando) belaStartRecognition(); }, 250);
+      setTimeout(() => { if ((belaAtivo||belaGlobalAtivo) && !belaFalando) belaStartRecognition(); }, 250);
       return;
     }
 
-    if (hasWake) belaRefreshContext();
+    if (hasWake) {
+      belaRefreshContext();
+      // Se está em outra aba, abre a aba bela
+      const tabAtual = sessionStorage.getItem('vf_tab') || '';
+      if (tabAtual !== 'bela') {
+        // Não muda de aba automaticamente — só responde por voz
+      }
+    }
 
-    if (belaRespondendo) return; // já processando
+    if (belaRespondendo) return;
     belaRespondendo = true;
-
-    belaSetStatus('thinking', '⚡ Processando…');
+    belaSetStatus('thinking','⚡ Processando…');
     const fn = belaInterpret(final);
     if (fn) {
       fn();
     } else if (hasWake) {
       belaRespondendo = false;
-      belaShowCard('👂', 'Estou ouvindo, senhor', 'Qual é a sua pergunta?',
-        '"Bela, quanto faturei este mês?" · "Bela, minhas próximas reservas?"');
-      belaSpeak('Estou aqui, senhor. O que deseja saber?');
+      belaShowCard('👂','Estou aqui, senhor','O que deseja saber?',
+        'Exemplos: faturamento de fevereiro · despesas de março · próximas reservas');
+      belaSpeak('Estou aqui, senhor! Pode perguntar qualquer coisa sobre faturamento, reservas ou despesas.');
     } else {
       belaRespondendo = false;
-      belaSpeak('Não entendi, senhor. Pode repetir?');
+      belaSpeak('Pode repetir, senhor?');
     }
   };
 
   belaRecog.onerror = (e) => {
     belaOuvindo = false;
-    if (e.error === 'no-speech') {
-      if (belaAtivo && !belaFalando) setTimeout(() => belaStartRecognition(), 150);
-    } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      belaSetStatus('', '🚫 Microfone bloqueado — verifique as permissões do navegador');
+    if (e.error==='no-speech') {
+      if ((belaAtivo||belaGlobalAtivo) && !belaFalando) setTimeout(()=>belaStartRecognition(), 200);
+    } else if (e.error==='not-allowed'||e.error==='service-not-allowed') {
+      belaGlobalAtivo = false; belaAtivo = false;
+      belaSetStatus('','🚫 Microfone bloqueado');
       belaNucleusState('');
-      belaAtivo = false;
-    } else if (e.error !== 'aborted') {
-      if (belaAtivo && !belaFalando) setTimeout(() => belaStartRecognition(), 500);
+      belaUpdateGlobalIndicator();
+    } else if (e.error!=='aborted') {
+      if ((belaAtivo||belaGlobalAtivo) && !belaFalando) setTimeout(()=>belaStartRecognition(), 600);
     }
   };
 
   belaRecog.onend = () => {
     belaOuvindo = false;
-    if (belaAtivo && !belaFalando) {
-      setTimeout(() => {
-        if (belaAtivo && !belaFalando && !belaOuvindo) belaStartRecognition();
-      }, 200);
+    if ((belaAtivo||belaGlobalAtivo) && !belaFalando) {
+      setTimeout(() => { if ((belaAtivo||belaGlobalAtivo) && !belaFalando && !belaOuvindo) belaStartRecognition(); }, 200);
     }
   };
-
   try { belaRecog.start(); } catch(e) { belaOuvindo = false; }
 }
 
 function belaStopRecognition() {
-  belaContextAtivo = false;
-  clearTimeout(belaContextTimer);
-  if (belaRecog) {
-    try { belaRecog.abort(); } catch(e) {}
-    belaRecog = null;
-  }
+  belaContextAtivo = false; clearTimeout(belaContextTimer);
+  if (belaRecog) { try { belaRecog.abort(); } catch(e){} belaRecog = null; }
   belaOuvindo = false;
 }
 
 // ══════════════════════════════════════════════════════════════
-// TOGGLE — ativação pelo núcleo
+// INDICADOR GLOBAL FLUTUANTE (aparece em qualquer aba)
+// ══════════════════════════════════════════════════════════════
+function belaUpdateGlobalIndicator() {
+  let ind = document.getElementById('bela-global-indicator');
+  if (!ind) return;
+  if (belaGlobalAtivo) {
+    ind.style.display = 'flex';
+    ind.classList.toggle('listening', belaOuvindo && !belaFalando);
+    ind.classList.toggle('speaking', belaFalando);
+  } else {
+    ind.style.display = 'none';
+  }
+}
+
+function belaCriarIndicadorGlobal() {
+  if (document.getElementById('bela-global-indicator')) return;
+  const div = document.createElement('div');
+  div.id = 'bela-global-indicator';
+  div.title = 'Bela está ouvindo — diga "Bela" para ativar';
+  div.innerHTML = '<svg width="18" height="18" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="54" fill="url(#bg2)" opacity="0.7"/><circle cx="60" cy="60" r="22" fill="#ffcc44" opacity="0.9"/><circle cx="60" cy="60" r="10" fill="#fffbe0"/><defs><radialGradient id="bg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffcc44"/><stop offset="100%" stop-color="#ff6600" stop-opacity="0"/></radialGradient></defs></svg><span id="bgi-txt">Bela ativa</span>';
+  div.onclick = () => {
+    if (typeof goAdminTab === 'function') goAdminTab('bela');
+  };
+  document.body.appendChild(div);
+
+  // CSS inline para o indicador
+  const style = document.createElement('style');
+  style.textContent = `
+    #bela-global-indicator {
+      display:none; position:fixed; bottom:80px; right:18px; z-index:9999;
+      align-items:center; gap:7px;
+      background:rgba(10,8,0,0.88); border:1px solid rgba(255,180,0,0.4);
+      border-radius:999px; padding:7px 14px 7px 10px;
+      font-size:0.72rem; color:rgba(255,210,80,0.9); font-family:'DM Sans',sans-serif;
+      cursor:pointer; backdrop-filter:blur(8px);
+      box-shadow:0 0 20px rgba(255,160,0,0.25);
+      transition:all .3s; user-select:none;
+    }
+    #bela-global-indicator:hover { background:rgba(20,15,0,0.95); border-color:rgba(255,180,0,0.7); }
+    #bela-global-indicator.listening svg { animation:bela-glow-pulse .8s ease-in-out infinite; }
+    #bela-global-indicator.speaking { border-color:rgba(0,212,255,0.5); }
+    #bela-global-indicator.speaking svg { filter:hue-rotate(180deg); }
+    @keyframes bela-glow-pulse { 0%,100%{filter:drop-shadow(0 0 4px rgba(255,180,0,.6))} 50%{filter:drop-shadow(0 0 12px rgba(255,180,0,1))} }
+    @media(max-width:640px){ #bela-global-indicator { bottom:76px; right:10px; } }
+  `;
+  document.head.appendChild(style);
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOGGLE MICROFONE GLOBAL
+// ══════════════════════════════════════════════════════════════
+window.belaToggleGlobal = function() {
+  if (!belaInitDone) { belaInitDone=true; belaLoadVoices(); if(belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices; }
+  if (belaGlobalAtivo) {
+    belaGlobalAtivo = false;
+    if (!belaAtivo) belaStopRecognition();
+    belaUpdateGlobalIndicator();
+    const btn = document.getElementById('bela-global-btn');
+    if (btn) { btn.textContent='🎙️ Ativar escuta global'; btn.style.background=''; }
+  } else {
+    belaGlobalAtivo = true;
+    belaUpdateGlobalIndicator();
+    const btn = document.getElementById('bela-global-btn');
+    if (btn) { btn.textContent='🔴 Desativar escuta global'; btn.style.background='rgba(255,80,0,0.15)'; }
+    if (!belaOuvindo && !belaFalando) belaStartRecognition();
+    belaSpeak('Escuta global ativada, senhor. Diga Bela de qualquer tela.');
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+// TOGGLE ABA BELA (clique no núcleo)
 // ══════════════════════════════════════════════════════════════
 window.belaToggle = function() {
+  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
   if (!belaInitDone) {
     belaInitDone = true;
     if (belaSynth.getVoices().length) belaLoadVoices();
-    if (belaSynth.onvoiceschanged !== undefined) belaSynth.onvoiceschanged = belaLoadVoices;
+    if (belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices;
     else setTimeout(belaLoadVoices, 600);
   }
-
-  window.belaAtualizarStatusDados && window.belaAtualizarStatusDados();
-  if (belaFalando) { belaSynth.cancel(); belaFalando = false; }
+  if (belaFalando) { belaSynth.cancel(); belaFalando=false; }
 
   if (belaAtivo) {
-    // Desligar
-    belaAtivo = false;
-    belaRespondendo = false;
-    belaStopRecognition();
-    belaNucleusState('');
-    belaSetStatus('', 'Aguardando');
-    belaSetTranscript('');
+    belaAtivo = false; belaRespondendo = false;
+    if (!belaGlobalAtivo) belaStopRecognition();
+    belaNucleusState(''); belaSetStatus('','Aguardando'); belaSetTranscript('');
   } else {
-    // Ligar — mensagem CURTA para voltar a ouvir logo
-    belaAtivo = true;
-    belaRespondendo = false;
-    belaNucleusState('active');
-    belaSetStatus('listening', '🎙️ Ouvindo… diga "Bela"');
+    belaAtivo = true; belaRespondendo = false;
+    belaNucleusState('active'); belaSetStatus('listening','🎙️ Ouvindo…');
     belaSpeak('Pronto, senhor! Diga Bela e sua pergunta.', () => {
       if (belaAtivo) belaStartRecognition();
     });
@@ -9558,33 +9745,46 @@ window.belaToggle = function() {
 };
 
 // ══════════════════════════════════════════════════════════════
-// INIT & HOOKS
+// INIT
 // ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
+  belaCriarIndicadorGlobal();
+
   if (belaSynth) {
     if (belaSynth.getVoices().length) belaLoadVoices();
-    if (belaSynth.onvoiceschanged !== undefined) belaSynth.onvoiceschanged = belaLoadVoices;
+    if (belaSynth.onvoiceschanged!==undefined) belaSynth.onvoiceschanged=belaLoadVoices;
     else setTimeout(belaLoadVoices, 700);
   }
 
   const orig = window.goAdminTab;
   if (typeof orig === 'function') {
     window.goAdminTab = function(tab) {
-      if (tab !== 'bela' && belaAtivo) {
-        belaAtivo = false;
-        belaRespondendo = false;
-        belaStopRecognition();
-        if (belaSynth) belaSynth.cancel();
-        belaFalando = false;
-        belaNucleusState('');
-        belaSetStatus('', 'Aguardando');
-      }
-      if (tab === 'bela') {
-        setTimeout(() => { if (window.belaAtualizarStatusDados) window.belaAtualizarStatusDados(); }, 200);
+      if (tab !== 'bela') {
+        belaAtivo = false; belaRespondendo = false;
+        if (!belaGlobalAtivo) { if(belaSynth) belaSynth.cancel(); belaFalando=false; }
+        belaNucleusState(''); belaSetStatus('','Aguardando');
+      } else {
+        belaAtivo = true;
+        setTimeout(() => { window.belaAtualizarStatusDados&&window.belaAtualizarStatusDados(); }, 200);
+        if (!belaOuvindo && !belaFalando) setTimeout(belaStartRecognition, 400);
       }
       return orig.apply(this, arguments);
     };
   }
+
+  // Botão de escuta global — insere no header se existir
+  setTimeout(() => {
+    const nav = document.querySelector('.admin-nav');
+    if (nav && !document.getElementById('bela-global-btn')) {
+      const btn = document.createElement('button');
+      btn.id = 'bela-global-btn';
+      btn.className = 'admin-nav-btn';
+      btn.style.cssText = 'font-size:0.72rem;padding:6px 12px;border:1px dashed rgba(255,180,0,0.35);color:rgba(255,180,0,0.8);';
+      btn.textContent = '🎙️ Escuta global';
+      btn.onclick = window.belaToggleGlobal;
+      nav.appendChild(btn);
+    }
+  }, 800);
 });
 
 })();
