@@ -7,7 +7,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-<meta http-equiv="Permissions-Policy" content="microphone=(), camera=()">
+<meta http-equiv="Permissions-Policy" content="microphone=(self), camera=(), geolocation=(self)">
 <title>Bela Vista — Sistema de Reservas</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -1973,10 +1973,19 @@ select option{background:#060d14;color:#e8f4ff;}
 }
 @media(max-width:480px){ .bela-nucleus-wrap{width:240px;height:240px;} }
 
-/* Canvas de partículas */
+/* Canvas Three.js — núcleo 3D */
 #bela-canvas {
-  position:absolute;inset:0;width:100%;height:100%;
+  position:absolute;inset:0;width:100%!important;height:100%!important;
   border-radius:50%;pointer-events:none;z-index:1;
+  background:transparent;
+}
+/* Container do renderer Three.js gerado dinamicamente */
+#bela-threejs-wrap {
+  position:absolute;inset:0;width:100%;height:100%;
+  border-radius:50%;pointer-events:none;z-index:1;overflow:hidden;
+}
+#bela-threejs-wrap canvas {
+  width:100%!important;height:100%!important;display:block;
 }
 
 /* Anéis — 4 anéis tipo átomo */
@@ -2492,6 +2501,10 @@ select option{background:#060d14;color:#e8f4ff;}
 
     <!-- Nav items -->
     <div class="mob-rail-nav">
+      <button class="mob-rail-btn" data-tab="bela" style="--mob-clr:#00d4ff" onclick="mobGoTab('bela')">
+        <span class="rail-icon">✨</span><span class="rail-lbl" style="color:var(--cyan,#00d4ff);font-size:0.5rem;">Bela IA</span>
+      </button>
+
       <button class="mob-rail-btn active" data-tab="dashboard" style="--mob-clr:#00d4ff" onclick="mobGoTab('dashboard')">
         <span class="rail-icon">📊</span><span class="rail-lbl">Dash</span>
       </button>
@@ -3148,7 +3161,7 @@ select option{background:#060d14;color:#e8f4ff;}
         <div class="bela-stage">
           <div class="bela-nucleus-wrap" id="bela-nucleus-wrap" onclick="belaToggle()">
 
-            <!-- Canvas para partículas JS -->
+            <!-- Three.js canvas — núcleo 3D -->
             <canvas id="bela-canvas" width="320" height="320"></canvas>
 
             <!-- Anéis orbitais (tipo átomo) -->
@@ -3162,62 +3175,6 @@ select option{background:#060d14;color:#e8f4ff;}
             <div class="bela-wave-ring bw2"></div>
             <div class="bela-wave-ring bw3"></div>
             <div class="bela-wave-ring bw4"></div>
-
-            <!-- Núcleo central -->
-            <div class="bela-core" id="bela-core">
-              <div class="bela-core-inner">
-                <div class="bela-core-glow" id="bela-core-glow"></div>
-                <svg class="bela-core-svg" id="bela-core-svg" viewBox="0 0 120 120" fill="none">
-                  <defs>
-                    <radialGradient id="gc_idle" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#fff8e0"/>
-                      <stop offset="40%" stop-color="#ffcc44"/>
-                      <stop offset="100%" stop-color="#ff6600" stop-opacity="0"/>
-                    </radialGradient>
-                    <radialGradient id="gc_listen" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#e0f8ff"/>
-                      <stop offset="40%" stop-color="#00d4ff"/>
-                      <stop offset="100%" stop-color="#0066cc" stop-opacity="0"/>
-                    </radialGradient>
-                    <radialGradient id="gc_speak" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#e0ffe8"/>
-                      <stop offset="40%" stop-color="#00ff88"/>
-                      <stop offset="100%" stop-color="#006633" stop-opacity="0"/>
-                    </radialGradient>
-                    <radialGradient id="gc_think" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#f0e0ff"/>
-                      <stop offset="40%" stop-color="#a78bfa"/>
-                      <stop offset="100%" stop-color="#4c1d95" stop-opacity="0"/>
-                    </radialGradient>
-                    <filter id="bblur2"><feGaussianBlur stdDeviation="4"/></filter>
-                    <filter id="bglow3">
-                      <feGaussianBlur stdDeviation="7" result="blur"/>
-                      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                    </filter>
-                  </defs>
-                  <!-- Halo externo -->
-                  <circle id="bc-halo" cx="60" cy="60" r="52" fill="url(#gc_idle)" opacity="0.45"/>
-                  <!-- Raios de corona -->
-                  <g id="bc-rays" opacity="0.5" filter="url(#bblur2)">
-                    <line x1="60" y1="8" x2="60" y2="22" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="60" y1="98" x2="60" y2="112" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="8" y1="60" x2="22" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="98" y1="60" x2="112" y2="60" stroke="#ffcc44" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="19" y1="19" x2="29" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="91" y1="91" x2="101" y2="101" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="101" y1="19" x2="91" y2="29" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="19" y1="101" x2="29" y2="91" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round"/>
-                  </g>
-                  <!-- Glow médio -->
-                  <circle id="bc-mid" cx="60" cy="60" r="34" fill="url(#gc_idle)" opacity="0.65"/>
-                  <!-- Esfera principal -->
-                  <circle id="bc-sphere" cx="60" cy="60" r="21" fill="url(#gc_idle)" filter="url(#bglow3)"/>
-                  <!-- Centro brilhante -->
-                  <circle id="bc-center" cx="60" cy="60" r="9" fill="#fffbe0" opacity="0.96"/>
-                  <circle cx="56" cy="56" r="4" fill="#ffffff" opacity="0.75"/>
-                </svg>
-              </div>
-            </div>
 
           </div>
 
@@ -4086,7 +4043,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const _sessaoRestaurada = lerSessao();
   if (_sessaoRestaurada) {
     const _emailRestaurado = (_sessaoRestaurada.email) || ADMIN_EMAIL;
-    // Sempre começa no dashboard ao restaurar sessão
+    // Sempre começa na Bela IA ao restaurar sessão
     try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
     _currentUserEmail = _emailRestaurado;
     // Admin principal: permissão total imediata
@@ -4095,14 +4052,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     showScreen('admin');
     atualizarAvatarMenu(_emailRestaurado);
-    // Ativa escuta global da Bela automaticamente após login
-    setTimeout(function() {
+    // Bloco 1+2 — Microfone e GPS persistentes ao restaurar sessão
+    setTimeout(async function() {
       try {
-        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
-          window.belaToggleGlobal(true); // silencioso — sem frase de ativação
+        const micGranted = localStorage.getItem('bela_mic_granted');
+        if (micGranted === '1') {
+          if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+            window.belaToggleGlobal(true);
+          }
+        } else {
+          const perm = await navigator.permissions.query({name:'microphone'});
+          if (perm.state === 'granted') {
+            localStorage.setItem('bela_mic_granted', '1');
+            if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+              window.belaToggleGlobal(true);
+            }
+          } else if (perm.state === 'prompt') {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+              stream.getTracks().forEach(t => t.stop());
+              localStorage.setItem('bela_mic_granted', '1');
+              if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+                window.belaToggleGlobal(true);
+              }
+            } catch(e) { localStorage.removeItem('bela_mic_granted'); }
+          }
         }
-      } catch(e) {}
-    }, 1800);
+        // GPS: reutiliza cache de 24h
+        const gpsCached = localStorage.getItem('bela_gps_pos');
+        const gpsTs = gpsCached ? (JSON.parse(gpsCached).ts || 0) : 0;
+        if ((Date.now() - gpsTs) >= 86400000 && navigator.geolocation) {
+          const gpsP = await navigator.permissions.query({name:'geolocation'});
+          if (gpsP.state !== 'denied') {
+            navigator.geolocation.getCurrentPosition(
+              function(pos) {
+                localStorage.setItem('bela_gps_pos', JSON.stringify({lat:pos.coords.latitude, lng:pos.coords.longitude, ts:Date.now()}));
+              }, function(){}, {timeout:8000, maximumAge:86400000}
+            );
+          }
+        }
+      } catch(e) {
+        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+          window.belaToggleGlobal(true);
+        }
+      }
+    }, 1200);
     setTimeout(async function() {
       try {
         await iniciarSessaoFirebase(_emailRestaurado);
@@ -4165,7 +4159,7 @@ function showScreen(id) {
   window.scrollTo({top: 0, behavior: 'instant'});
   if (id === 'admin') {
     // Restore last tab (respects sessionStorage set by tabs)
-    let tabSalva = sessionStorage.getItem('vf_tab') || 'dashboard';
+    let tabSalva = sessionStorage.getItem('vf_tab') || 'bela';
     // Retrocompat: se tab salvo era um sub-tab de Administração, redireciona
     const subTabs = ['checklist','whatsapp','seguranca','logs','mapa','online','sessoes','usuarios'];
     if (subTabs.includes(tabSalva)) {
@@ -4283,9 +4277,9 @@ async function doLogin() {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-admin').classList.add('active');
     window.scrollTo({ top: 0, behavior: 'instant' });
-    // Sempre abre no dashboard ao fazer login
+    // Sempre abre na Bela IA ao fazer login
     try { sessionStorage.removeItem('vf_tab'); sessionStorage.removeItem('vf_subtab'); } catch(e) {}
-    goAdminTab('dashboard');
+    goAdminTab('bela');
     addLogSeguranca('LOGIN_OK', 'Email: ' + emailSanitized);
     registrarLogAcesso('LOGIN_OK', emailSanitized);
     try { sessionStorage.setItem('vf_sessao_restaurada_log', '1'); } catch(e) {}
@@ -4310,14 +4304,69 @@ async function doLogin() {
       } catch(e) {}
     }, 500);
     toast('✅ Bem-vindo!');
-    // Ativa escuta global da Bela automaticamente após login
-    setTimeout(function() {
+    // Bloco 1 — Verifica/persiste permissão de microfone antes de ativar a Bela
+    setTimeout(async function() {
       try {
-        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
-          window.belaToggleGlobal(true); // silencioso — sem frase de ativação
+        const micGranted = localStorage.getItem('bela_mic_granted');
+        if (micGranted === '1') {
+          // Já foi concedido antes — ativa direto sem pedir de novo
+          if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+            window.belaToggleGlobal(true);
+          }
+        } else {
+          // Verifica estado atual da permissão
+          const perm = await navigator.permissions.query({name:'microphone'});
+          if (perm.state === 'granted') {
+            localStorage.setItem('bela_mic_granted', '1');
+            if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+              window.belaToggleGlobal(true);
+            }
+          } else if (perm.state === 'prompt') {
+            // Pede uma única vez via getUserMedia e salva resultado
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+              stream.getTracks().forEach(t => t.stop()); // libera o stream
+              localStorage.setItem('bela_mic_granted', '1');
+              if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+                window.belaToggleGlobal(true);
+              }
+            } catch(e) {
+              localStorage.removeItem('bela_mic_granted');
+            }
+          } else {
+            // 'denied' — limpa flag se existia
+            localStorage.removeItem('bela_mic_granted');
+          }
+          // Observa mudanças futuras de permissão
+          perm.onchange = function() {
+            if (perm.state === 'granted') localStorage.setItem('bela_mic_granted', '1');
+            else localStorage.removeItem('bela_mic_granted');
+          };
         }
-      } catch(e) {}
-    }, 1800);
+        // Bloco 2 — GPS: salva posição no localStorage por 24h
+        const gpsCached = localStorage.getItem('bela_gps_pos');
+        const gpsTs = gpsCached ? (JSON.parse(gpsCached).ts || 0) : 0;
+        const gpsValido = (Date.now() - gpsTs) < 86400000; // 24h
+        if (!gpsValido && navigator.geolocation) {
+          const gpsP = await navigator.permissions.query({name:'geolocation'});
+          if (gpsP.state !== 'denied') {
+            navigator.geolocation.getCurrentPosition(
+              function(pos) {
+                const d = {lat:pos.coords.latitude, lng:pos.coords.longitude, ts:Date.now()};
+                localStorage.setItem('bela_gps_pos', JSON.stringify(d));
+              },
+              function(){},
+              {timeout:8000, maximumAge:86400000}
+            );
+          }
+        }
+      } catch(e) {
+        // Fallback silencioso se Permissions API não disponível
+        if (typeof window.belaToggleGlobal === 'function' && !window.belaGlobalAtivo) {
+          window.belaToggleGlobal(true);
+        }
+      }
+    }, 1200);
     setTimeout(function() {
       var pendentes30 = verificarLembretes30Dias(false);
       if (pendentes30 && pendentes30.length > 0) {
@@ -8820,6 +8869,9 @@ function alterarPermissoesComSeguranca(docId) {
 // ══════════════════════════════════════════════════════════════
 let belaAtivo       = false;
 let belaGlobalAtivo = false;
+// Globais do motor Three.js — inicializados aqui para evitar race conditions
+window._belaThreeState = '';
+window._belaThreeMic   = 0;
 let belaOuvindo     = false;
 let belaFalando     = false;
 let belaRecog       = null;
@@ -8946,26 +8998,18 @@ function belaNucleusState(state) {
   if (!w) return;
   w.className = 'bela-nucleus-wrap'+(state?' '+state:'');
 
-  // Atualiza gradiente do SVG
-  const info = BELA_STATES[state] || BELA_STATES[''];
-  ['bc-halo','bc-mid','bc-sphere'].forEach(id => {
-    const el = $b(id);
-    if (el) el.setAttribute('fill', 'url(#'+info.grad+')');
-  });
-  // Atualiza raios de corona com a cor do estado
-  const rayColors = { '':'#ffcc44','active':'#00d4ff','speaking':'#00ff88','thinking':'#a78bfa' };
-  const rayColor = rayColors[state] || '#ffcc44';
-  const rays = document.querySelectorAll('#bc-rays line');
-  rays.forEach(r => r.setAttribute('stroke', rayColor));
+  // Escreve direto no global — lido pelo loop Three.js sem depender de closure
+  window._belaThreeState = state || '';
 
   // Atualiza label de estado
+  const info = BELA_STATES[state] || BELA_STATES[''];
   const lbl = $b('bela-state-label-txt');
-  if (lbl) {
-    lbl.textContent = info.label;
-  }
+  if (lbl) lbl.textContent = info.label;
 
-  // Informa o canvas de partículas
-  if (window._belaParticles) window._belaParticles.setState(state);
+  // Compatibilidade com API de partículas (se existir)
+  if (window._belaParticles && window._belaParticles.setState) {
+    window._belaParticles.setState(state);
+  }
 
   // Legacy hint
   const h = $b('bela-click-hint');
@@ -9920,6 +9964,33 @@ function belaInterpret(rawText) {
   const t = normTxt(rawText);
   const mesInfo = extrairMesAno(t);
 
+  // ── BLOCO 4 — NAVEGAÇÃO POR VOZ ───────────────────────────
+  // Comandos: "bela mostra o dashboard", "bela abre despesas", "bela vai para financeiro"
+  const NAV_ABAS = [
+    { tab:'bela',         nomes:['bela ia','assistente ia','assistente'],       patterns:[/bela\s*ia|assistente/] },
+    { tab:'dashboard',    nomes:['dashboard','início','painel','home'],         patterns:[/dashboard|inicio|home|painel/] },
+    { tab:'reservas',     nomes:['reservas'],                                   patterns:[/reserva/] },
+    { tab:'calendario',   nomes:['calendário','agenda'],                        patterns:[/calend|agenda/] },
+    { tab:'relatorios',   nomes:['relatórios'],                                 patterns:[/relator|relat/] },
+    { tab:'despesas',     nomes:['despesas','gastos'],                          patterns:[/despesa|gastos/] },
+    { tab:'financeiro',   nomes:['financeiro'],                                 patterns:[/financ/] },
+    { tab:'administracao',nomes:['administração','admin'],                      patterns:[/admin|administr/] },
+  ];
+  const VERBOS_NAV = /mostr|abr|ir\s*para?|vai\s*para?|abre|naveg|muda\s*para?|vai|vou|vamos|abrir|mostrar|acessar|acessa|ver\s*a?\s*aba|ir\s*a?\s*aba/;
+  if (VERBOS_NAV.test(t)) {
+    for (const item of NAV_ABAS) {
+      if (item.patterns.some(p => p.test(t))) {
+        return () => {
+          belaProcessando = false;
+          const label = item.nomes[0];
+          if (typeof goAdminTab === 'function') goAdminTab(item.tab);
+          if (typeof mobGoTab === 'function') { try { mobGoTab(item.tab); } catch(e){} }
+          belaSpeak('Abrindo ' + label + '.');
+        };
+      }
+    }
+  }
+
   // ── CONSULTA UNIVERSAL COM NÚMERO (ex: "3 maiores despesas") ─
   // Detecta padrões com número + maior/menor + despesa/reserva
   if (extrairNumero(t) !== null &&
@@ -10091,8 +10162,21 @@ function belaInterpret(rawText) {
   return null;
 }
 
-function belaHasWakeWord(text) {
-  return /\bbela\b/.test(normTxt(text));
+function belaHasWakeWord(text, allAlternatives) {
+  const WAKE_PATTERNS = [
+    /\bbela\b/,
+    /\bvela\b/,    // confusão fonética comum no STT
+    /\bpela\b/,    // confusão fonética comum no STT
+    /\bdela\b/,    // confusão fonética eventual
+    /\b(ei|hey|oi)\s*(bela|vela|pela)\b/,
+  ];
+  const t = normTxt(text);
+  if (WAKE_PATTERNS.some(p => p.test(t))) return true;
+  // Verifica nas alternativas do STT (quando maxAlternatives > 1)
+  if (Array.isArray(allAlternatives)) {
+    return allAlternatives.some(alt => WAKE_PATTERNS.some(p => p.test(normTxt(alt))));
+  }
+  return false;
 }
 
 // ── Expõe ao window para o chat e outros scripts ──────────────
@@ -10165,7 +10249,7 @@ function belaStartRecognition() {
   belaRecog.lang='pt-BR';
   belaRecog.continuous=false;
   belaRecog.interimResults=true;
-  belaRecog.maxAlternatives=2;
+  belaRecog.maxAlternatives=3;
 
   belaRecog.onstart=()=>{
     belaOuvindo=true;
@@ -10200,7 +10284,11 @@ function belaStartRecognition() {
 
     belaOuvindo=false;
     belaSetTranscript('🎤 '+final);
-    const hasWake=belaHasWakeWord(final);
+    // Bloco 3 — Coleta alternativas do STT para wake word mais sensível
+    const _lastResult = e.results[e.results.length - 1];
+    const _alts = [];
+    for (let _j = 0; _j < _lastResult.length; _j++) _alts.push(_lastResult[_j].transcript);
+    const hasWake=belaHasWakeWord(final, _alts);
 
     // SEM wake word e fora de contexto → descarta silenciosamente
     if(!hasWake&&!belaContextAtivo){
@@ -10383,80 +10471,219 @@ document.addEventListener('DOMContentLoaded',function(){
 
 
 // ══════════════════════════════════════════════════════════════
-// PARTICLE ENGINE — Canvas de partículas tipo átomo
+// THREE.JS NUCLEUS ENGINE — Núcleo 3D reativo aos estados da Bela
 // ══════════════════════════════════════════════════════════════
 function belaIniciarParticulas() {
-  const canvas = document.getElementById('bela-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2;
+  // Inicializa globais IMEDIATAMENTE — antes de qualquer loadScript
+  window._belaThreeState = window._belaThreeState || '';
+  window._belaThreeMic   = window._belaThreeMic   || 0;
 
-  const CONFIGS = {
-    '':        { count:18, speed:.4,  orbitMin:.16, orbitMax:.44, szMin:1.5, szMax:3,   alpha:.35, clr:function(){ return 'rgba(255,'+(160+Math.random()*60|0)+',0,'; } },
-    'active':  { count:30, speed:.75, orbitMin:.13, orbitMax:.47, szMin:1.5, szMax:3.5, alpha:.55, clr:function(){ return 'rgba(0,'+(180+Math.random()*75|0)+',255,'; } },
-    'speaking':{ count:38, speed:1.2, orbitMin:.11, orbitMax:.50, szMin:2,   szMax:4.5, alpha:.72, clr:function(){ return 'rgba(0,'+(215+Math.random()*40|0)+','+(90+Math.random()*60|0)+','; } },
-    'thinking':{ count:24, speed:.95, orbitMin:.13, orbitMax:.46, szMin:1.5, szMax:4,   alpha:.62, clr:function(){ return 'rgba('+(130+Math.random()*70|0)+','+(90+Math.random()*80|0)+',255,'; } },
-  };
-
-  var state = '';
-  var particles = [];
-  var raf = null;
-
-  function mkP(cfg) {
-    var orbitR = (cfg.orbitMin + Math.random()*(cfg.orbitMax-cfg.orbitMin)) * (W/2);
-    var angle  = Math.random() * Math.PI * 2;
-    var dir    = Math.random() < .5 ? 1 : -1;
-    var speed  = (0.3 + Math.random()*0.9) * cfg.speed * dir * .009;
-    var sz     = cfg.szMin + Math.random()*(cfg.szMax-cfg.szMin);
-    var alpha  = (.2 + Math.random()*.8) * cfg.alpha;
-    var incline= (Math.random()-.5) * .55;
-    var pulse  = Math.random()*Math.PI*2;
-    var pspeed = .018 + Math.random()*.04;
-    return { orbitR:orbitR, angle:angle, speed:speed, sz:sz, alpha:alpha,
-             incline:incline, clr:cfg.clr, pulse:pulse, pspeed:pspeed };
-  }
-
-  function build(s) {
-    var cfg = CONFIGS[s] || CONFIGS[''];
-    particles = [];
-    for (var i=0; i<cfg.count; i++) particles.push(mkP(cfg));
-  }
-
-  function draw() {
-    ctx.clearRect(0,0,W,H);
-    for (var i=0; i<particles.length; i++) {
-      var p = particles[i];
-      p.angle += p.speed;
-      p.pulse += p.pspeed;
-      var x  = CX + Math.cos(p.angle) * p.orbitR;
-      var y  = CY + Math.sin(p.angle) * p.orbitR * (1 - Math.abs(p.incline)*.7);
-      var sz = p.sz * (.75 + .25*Math.sin(p.pulse));
-      var a  = p.alpha * (.55 + .45*Math.sin(p.pulse + 1.2));
-      var clr = p.clr();
-      // Glow halo
-      var grd = ctx.createRadialGradient(x,y,0,x,y,sz*3.5);
-      grd.addColorStop(0, clr + (a*.85).toFixed(2)+')');
-      grd.addColorStop(1, clr + '0)');
-      ctx.beginPath(); ctx.arc(x, y, sz*3.5, 0, Math.PI*2);
-      ctx.fillStyle = grd; ctx.fill();
-      // Core dot
-      ctx.beginPath(); ctx.arc(x, y, sz, 0, Math.PI*2);
-      ctx.fillStyle = clr + a.toFixed(2) + ')';
-      ctx.fill();
-    }
-    raf = requestAnimationFrame(draw);
-  }
-
-  build(state);
-  draw();
-
+  // API exposta imediatamente — sem race condition com Three.js
   window._belaParticles = {
-    setState: function(s) {
-      if (s === state) return;
-      state = s;
-      build(s);
-    }
+    setState:    function(s){ window._belaThreeState = (s === undefined || s === null) ? '' : String(s); },
+    setMicLevel: function(v){ window._belaThreeMic   = Number(v) || 0; }
   };
+
+  // Remove canvas legado e cria wrapper para o renderer
+  const oldCanvas = document.getElementById('bela-canvas');
+  if (!oldCanvas) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'bela-threejs-wrap';
+  oldCanvas.parentNode.insertBefore(wrap, oldCanvas);
+  oldCanvas.remove();
+
+  // Carrega Three.js
+  const s3 = document.createElement('script');
+  s3.src = 'https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js';
+  s3.onload = function() {
+    const THREE = window.THREE;
+    const SIZE  = 300;
+
+    // ── Cena ─────────────────────────────────────────────────
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    camera.position.z = 4.2;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(SIZE, SIZE);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    wrap.appendChild(renderer.domElement);
+
+    // ── Luz ──────────────────────────────────────────────────
+    const light = new THREE.PointLight(0xff8800, 4, 20);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x110800, 1));
+
+    // ── Paleta de estados ────────────────────────────────────
+    // idle=laranja  active=ciano  speaking=verde  thinking=roxo
+    const SC = {
+      '':        { r:1.00, g:0.55, b:0.08, ring:0xffaa00, fil:0xffaa00, spd:1.0 },
+      'active':  { r:0.00, g:0.75, b:1.00, ring:0x00d4ff, fil:0x00aaff, spd:1.4 },
+      'speaking':{ r:0.00, g:1.00, b:0.52, ring:0x00ff88, fil:0x00ee77, spd:2.0 },
+      'thinking':{ r:0.62, g:0.47, b:0.98, ring:0xa78bfa, fil:0x9966ff, spd:0.8 },
+    };
+
+    // ── Shader do núcleo ─────────────────────────────────────
+    const coreMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uR:    { value: 1.0 },
+        uG:    { value: 0.55 },
+        uB:    { value: 0.08 },
+        uMic:  { value: 0.0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime, uR, uG, uB, uMic;
+        varying vec2 vUv;
+        void main() {
+          float d = length(vUv - 0.5);
+          float glow  = 0.19 / (d + 0.01);
+          float pulse = sin(uTime * 3.0) * 0.5 + 0.5;
+          float mp    = 1.0 + uMic * 2.0;
+          vec3 col = vec3(uR, uG, uB) * glow * (pulse * 0.55 + 0.45) * mp;
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+      transparent: true,
+    });
+
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.62, 64, 64), coreMat);
+    scene.add(core);
+
+    // ── Anéis torus ──────────────────────────────────────────
+    const ringMats = [];
+    const rings3d = [1.35, 1.85, 2.3].map(function(r, i) {
+      var mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.6 - i*0.1 });
+      ringMats.push(mat);
+      var mesh = new THREE.Mesh(new THREE.TorusGeometry(r, 0.013, 16, 100), mat);
+      mesh.rotation.x = Math.PI / 2 + i * 0.35;
+      mesh.rotation.y = i * 0.6;
+      scene.add(mesh);
+      return mesh;
+    });
+
+    // ── Filamentos ───────────────────────────────────────────
+    const filMats = [], filaments = [];
+    for (var fi = 0; fi < 12; fi++) {
+      var pts = [];
+      for (var fj = 0; fj < 40; fj++) {
+        var tt = fj / 40;
+        pts.push(new THREE.Vector3(
+          Math.sin(tt * 9 + fi * 0.52) * tt * 1.7,
+          Math.cos(tt * 9 + fi * 0.52) * tt * 1.7,
+          (tt - 0.5) * 2.4
+        ));
+      }
+      var fmat = new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.5 });
+      filMats.push(fmat);
+      filaments.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), fmat));
+      scene.add(filaments[fi]);
+    }
+
+    // ── Partículas ───────────────────────────────────────────
+    var pPos = new Float32Array(400 * 3);
+    for (var pi = 0; pi < 400; pi++) {
+      pPos[pi*3]   = (Math.random()-0.5)*7;
+      pPos[pi*3+1] = (Math.random()-0.5)*7;
+      pPos[pi*3+2] = (Math.random()-0.5)*7;
+    }
+    var pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    var pMat = new THREE.PointsMaterial({ color: 0xffaa00, size: 0.028, transparent: true, opacity: 0.6 });
+    var pts3 = new THREE.Points(pGeo, pMat);
+    scene.add(pts3);
+
+    // ── Valores interpolados (iniciam em idle) ────────────────
+    var lR = 1.0, lG = 0.55, lB = 0.08;
+
+    // ── Loop ─────────────────────────────────────────────────
+    var clock = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      clock += 0.016;
+
+      // Lê estado global — trim para segurança
+      var st  = (window._belaThreeState || '').trim();
+      var mic = Number(window._belaThreeMic) || 0;
+      // Garante que st é uma chave válida do SC
+      var tc  = SC[st] || SC[''];
+
+      // Interpolação suave — lerp 5% por frame
+      lR += (tc.r - lR) * 0.05;
+      lG += (tc.g - lG) * 0.05;
+      lB += (tc.b - lB) * 0.05;
+
+      // Shader
+      coreMat.uniforms.uTime.value = clock;
+      coreMat.uniforms.uR.value    = lR;
+      coreMat.uniforms.uG.value    = lG;
+      coreMat.uniforms.uB.value    = lB;
+      coreMat.uniforms.uMic.value  = mic;
+
+      // Escala pulsante
+      core.scale.setScalar(1.0 + mic * 1.5 + Math.sin(clock * 2.4) * 0.06);
+
+      // Anéis
+      for (var ri = 0; ri < rings3d.length; ri++) {
+        rings3d[ri].rotation.z += (0.008 + ri*0.003) * tc.spd;
+        rings3d[ri].rotation.x += 0.002 * tc.spd * (ri%2===0 ? 1 : -1);
+        ringMats[ri].color.setHex(tc.ring);
+        ringMats[ri].opacity = (0.55 - ri*0.1) * (0.7 + mic*0.5);
+        ringMats[ri].needsUpdate = true;
+      }
+
+      // Filamentos
+      for (var fli = 0; fli < filaments.length; fli++) {
+        filaments[fli].rotation.z += (0.004 + fli*0.001) * tc.spd;
+        filaments[fli].rotation.y += 0.003 * tc.spd;
+        filMats[fli].color.setHex(tc.fil);
+        filMats[fli].opacity = 0.35 + mic * 0.3;
+        filMats[fli].needsUpdate = true;
+      }
+
+      // Partículas
+      pts3.rotation.y += 0.0008 * tc.spd;
+      pts3.rotation.x += 0.0003 * tc.spd;
+      pMat.color.setHex(tc.ring);
+      pMat.opacity = 0.45 + mic * 0.3;
+      pMat.needsUpdate = true;
+
+      // Luz
+      light.color.setRGB(lR+0.1, lG*0.8, lB*0.4);
+      light.intensity = 3.5 + mic*3.0 + Math.sin(clock*2.4)*0.5;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── Mic analyser ─────────────────────────────────────────
+    try {
+      navigator.mediaDevices.getUserMedia({ audio:true, video:false }).then(function(stream) {
+        var actx = new (window.AudioContext || window.webkitAudioContext)();
+        var an   = actx.createAnalyser();
+        an.fftSize = 256;
+        actx.createMediaStreamSource(stream).connect(an);
+        var buf = new Uint8Array(an.frequencyBinCount);
+        (function tick() {
+          an.getByteFrequencyData(buf);
+          var sum = 0;
+          for (var i=0; i<buf.length; i++) sum += buf[i];
+          window._belaThreeMic = (sum / buf.length) / 255;
+          requestAnimationFrame(tick);
+        })();
+      }).catch(function(){});
+    } catch(e) {}
+
+  }; // fim onload
+  document.head.appendChild(s3);
 }
 
 })();
