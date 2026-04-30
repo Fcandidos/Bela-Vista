@@ -8883,7 +8883,7 @@ let _belaAudioUnlocked = false;
 // O browser bloqueia SpeechSynthesis até o usuário interagir com a página.
 // Este handler escuta o PRIMEIRO toque/clique e faz um speak silencioso
 // para desbloquear o canal de áudio antes da Bela precisar falar.
-function _belaUnlockAudio() {
+window._belaUnlockAudio = function() {
   if (_belaAudioUnlocked) return;
   _belaAudioUnlocked = true;
   document.removeEventListener('touchstart', _belaUnlockAudio, true);
