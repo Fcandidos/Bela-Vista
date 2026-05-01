@@ -8304,7 +8304,17 @@ async function carregarPermissoesUsuario(email) {
 
 // Aplica visibilidade dos menus e sub-menus conforme permissões
 function aplicarRBACInterface() {
-  if (_currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return;
+  const isAdminPrincipal = _currentUserEmail && _currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  if (isAdminPrincipal) {
+    // Admin principal: garante que TUDO está visível (nunca esconder)
+    document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => btn.style.display = '');
+    document.querySelectorAll('#mob-bottom-bar .mob-bar-btn[data-tab]').forEach(btn => btn.style.display = '');
+    document.querySelectorAll('#mob-side-rail .mob-rail-btn[data-tab]').forEach(btn => btn.style.display = '');
+    document.querySelectorAll('#mob-more-panel .mob-more-item[data-tab]').forEach(item => item.style.display = '');
+    document.querySelectorAll('.adm-sub-btn').forEach(btn => btn.style.display = '');
+    return;
+  }
 
   // Menus principais (desktop top nav)
   document.querySelectorAll('.admin-nav-btn[data-tab]').forEach(btn => {
