@@ -3396,7 +3396,7 @@ select option{background:#060d14;color:#e8f4ff;}
       <div class="pix-box" style="margin-bottom:16px">
         <div style="font-size:1.4rem;margin-bottom:6px">📱</div>
         <div style="font-size:0.76rem;font-weight:600;color:var(--green);margin-bottom:4px">Chave PIX — Bela Vista</div>
-        <div class="pix-code">11.222.333/0001-44 (CNPJ)<br>Bela Vista Eventos LTDA</div>
+        <div class="pix-code">robsontxs@yahoo.com.br<br>Recanto Bela Vista</div>
         <div style="font-size:0.74rem;color:var(--text-l)">Sinal a receber (50%): <strong id="mp-valor" style="color:var(--green)">—</strong></div>
         <button class="btn btn-ok btn-sm" style="margin-top:10px" onclick="copiarPix()">📋 Copiar chave PIX</button>
       </div>
@@ -4672,7 +4672,7 @@ function adminCalMove(d){admCalM+=d;if(admCalM>11){admCalM=0;admCalY++;}if(admCa
 // ================================================================
 // RESERVAS TABLE
 // ================================================================
-let _resSortCol = '';
+let _resSortCol = 'data';
 let _resSortDir = 1; // 1 = asc, -1 = desc
 
 function sortReservas(col) {
@@ -4691,6 +4691,11 @@ function sortReservas(col) {
 }
 
 function renderReservas(filterTxt='', filterStatus='') {
+  // Sync header icons with current sort state
+  ['codigo','nome','data','total','status'].forEach(c => {
+    const el = document.getElementById('sort-'+c+'-icon');
+    if (el) el.textContent = c === _resSortCol ? (_resSortDir === 1 ? '↑' : '↓') : '';
+  });
   const tbody = document.getElementById('res-tbody'); tbody.innerHTML='';
   let list = reservas.filter(r => {
     const t = filterTxt.toLowerCase();
@@ -5048,31 +5053,31 @@ function renderDashboard() {
   }).length;
   const fmtM = v => '<span style="font-size:clamp(0.95rem,1.8vw,1.3rem);font-family:\'Syne\',sans-serif;font-weight:800;word-break:break-word">R$ '+formatBRL(v)+'</span>';
   document.getElementById('dash-metrics').innerHTML =
-    `<div class="metric" style="--metric-accent:var(--cyan)">
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--cyan)" onclick="goAdminTab('reservas')">
        <div class="metric-icon">📋</div>
        <div class="metric-lbl">Total de reservas</div>
        <div class="metric-val">${reservas.length}</div>
        <div class="metric-sub">${ativas.length} ativas</div>
      </div>` +
-    `<div class="metric" style="--metric-accent:var(--green)">
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--green)" onclick="goAdminTab('financeiro')">
        <div class="metric-icon">✅</div>
        <div class="metric-lbl">Já recebido</div>
        <div class="metric-val" style="color:var(--ok)">${fmtM(recebido)}</div>
        <div class="metric-sub" style="color:var(--ok)">${ativas.filter(r=>r.pagamento==='pago').length} paga(s)</div>
      </div>` +
-    `<div class="metric" style="--metric-accent:var(--amber)">
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--amber)" onclick="goAdminTab('reservas')">
        <div class="metric-icon">⏳</div>
        <div class="metric-lbl">A receber (saldo)</div>
        <div class="metric-val" style="color:var(--warn)">${fmtM(aReceber)}</div>
        <div class="metric-sub" style="color:var(--warn)">${pendentes} pendente(s)</div>
      </div>` +
-    `<div class="metric" style="--metric-accent:var(--cyan)">
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--cyan)" onclick="goAdminTab('relatorios')">
        <div class="metric-icon">📈</div>
        <div class="metric-lbl">Receita prevista</div>
        <div class="metric-val">${fmtM(previsto)}</div>
        <div class="metric-sub">total confirmado</div>
      </div>` +
-    `<div class="metric" style="--metric-accent:var(--err)">
+    `<div class="metric" style="cursor:pointer;--metric-accent:var(--err)" onclick="goAdminTab('despesas')">
        <div class="metric-icon">💸</div>
        <div class="metric-lbl">Despesas anuais</div>
        <div class="metric-val" style="color:var(--err)">${fmtM(despAno)}</div>
@@ -5084,7 +5089,7 @@ function renderDashboard() {
        <div class="metric-val" style="color:var(--purple)">${waLembretesPend}</div>
        <div class="metric-sub">retorno 30 dias</div>
      </div>` +
-    `<div class="metric" style="--metric-accent:${pendentes>0?'var(--amber)':'var(--green)'}">
+    `<div class="metric" style="cursor:pointer;--metric-accent:${pendentes>0?'var(--amber)':'var(--green)'}" onclick="goAdminTab('reservas')">
        <div class="metric-icon">💳</div>
        <div class="metric-lbl">Pagtos pendentes</div>
        <div class="metric-val" style="${pendentes>0?'color:var(--warn)':''}">${pendentes}</div>
@@ -6300,7 +6305,7 @@ function gerarMsgWA(tipo, r) {
   const saldo = Math.max(0, (Number(r.total)||0) - (Number(r.sinal)||0));
   const templates = {
     confirmacao: `Olá, *${nome}*! 🎉\n\nSua reserva na *Bela Vista* foi confirmada com sucesso!\n\n📋 *Código:* ${r.codigo}\n📅 *Data:* ${dataFmt}\n🎊 *Evento:* ${r.tipo||'Evento especial'}\n💰 *Total:* R$ ${formatBRL(r.total)}\n\nEm caso de dúvidas, estamos à disposição. Até a festa! 🥂`,
-    lembrete_pagamento: `Olá, *${nome}*! 😊\n\nPassando para lembrar que o pagamento da sua reserva *${r.codigo}* ainda está pendente.\n\n💳 *Saldo restante:* R$ ${formatBRL(saldo)}\n📅 *Data do evento:* ${dataFmt}\n\n*Chave PIX:* 11.222.333/0001-44 (CNPJ)\n\nQualquer dúvida, estamos aqui! 🙏`,
+    lembrete_pagamento: `Olá, *${nome}*! 😊\n\nPassando para lembrar que o pagamento da sua reserva *${r.codigo}* ainda está pendente.\n\n💳 *Saldo restante:* R$ ${formatBRL(saldo)}\n📅 *Data do evento:* ${dataFmt}\n\n*Chave PIX:* robsontxs@yahoo.com.br\n\nQualquer dúvida, estamos aqui! 🙏`,
     lembrete_evento: `Olá, *${nome}*! 📅\n\nSeu evento na *Bela Vista* está chegando!\n\n🎊 *Data:* ${dataFmt}\n📋 *Reserva:* ${r.codigo}\n\nLembre-se de confirmar todos os detalhes com antecedência. Qualquer dúvida, é só chamar! 🏛️`,
     lembrete_retorno: `Olá, *${nome}*! 😊\n\nJá faz 1 mês desde a sua última reserva com a gente. Que tal agendar novamente? 🗓️\n\nEstamos com datas disponíveis e adoraríamos receber você de volta na *Bela Vista*!\n\n✨ Espaço premium • Estrutura completa • Memórias inesquecíveis\n\nFala com a gente! 🥂`,
     personalizado: `Olá, *${nome}*! 😊\n\n`
