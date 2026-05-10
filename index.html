@@ -3185,6 +3185,13 @@ select option{background:#060d14;color:#e8f4ff;}
           </div>
 
           <div class="bela-transcript" id="bela-transcript"></div>
+
+          <!-- Overlay de desbloqueio de áudio — aparece apenas quando necessário -->
+          <div id="bela-audio-unlock-banner" style="display:none;margin-top:10px;text-align:center;">
+            <button onclick="belaForcarUnlockAudio()" style="background:linear-gradient(135deg,rgba(0,212,255,0.18),rgba(167,139,250,0.14));border:1.5px solid rgba(0,212,255,0.45);border-radius:14px;padding:11px 28px;color:#00d4ff;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 0 18px rgba(0,212,255,0.15);animation:bela-blink 1.4s ease-in-out infinite;letter-spacing:0.3px;">
+              🔊 Toque aqui para ativar o áudio da Bela
+            </button>
+          </div>
         </div>
 
         <!-- Response cards -->
@@ -8893,40 +8900,59 @@ let belaContextTimer = null;
 let belaProcessando  = false;
 let belaSpeakTimeout = null;
 let _belaAudioUnlocked = false;
+let _belaSpeakPendente = null; // fala que ficou na fila esperando unlock
 
-// ── Desbloqueio de áudio — obrigatório no mobile/browser moderno ──
-// O browser bloqueia SpeechSynthesis até o usuário interagir com a página.
-// Este handler escuta o PRIMEIRO toque/clique e faz um speak silencioso
-// para desbloquear o canal de áudio antes da Bela precisar falar.
-window._belaUnlockAudio = function() {
+// ── Esconde o banner de unlock ───────────────────────────────
+function _belaHideBanner() {
+  const b = document.getElementById('bela-audio-unlock-banner');
+  if (b) b.style.display = 'none';
+}
+
+// ── Mostra o banner de unlock (chamado quando Bela tenta falar sem interação) ──
+function _belaShowBanner() {
+  const b = document.getElementById('bela-audio-unlock-banner');
+  if (b) b.style.display = 'block';
+}
+
+// ── Desbloqueio real do áudio ─────────────────────────────────
+function _belaDoUnlock() {
   if (_belaAudioUnlocked) return;
   _belaAudioUnlocked = true;
   document.removeEventListener('touchstart', _belaUnlockAudio, true);
   document.removeEventListener('mousedown',  _belaUnlockAudio, true);
   document.removeEventListener('keydown',    _belaUnlockAudio, true);
+  _belaHideBanner();
   try {
-    // Faz um utterance vazio e cancela imediatamente — só para "acordar" o sintetizador
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(' ');
-      u.volume = 0;
-      u.rate   = 16;
-      u.onend  = function(){};
-      u.onerror= function(){};
+      u.volume = 0; u.rate = 16;
+      u.onend = u.onerror = function(){};
       window.speechSynthesis.speak(u);
       setTimeout(function(){ window.speechSynthesis.cancel(); }, 50);
     }
-    // AudioContext unlock (para o motor Three.js e qualquer Web Audio)
     const ac = new (window.AudioContext || window.webkitAudioContext)();
     if (ac.state === 'suspended') ac.resume();
     const buf = ac.createBuffer(1,1,22050);
     const src = ac.createBufferSource();
-    src.buffer = buf;
-    src.connect(ac.destination);
-    src.start(0);
+    src.buffer = buf; src.connect(ac.destination); src.start(0);
     setTimeout(function(){ try{ ac.close(); }catch(e){} }, 500);
   } catch(e) {}
+  // Se havia fala pendente, executa agora após pequeno delay
+  if (_belaSpeakPendente) {
+    const pending = _belaSpeakPendente;
+    _belaSpeakPendente = null;
+    setTimeout(function(){ belaSpeak(pending.text, pending.onEnd); }, 350);
+  }
 }
+
+// ── Botão explícito "Toque para ativar" na aba da Bela ───────
+window.belaForcarUnlockAudio = function() {
+  _belaDoUnlock();
+};
+
+// ── Handler automático no primeiro toque/clique na página ────
+window._belaUnlockAudio = function() { _belaDoUnlock(); };
 document.addEventListener('touchstart', _belaUnlockAudio, true);
 document.addEventListener('mousedown',  _belaUnlockAudio, true);
 document.addEventListener('keydown',    _belaUnlockAudio, true);
@@ -9109,6 +9135,16 @@ const SILENCIO_POS_FALA = 1200; // ms de silêncio após fala antes de ouvir
 
 function belaSpeak(text, onEnd) {
   if (!belaSynth) { if(onEnd) onEnd(); return; }
+
+  // ── Áudio ainda bloqueado pelo browser (sessão restaurada sem interação) ──
+  // Salva a fala na fila e mostra o banner para o usuário tocar UMA VEZ
+  if (!_belaAudioUnlocked) {
+    _belaSpeakPendente = { text, onEnd };
+    _belaShowBanner();
+    // Mesmo sem áudio, o mic continua ouvindo — só o speak fica pendente
+    return;
+  }
+
   // Para qualquer escuta ativa imediatamente
   belaStopMicTemporario();
   belaSynth.cancel();
@@ -9148,9 +9184,16 @@ function belaSpeak(text, onEnd) {
     utt.onend  = ()=>{ clearTimeout(guard); finish(); };
     utt.onerror= (e)=>{
       clearTimeout(guard);
-      // Se falhou por falta de interação do usuário, marca como não desbloqueado para tentar de novo
+      // Falhou por falta de interação — mostra banner e enfileira para tentar após toque
       if (e.error === 'not-allowed' || e.error === 'interrupted') {
         _belaAudioUnlocked = false;
+        _belaSpeakPendente = { text, onEnd };
+        _belaShowBanner();
+        belaFalando = false;
+        belaProcessando = false;
+        belaNucleusState(belaAtivo ? 'active' : '');
+        belaSetStatus('', '🔇 Toque para ativar o áudio');
+        return;
       }
       finish();
     };
