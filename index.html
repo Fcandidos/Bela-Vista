@@ -9144,7 +9144,7 @@ function belaSpeak(text, onEnd) {
         }
       }, SILENCIO_POS_FALA);
     };
-    const guard = setTimeout(()=>{ if(belaFalando) finish(); }, Math.max(text.length*75,2500));
+    const guard = setTimeout(()=>{ if(belaFalando) finish(); }, Math.max(text.length*110,4000));
     utt.onend  = ()=>{ clearTimeout(guard); finish(); };
     utt.onerror= (e)=>{
       clearTimeout(guard);
@@ -9157,7 +9157,7 @@ function belaSpeak(text, onEnd) {
     belaSynth.speak(utt);
 
     // Watchdog: Chrome mobile às vezes "enguiça" o synth sem disparar onend
-    // Verifica após 500ms se realmente começou a falar
+    // Verifica após 900ms se realmente começou a falar (500ms era cedo demais no mobile)
     setTimeout(function() {
       if (belaFalando && !belaSynth.speaking && !belaSynth.pending) {
         // Synth travou — tenta novamente
@@ -10541,14 +10541,17 @@ function belaStartRecognition() {
     const fn=belaInterpret(final);
     if(fn){
       belaSetStatus('thinking','⚡ Processando…');
-      fn();
+      try { fn(); } catch(e) { belaProcessando=false; }
+      // Safety net: se após 8s ainda estiver processando, libera o mic
+      setTimeout(()=>{ if(belaProcessando){ belaProcessando=false; if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaOuvindo) belaStartRecognition(); } },8000);
     } else if(hasWake) {
       belaProcessando=false;
       belaSpeak(typeof sorteio!=='undefined' ? sorteio(BELA_RESPOSTAS.semComando)() : 'Aqui! Pode falar.');
     }
-    // Se está em contexto mas sem comando → silêncio, reseta flag e reinicia mic
+    // Se está em contexto mas sem comando → reseta flags e reinicia mic para nova tentativa
     else {
       belaProcessando = false;
+      setTimeout(()=>{ if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaOuvindo) belaStartRecognition(); },300);
     }
   };
 
@@ -10560,7 +10563,12 @@ function belaStartRecognition() {
     } else if(e.error==='not-allowed'||e.error==='service-not-allowed'){
       belaGlobalAtivo=false;belaAtivo=false;
       belaSetStatus('','🚫 Microfone bloqueado');belaNucleusState('');belaUpdateGlobalIndicator();
-    } else if(e.error!=='aborted'){
+    } else if(e.error==='aborted'){
+      // 'aborted' acontece quando o Chrome interrompe (troca de aba, tela apagando, etc.)
+      // Reinicia com delay maior para não criar loop
+      if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)
+        setTimeout(()=>{ if(!belaOuvindo) belaStartRecognition(); },1200);
+    } else {
       if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)
         setTimeout(()=>belaStartRecognition(),800);
     }
