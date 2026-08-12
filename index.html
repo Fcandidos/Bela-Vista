@@ -3792,21 +3792,29 @@ if (_auth) {
 // Helpers globais que o script principal usa via window._fb
 window._fb = {
   get ativo() { return _db !== null; },
+  // Salva sempre no MESMO documento de onde a reserva foi carregada (r._docId).
+  // Só usa r.codigo como ID quando a reserva é nova (ainda não tem _docId) —
+  // evita recriar um documento "fantasma" quando o ID real do doc diverge do
+  // campo "codigo" (podem divergir em reservas antigas/legadas).
   salvar: async function(r) {
     if (!_db) return;
-    try { await _db.collection('reservas').doc(r.codigo).set(r); }
+    try {
+      const { _docId, ...dados } = r;
+      const alvo = _docId || r.codigo;
+      await _db.collection('reservas').doc(alvo).set(dados);
+    }
     catch(e) { console.warn('FB save err', e); }
   },
-  deletar: async function(codigo) {
+  deletar: async function(docId) {
     if (!_db) return;
-    try { await _db.collection('reservas').doc(codigo).delete(); }
+    try { await _db.collection('reservas').doc(docId).delete(); }
     catch(e) { console.warn('FB del err', e); }
   },
   carregar: async function() {
     if (!_db) return null;
     try {
       const snap = await _db.collection('reservas').get();
-      const dados = snap.docs.map(d => d.data());
+      const dados = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
       dados.sort((a,b) => (b.criadoEm||'').localeCompare(a.criadoEm||''));
       return dados;
     } catch(e) { console.warn('FB load err', e); return null; }
@@ -3817,7 +3825,7 @@ window._fb = {
     _unsubscribe = _db.collection('reservas').onSnapshot(
       (snap) => {
         setFbStatus('online');
-        const dados = snap.docs.map(d => d.data());
+        const dados = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
         dados.sort((a,b) => (b.criadoEm||'').localeCompare(a.criadoEm||''));
         callback(dados);
       },
@@ -3887,9 +3895,11 @@ function salvarReservaDB(r) {
 }
 // Deleta uma reserva do Firebase + localStorage
 function deletarReservaDB(codigo) {
+  const r = reservas.find(x => x.codigo === codigo);
+  const docId = r?._docId || codigo;
   reservas = reservas.filter(x => x.codigo !== codigo);
   salvarDados();
-  if (window._fb?.ativo) window._fb.deletar(codigo).catch(()=>{});
+  if (window._fb?.ativo) window._fb.deletar(docId).catch(()=>{});
 }
 // Registro de log — salva localmente e tenta enviar ao Firebase (sem quebrar se falhar)
 function addLog(msg) {
