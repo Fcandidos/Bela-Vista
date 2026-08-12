@@ -5434,8 +5434,9 @@ function bookedDates(excludeCodigo='') {
   return dates;
 }
 function gerarCodigo() {
-  const n = reservas.length+1;
-  return 'VF-'+String(n).padStart(3,'0');
+  const nums = reservas.map(r => parseInt((r.codigo||'').replace(/\D/g,''))||0);
+  const proximo = nums.length ? Math.max(...nums)+1 : 1;
+  return 'VF-'+String(proximo).padStart(3,'0');
 }
 function dateStr(y,m,d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 function fmtDate(str) { if(!str)return'—'; const[y,m,d]=str.split('-'); return`${d}/${m}/${y}`; }
