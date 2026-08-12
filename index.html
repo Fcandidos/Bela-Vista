@@ -4802,7 +4802,7 @@ function abrirNovaReserva() {
   document.getElementById('mr-resumo').style.display = 'none';
   const addInput = document.getElementById('mr-data-add');
   addInput.value = '';
-  addInput.min = new Date().toISOString().split('T')[0];
+  addInput.removeAttribute('min');
   mrDatas = [];
   renderDatasModal();
   openM('m-reserva');
