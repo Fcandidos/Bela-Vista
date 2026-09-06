@@ -10109,7 +10109,14 @@ function belaExtrairCamposReserva(rawText, t, aguardando) {
 
   const nomeMatch = rawText.match(/(?:para|pro|pra|cliente)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Úa-zà-ú]+)*)/i);
   if (nomeMatch) out.nome = nomeMatch[1].trim();
-  else if (aguardando === 'nome' && !/\d/.test(rawText) && rawText.trim()) out.nome = rawText.trim();
+  else if (aguardando === 'nome' && !/\d/.test(rawText) && rawText.trim()) {
+    // Remove frases de apresentação ("o nome dele é X", "se chama X") e fica só com o nome
+    const semApresentacao = rawText.trim().replace(
+      /^(?:o\s+nome\s+(?:dele|dela)?\s*(?:é|eh)|meu\s+nome\s*(?:é|eh)|nome\s*(?:dele|dela)?\s*(?:é|eh)|(?:ele|ela)\s+se\s+chama|se\s+chama|chama-se|é)\s+/i,
+      ''
+    );
+    out.nome = semApresentacao.trim() || rawText.trim();
+  }
 
   const telMatch = rawText.match(/(?:telefone|fone|cel|whats(?:app)?)?[\s:]*(\+?\d[\d\s().-]{7,14}\d)/i);
   if (telMatch) out.tel = normalizarTelBR(telMatch[1]);
