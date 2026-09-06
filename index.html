@@ -10178,6 +10178,18 @@ function belaProximoCampoFaltandoReserva(slot) {
 function belaAvancarReservaSlot(rawText, t) {
   if (rawText != null) {
     const campos = belaExtrairCamposReserva(rawText, t, belaReservaSlot._aguardando);
+    // Telefone falado em pedaços (reconhecimento de voz corta números longos) —
+    // acumula os dígitos de cada fala até formar um telefone completo
+    if (belaReservaSlot._aguardando === 'tel' && !campos.tel) {
+      const digitos = rawText.replace(/\D/g,'');
+      if (digitos) {
+        belaReservaSlot._telBuffer = (belaReservaSlot._telBuffer||'') + digitos;
+        if (belaReservaSlot._telBuffer.length >= 10) {
+          campos.tel = normalizarTelBR(belaReservaSlot._telBuffer);
+          belaReservaSlot._telBuffer = '';
+        }
+      }
+    }
     Object.assign(belaReservaSlot, campos);
   }
   const faltando = belaProximoCampoFaltandoReserva(belaReservaSlot);
