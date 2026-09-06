@@ -9131,9 +9131,10 @@ function belaLoadVoices() {
       sel.appendChild(o);
     });
     if (belaVoiceIdx<0) {
+      const gi=belaVoices.findIndex(v=>v.lang==='pt-BR'&&/google.*portugu[eê]s.*brasil/i.test(v.name));
       const fi=belaVoices.findIndex(v=>v.lang==='pt-BR'&&/luciana|vitoria|edith|luana|ana|female/i.test(v.name));
       const pi=belaVoices.findIndex(v=>v.lang==='pt-BR');
-      belaVoiceIdx = fi>=0?fi:(pi>=0?pi:0);
+      belaVoiceIdx = gi>=0?gi:(fi>=0?fi:(pi>=0?pi:0));
     }
     sel.value=belaVoiceIdx;
     belaRenderVoiceInfo();
