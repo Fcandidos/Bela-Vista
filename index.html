@@ -5519,6 +5519,8 @@ function abrirWhatsApp() {
 // com/sem pontuação) para o padrão "(DDD) 9XXXX-XXXX" usado no sistema.
 function normalizarTelBR(raw) {
   let v = String(raw||'').replace(/\D/g,'');
+  // Prefixo antigo de discagem "0 + DDD" (nenhum DDD real começa com 0) — remove o 0
+  if (v.length >= 11 && v[0] === '0') v = v.slice(1);
   // Cola com DDI (+55): só ocorre quando sobram DDD+número completo (12 ou 13 dígitos) — remove o 55
   if ((v.length === 12 || v.length === 13) && v.slice(0,2) === '55') v = v.slice(2);
   v = v.slice(0,11);
