@@ -10652,13 +10652,14 @@ function belaStartRecognition() {
     const hasWake=belaHasWakeWord(final, _alts);
 
     // SEM wake word e fora de contexto → descarta silenciosamente
-    if(!hasWake&&!belaContextAtivo){
+    // (exceto durante o preenchimento de uma reserva em andamento, que não expira por tempo)
+    if(!hasWake&&!belaContextAtivo&&!belaReservaSlot){
       setTimeout(()=>belaSetTranscript(''),1500);
       setTimeout(()=>{if((belaAtivo||belaGlobalAtivo)&&!belaFalando&&!belaProcessando)belaStartRecognition();},300);
       return;
     }
 
-    if(hasWake) belaRefreshContext();
+    if(hasWake||belaReservaSlot) belaRefreshContext();
 
     // Se há piada aguardando resposta → responde imediatamente
     if(window._belaPiadaEngine && window._belaPiadaEngine.estaAguardando()){
