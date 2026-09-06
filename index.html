@@ -10122,6 +10122,8 @@ function belaExtrairCamposReserva(rawText, t, aguardando) {
                    julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
   const dM1 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+de\s+([a-záéíóúãõ]+)/i);
   const dM2 = rawText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  // "2 do 10 de 2026" — dia + mês por número (fala natural do reconhecimento de voz)
+  const dM3 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+d[oe]\s+(\d{1,2})(?:\s+de\s+(\d{2,4}))?/i);
   if (dM1) {
     const mn = dM1[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const mn2 = MESES_R[mn] || MESES_R[dM1[2].toLowerCase()];
@@ -10129,6 +10131,9 @@ function belaExtrairCamposReserva(rawText, t, aguardando) {
   } else if (dM2) {
     const ano = dM2[3] ? (dM2[3].length===2?'20'+dM2[3]:dM2[3]) : String(new Date().getFullYear());
     out.dataISO = `${ano}-${dM2[2].padStart(2,'0')}-${dM2[1].padStart(2,'0')}`;
+  } else if (dM3) {
+    const ano = dM3[3] ? (dM3[3].length===2?'20'+dM3[3]:dM3[3]) : String(new Date().getFullYear());
+    out.dataISO = `${ano}-${dM3[2].padStart(2,'0')}-${dM3[1].padStart(2,'0')}`;
   }
 
   const valMatch = rawText.match(/valor\s+(?:de\s+)?r?\$?\s*([\d.,]+)/i) || rawText.match(/r?\$\s*([\d.,]+)/i);
