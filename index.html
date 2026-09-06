@@ -10120,14 +10120,15 @@ function belaExtrairCamposReserva(rawText, t, aguardando) {
 
   const MESES_R = {janeiro:1,fevereiro:2,março:3,marco:3,abril:4,maio:5,junho:6,
                    julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
-  const dM1 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+de\s+([a-záéíóúãõ]+)/i);
+  const dM1 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+de\s+([a-záéíóúãõ]+)(?:\s+de\s+(\d{2,4}))?/i);
   const dM2 = rawText.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
   // "2 do 10 de 2026" — dia + mês por número (fala natural do reconhecimento de voz)
   const dM3 = rawText.match(/(?:dia\s+)?(\d{1,2})\s+d[oe]\s+(\d{1,2})(?:\s+de\s+(\d{2,4}))?/i);
   if (dM1) {
     const mn = dM1[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const mn2 = MESES_R[mn] || MESES_R[dM1[2].toLowerCase()];
-    if (mn2) out.dataISO = `${new Date().getFullYear()}-${String(mn2).padStart(2,'0')}-${dM1[1].padStart(2,'0')}`;
+    const ano = dM1[3] ? (dM1[3].length===2?'20'+dM1[3]:dM1[3]) : String(new Date().getFullYear());
+    if (mn2) out.dataISO = `${ano}-${String(mn2).padStart(2,'0')}-${dM1[1].padStart(2,'0')}`;
   } else if (dM2) {
     const ano = dM2[3] ? (dM2[3].length===2?'20'+dM2[3]:dM2[3]) : String(new Date().getFullYear());
     out.dataISO = `${ano}-${dM2[2].padStart(2,'0')}-${dM2[1].padStart(2,'0')}`;
