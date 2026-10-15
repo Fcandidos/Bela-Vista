@@ -2732,7 +2732,7 @@ var LOGO_DARK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAGBCAYAAAApL
 /* ---------- Contrato de locação (PDF) ---------- */
 var CTR = { busy: false, img: null };
 /* Dados da LOCADORA: preencha doc (CNPJ/CPF) e end (endereço) para saírem no contrato; em branco saem como linha para preencher à mão. */
-var LOC = { nome: "Recanto Bela Vista", locador: "Adriana Bárbara Rocha Xavier de Sousa", end: "Rua Neusa Gonçalves Cascão, nº 80, Bairro Solar Park Bela Vista, cidade de Araguari, estado de Minas Gerais", rg: "", cpf: "", foro: "Araguari/MG", wa: "(34) 99120-9275" };
+var LOC = { nome: "Recanto Bela Vista", locador: "Adriana Bárbara Rocha Xavier de Sousa", end: "Rua Neusa Gonçalves Cascão, nº 80, Bairro Solar Park Bela Vista, cidade de Araguari, estado de Minas Gerais", rg: "MG13952355", cpf: "083.103.766-00", foro: "Araguari/MG", wa: "(34) 99120-9275" };
 var MESES_L = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function cpfDigits(v) { return String(v || "").replace(/\D/g, "").slice(0, 11); }
 function fmtCPF(v) { v = cpfDigits(v); return v.length <= 3 ? v : v.length <= 6 ? v.slice(0, 3) + "." + v.slice(3) : v.length <= 9 ? v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6) : v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6, 9) + "-" + v.slice(9); }
@@ -2774,12 +2774,12 @@ function proxDia(iso) { var d = new Date(iso + "T00:00:00"); d.setDate(d.getDate
 function contratoBlocos(r) {
   var B = [], L = "______________________", T = function (t, x, k) { B.push({ t: t, x: x, k: k }); }, dts = r.datas.map(fmtDate), saldo = Math.max(0, r.total - (r.sinal || 0));
   var ano = (r.criado || HOJE).slice(0, 4), cl = 0, C = function (x) { cl++; T("cl", x, "Cláusula " + cl + "ª"); };
-  var rgLoc = LOC.rg ? "RG nº " + LOC.rg : "RG nº " + L, cpfLoc = LOC.cpf ? "CPF nº " + LOC.cpf : "CPF nº " + L;
+  var rgLoc = "RG nº " + LOC.rg, cpfLoc = "CPF nº " + LOC.cpf;
   T("title", "CONTRATO PARTICULAR DE LOCAÇÃO Nº " + r.id + "/" + ano);
   T("sub", "ÁREA DE LAZER " + LOC.nome.toUpperCase());
 
-  T("p", "LOCADOR: " + LOC.locador + ", brasileira, casada, portadora do documento " + rgLoc + " e " + cpfLoc + ", proprietária da ÁREA DE LAZER denominada " + LOC.nome.toUpperCase() + ", estabelecida na " + LOC.end + ", simplesmente denominada LOCADOR, e de outro lado:");
-  T("p", "LOCATÁRIO(A): " + r.nome + ", portador(a) do RG nº " + L + " e CPF nº " + (r.cpf ? fmtCPF(r.cpf) : L) + ", residente na Rua " + L + ", cidade " + L + ", CEP " + L + ", telefone " + (r.tel || L) + (r.email ? ", e-mail " + r.email : "") + ", doravante denominado(a) LOCATÁRIO(A).");
+  T("p", "Sra. " + LOC.locador + ", brasileira, casada, portador do documento " + rgLoc + " e " + cpfLoc + ", proprietário do objeto em questão a ÁREA DE LAZER denominada " + LOC.nome.toUpperCase() + ", estabelecida na " + LOC.end + ", simplesmente denominado “LOCADOR”, e de outro lado:");
+  T("p", "Nome: " + r.nome + ", portador(a) do RG nº " + L + " e CPF nº " + (r.cpf ? fmtCPF(r.cpf) : L) + ", residente na Rua " + L + ", cidade " + L + ", CEP " + L + ", telefone " + (r.tel || L) + (r.email ? ", e-mail " + r.email : "") + ", doravante denominado(a) LOCATÁRIO(A).");
   T("p", "OBJETO: Locação da Área de Lazer \"" + LOC.nome + "\". Pelo presente instrumento particular, e na melhor forma de direito, as partes acima nomeadas têm entre si, certo e ajustado o presente contrato, que se regerá pelas seguintes cláusulas e condições que mutuamente aceitam, a saber:");
 
   C("A ÁREA DE LAZER " + LOC.nome.toUpperCase() + " destina-se exclusivamente a atividades de cunho familiar. Não sendo admitida a realização de eventos com finalidade lucrativa, assim como fica vedado o uso para eventos diferente do contratado; e nem mesmo a sublocação ou empréstimo total ou parcial para terceiros alheios à locação.");
@@ -3603,8 +3603,6 @@ if (LIVE) (function () {
       LV.db.collection('usuarios').get().then(function (snap) { var me = curUser(); USERS.length = 0; snap.docs.forEach(function (d) { USERS.push(mapUser(d.id, d.data())); }); if (me && !findUser(me.email)) USERS.unshift(me); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
     }
   }
-  /* RG e CPF do locador ficam só no banco (config/locador), nunca no código público do site */
-  function loadLocador() { try { LV.db.collection('config').doc('locador').get().then(function (d) { if (d.exists) { var x = d.data() || {}; if (x.rg) LOC.rg = String(x.rg); if (x.cpf) LOC.cpf = String(x.cpf); } }, function () {}); } catch (e) {} }
   function loadProfile(email) {
     var q = function (e) { return LV.db.collection('usuarios').where('email', '==', e).limit(1).get(); };
     return q(email).then(function (s) { return s.empty && email !== email.toLowerCase() ? q(email.toLowerCase()) : s; }).then(function (s) {
@@ -3639,7 +3637,7 @@ if (LIVE) (function () {
     var me = pf ? mapUser(pf.id, pf.data) : mapUser('principal', { email: email, tipo: 'admin', status: 'ativo', permissoes: null });
     me.email = email; USERS.length = 0; USERS.push(me);
     try { localStorage.setItem(KEY_AT, String(Date.now())); } catch (e) {}
-    if (!LV.started) { LV.started = true; listen('reservas', mapRes, RES); listen('despesas', mapDesp, DESP); loadChecklist(); loadLocador(); }
+    if (!LV.started) { LV.started = true; listen('reservas', mapRes, RES); listen('despesas', mapDesp, DESP); loadChecklist(); }
     window.__noIntro = !!silent; enterApp(me); window.__noIntro = false;
     setTimeout(loadAdminLists, 600);
   }
@@ -3694,7 +3692,7 @@ if (LIVE) (function () {
   var doLogoutRaw = doLogout;
   window.doLogout = function (reason) {
     var had = !!AUTH.email; doLogoutRaw(reason); if (!had) return;
-    stopListeners(); clearData(); LOC.rg = ''; LOC.cpf = ''; try { localStorage.removeItem(KEY_AT); } catch (e) {}
+    stopListeners(); clearData(); try { localStorage.removeItem(KEY_AT); } catch (e) {}
     try { if (LV.auth) LV.auth.signOut(); } catch (e) {}
     startPublic();
   };
