@@ -2096,8 +2096,9 @@ function countUp(root) {
   if (reduce || hidden) return;
   root.querySelectorAll('[data-count]').forEach(function (el) {
     if (el.offsetParent === null || el.closest('.rv')) return;
-    var to = +el.dataset.count, f = FMT[el.dataset.fmt], t0 = performance.now(), dur = 1100;
-    function tick(t) { var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = f.format(to * e); if (k < 1) requestAnimationFrame(tick); else el.textContent = f.format(to); }
+    var f = FMT[el.dataset.fmt], t0 = performance.now(), dur = 1100, tk = el._cu = (el._cu || 0) + 1;
+    /* lê o valor ATUAL a cada quadro: se os dados chegarem durante a animação (Firebase), ela termina no valor novo, nunca em 0 */
+    function tick(t) { if (el._cu !== tk) return; var to = +el.dataset.count || 0, k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = f.format(to * e); if (k < 1) requestAnimationFrame(tick); else el.textContent = f.format(to); }
     el.textContent = f.format(0); requestAnimationFrame(tick);
   });
 }
@@ -3242,7 +3243,7 @@ document.getElementById('balYear').textContent = ANO; document.getElementById('d
 hydrate(); setEye(); setThemeIco(); renderAll(); belaInit(); renderPub(); MiniFX.stop(); gateShow('public'); go('inicio');
 
 /* =====================================================================
-   MODO PRODUÇÃO (Firebase) — FASE 1: SOMENTE LEITURA
+   MODO PRODUÇÃO (Firebase) — SOMENTE LEITURA, exceto NOVA RESERVA
    Lê os mesmos dados do site oficial (reservas, despesas, checklist, usuarios,
    logs_acesso, sessoes_ativas). Esta fase NÃO grava nada no banco: toda ação que
    alteraria dados é bloqueada na interface, para nunca mostrar um "salvo" falso.
@@ -3260,20 +3261,53 @@ if (LIVE) (function () {
 
   /* ---- bloqueio de escrita (fase 1) ---- */
   var RO_MSG = 'Somente leitura por enquanto. Para editar, use o site no computador.';
-  var BLOCK_SHEETS = { pago: 1, reverter: 1, cancelar: 1, deletar: 1, reserva: 1, despesa: 1, novouser: 1, perm: 1, email: 1, primeiroacesso: 1 };
+  var BLOCK_SHEETS = { pago: 1, reverter: 1, cancelar: 1, deletar: 1, despesa: 1, novouser: 1, perm: 1, email: 1, primeiroacesso: 1 };
   var BLOCK_ACTS = { pay: 1, rev: 1, edit: 1, mail: 1, cancelres: 1, delres: 1, delres2: 1, editdesp: 1, deldesp: 1, perm: 1, saveperm: 1, resetpw: 1, togglu: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
   function ro() { toast(RO_MSG); }
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('button,[data-det]') : null; if (!b) return;
     var d = b.dataset || {}, block = false;
     if (d.sheet && BLOCK_SHEETS[d.sheet]) block = true;
-    else if (d.day && !ativas().some(function (x) { return x.datas.indexOf(d.day) > -1; })) block = true;
-    else if (d.pay || d.ck || d.ckdel || d.clearlogs || d.killall || d.kill || d.adddate || d.rmdate) block = true;
+    else if (d.pay || d.ck || d.ckdel || d.clearlogs || d.killall || d.kill) block = true;
     else if (d.act) { var nm = d.act.split(':')[0]; if (BLOCK_ACTS[nm]) block = true; }
     if (block) { e.preventDefault(); e.stopImmediatePropagation(); ro(); }
   }, true);
-  document.addEventListener('submit', function (e) { if (e.target.id === 'sf' || e.target.id === 'pwForm' || e.target.id === 'clForm') { e.preventDefault(); e.stopImmediatePropagation(); ro(); } }, true);
+  document.addEventListener('submit', function (e) { if ((e.target.id === 'sf' && !e.target.querySelector('#f-nome')) || e.target.id === 'pwForm' || e.target.id === 'clForm') { e.preventDefault(); e.stopImmediatePropagation(); ro(); } }, true);
   ['openSheet'].forEach(function (nm) { var o = window[nm]; window[nm] = function (kind) { if (BLOCK_SHEETS[kind]) { ro(); return; } return o.apply(this, arguments); }; });
+
+  /* ---- nova reserva (única escrita liberada nesta fase): grava no MESMO formato do site ---- */
+  function liveSaveRes(e) {
+    e.preventDefault(); var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]');
+    var nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
+    var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !tel ? 'Informe um telefone válido com DDD.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
+    if (!msg) for (var i = 0; i < sheetDates.length; i++) if (dateTaken(sheetDates[i], '')) { msg = 'A data ' + fmtDate(sheetDates[i]) + ' já está reservada.'; break; }
+    if (msg) { er.textContent = msg; return; }
+    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
+    var datas = sheetDates.slice().sort(), hoje = isoToday();
+    var start = Math.max.apply(null, [0].concat(RES.map(function (r) { var m = /^VF-(\d+)/.exec(String(r._doc || r.id)); return m ? +m[1] : 0; }))) + 1;
+    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin }; };
+    function tryCreate(n) {
+      var codigo = 'VF-' + String(n).padStart(3, '0'), ref = LV.db.collection('reservas').doc(codigo);
+      return LV.db.runTransaction(function (tx) { return tx.get(ref).then(function (s) { if (s.exists) throw { code: 'dup' }; tx.set(ref, dados(codigo)); }); }).then(function () { return codigo; }, function (x) { if (x && x.code === 'dup' && n < start + 30) return tryCreate(n + 1); throw x; });
+    }
+    btn.disabled = true; er.textContent = '';
+    var timeout = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
+    Promise.race([tryCreate(start), timeout]).then(function (codigo) {
+      if (!RES.some(function (r) { return r._doc === codigo; })) { var m = mapRes(codigo, dados(codigo)); if (m) RES.push(m); }
+      closeSheet(true); renderAll(); toast('Reserva ' + codigo + ' criada!');
+      if (optin) openSheet('wa', codigo, 'confirmacao', 'created');
+    }, function (x) {
+      btn.disabled = false; var c = x && x.code || '';
+      er.textContent = c === 'permission-denied' ? 'Sem permissão para criar reservas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A reserva NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a reserva. Tente novamente.';
+    });
+  }
+  var SHEET_RES = SHEETS.reserva;
+  SHEETS.reserva = function (editId) {
+    if (editId) { ro(); return; }
+    SHEET_RES.apply(this, arguments);
+  };
+  document.addEventListener('submit', function (e) { if (e.target.id === 'sf' && e.target.querySelector('#f-nome') && !e.target.dataset.edit) { e.preventDefault(); e.stopImmediatePropagation(); liveSaveRes(e); } }, true);
 
   /* ---- mapeamento: documentos do site -> modelo do app ---- */
   function iso10(v) { v = String(v || ''); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : ''; }
