@@ -3348,9 +3348,30 @@ if (LIVE) (function () {
       return null;
     });
   }
+  /* ---- tela pública: só as datas ocupadas, sem nome/telefone/valores ---- */
+  function startPublic() {
+    stopPublic(); LV.pub = 'loading'; renderPubCal();
+    if (!fbReady()) { LV.pub = 'fail'; renderPubCal(); return; }
+    try {
+      LV.pubUn = LV.db.collection('reservas').onSnapshot(function (snap) {
+        if (AUTH.email) return;
+        var next = []; snap.docs.forEach(function (doc) { var m = mapRes(doc.id, doc.data()); if (m) next.push({ id: m._doc, _doc: m._doc, nome: '', tipo: '', datas: m.datas, total: 0, sinal: 0, pagamento: 'pago', status: m.status, tel: '', email: '', optin: false, criado: '' }); });
+        RES.length = 0; Array.prototype.push.apply(RES, next); LV.pub = 'ok'; renderPubCal();
+      }, function () { LV.pub = 'fail'; renderPubCal(); });
+    } catch (e) { LV.pub = 'fail'; renderPubCal(); }
+  }
+  function stopPublic() { if (LV.pubUn) { try { LV.pubUn(); } catch (e) {} LV.pubUn = null; } }
+  var renderPubCalRaw = renderPubCal;
+  window.renderPubCal = function (dir) {
+    renderPubCalRaw(dir);
+    if (LV.pub === 'ok') return;
+    var msg = LV.pub === 'loading' ? 'Carregando disponibilidade…' : 'Disponibilidade indisponível no momento. Fale conosco pelo WhatsApp para confirmar a data.';
+    document.getElementById('pubCal').innerHTML = '<p class="empty" style="grid-column:1/-1">' + msg + '</p>';
+    var lg = document.querySelector('.publeg'); if (lg) lg.hidden = LV.pub !== 'ok';
+  };
   function stopListeners() { LV.unsub.forEach(function (u) { try { u(); } catch (e) {} }); LV.unsub = []; LV.started = false; }
   function enter(email, pf, silent) {
-    email = String(email).toLowerCase();
+    email = String(email).toLowerCase(); stopPublic(); RES.length = 0;
     var me = pf ? mapUser(pf.id, pf.data) : mapUser('principal', { email: email, tipo: 'admin', status: 'ativo', permissoes: null });
     me.email = email; USERS.length = 0; USERS.push(me);
     try { localStorage.setItem(KEY_AT, String(Date.now())); } catch (e) {}
@@ -3411,10 +3432,13 @@ if (LIVE) (function () {
     var had = !!AUTH.email; doLogoutRaw(reason); if (!had) return;
     stopListeners(); clearData(); try { localStorage.removeItem(KEY_AT); } catch (e) {}
     try { if (LV.auth) LV.auth.signOut(); } catch (e) {}
+    startPublic();
   };
-  var gateShowRaw = gateShow; window.gateShow = function (n) { gateShowRaw(n === 'public' ? 'login' : n); };
-  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-gate="public"]'); if (b) { e.preventDefault(); e.stopImmediatePropagation(); location.href = 'index.html'; } }, true);
 
+  /* ---- caminho para o site completo (com edição), enquanto o app é somente leitura ---- */
+  var gf = document.querySelector('#g-login .gform'); if (gf) gf.insertAdjacentHTML('afterend', '<p style="text-align:center;margin-top:14px"><a class="glink" href="site.html" style="display:inline-block">Abrir o site completo (edição)</a></p>');
+  var renderMenuRaw = renderMenu;
+  window.renderMenu = function () { renderMenuRaw(); var a = document.getElementById('acct'); if (a && a.firstChild && !document.getElementById('fullSite')) { var card = a.firstChild; card.insertAdjacentHTML('beforeend', '<a id="fullSite" class="btn out block" href="site.html">Abrir o site completo (edição)</a>'); } };
   /* ---- textos do modo produção ---- */
   var hint = document.querySelector('.ghint'); if (hint) hint.parentNode.removeChild(hint);
   var rl = document.querySelector('[data-gate="reset"]'); if (rl) rl.parentNode.removeChild(rl);
@@ -3422,7 +3446,7 @@ if (LIVE) (function () {
 
   /* ---- restaura a sessão do Firebase ao reabrir a página ---- */
   function boot() {
-    gateShowRaw('login');
+    startPublic();
     if (!fbReady()) return;
     LV.auth.onAuthStateChanged(function (user) {
       if (!user || AUTH.email) return;
