@@ -2507,7 +2507,7 @@ function validDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >
 /* ---- detalhes da reserva ---- */
 SHEETS.detalhe = function (id, from) {
   var x = findRes(id); if (!x) return; var act = x.status !== 'cancelada', saldo = Math.max(0, x.total - x.sinal);
-  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.pacote ? kvr('Pacote', esc(x.pacote)) : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
+  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
   var b = '<div class="btns" style="margin-top:16px">', ed = can('reservas');
   if (!ed) b += backBtn(from) + '</div>'; else {
   if (act && x.pagamento === 'pendente') b += '<button class="btn block" data-act="pay:' + x.id + '" data-keep="1">Registrar pagamento</button>';
@@ -2632,7 +2632,6 @@ SHEETS.reserva = function (editId, from, preDate) {
     '<div class="fld"><label for="f-cpf">CPF do cliente *</label><input id="f-cpf" type="text" inputmode="numeric" data-mask="cpf" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>' +
     '<div class="fld"><label for="f-tel">Telefone / WhatsApp *</label><input id="f-tel" type="tel" inputmode="tel" data-mask="tel" maxlength="22" autocomplete="off" placeholder="(34) 99999-9999"></div>' +
     '<div class="fld"><label for="f-tipo">Tipo de evento</label><select id="f-tipo">' + TIPOS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></div>' +
-    '<div class="fld"><label for="f-pacote">Pacote (opcional)</label><select id="f-pacote"><option value="">Não informado</option><option>Básico</option><option>Plus</option><option>Premium</option></select></div>' +
     '<div class="fld"><label for="f-email">E-mail do cliente</label><input id="f-email" type="email" list="emDom" maxlength="120" autocomplete="off" placeholder="cliente@email.com"><datalist id="emDom"></datalist></div>' +
     '<div class="two"><div class="fld"><label for="f-total">Valor do evento *</label><input id="f-total" type="text" inputmode="numeric" data-mask="moeda" autocomplete="off" placeholder="R$ 0,00"></div><div class="fld"><label for="f-sinal">Sinal</label><input id="f-sinal" type="text" inputmode="numeric" data-mask="moeda" autocomplete="off" placeholder="R$ 0,00"></div></div>' +
     '<div class="sum">' + kvr('Valor total', '<span id="sumT">—</span>') + kvr('Sinal informado', '<span id="sumS">—</span>') + kvr('Saldo restante', '<span id="sumR">—</span>') + kvr('Pagamentos lançados', '<span id="sumP">—</span>') + '</div>' +
@@ -2642,7 +2641,7 @@ SHEETS.reserva = function (editId, from, preDate) {
     '<div class="fld"><label for="f-obs">Observação (opcional)</label><textarea id="f-obs" maxlength="300" placeholder="Ex.: Cliente pagou em 8 parcelas de R$ 93,75; evento em 07/11."></textarea></div>' +
     '<label class="optin" for="f-optin"><input id="f-optin" type="checkbox" checked><span><b>Aceito receber mensagens no WhatsApp</b><br>Confirmações de reserva, lembretes de pagamento e avisos do evento.</span></label>' +
     '<p class="err" id="sErr" role="alert"></p><button class="btn block" type="submit">' + (ed ? 'Salvar alterações' : 'Salvar reserva') + '</button></form>');
-  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-cpf').value = fmtCPF(ed.cpf || ''); document.getElementById('f-pacote').value = ed.pacote || ''; document.getElementById('f-hini').value = ed.hini || ''; document.getElementById('f-hfim').value = ed.hfim || ''; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; document.getElementById('f-obs').value = ed.obs || ''; sumUpdate(); }
+  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-cpf').value = fmtCPF(ed.cpf || ''); document.getElementById('f-hini').value = ed.hini || ''; document.getElementById('f-hfim').value = ed.hfim || ''; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; document.getElementById('f-obs').value = ed.obs || ''; sumUpdate(); }
   renderDts(); renderPgs();
   document.getElementById('sf').onsubmit = function (e) {
     e.preventDefault(); var er = document.getElementById('sErr'), nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
@@ -2651,9 +2650,9 @@ SHEETS.reserva = function (editId, from, preDate) {
     if (msg) { er.textContent = msg; return; }
     var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
     var obs = document.getElementById('f-obs').value.trim(), pags = sheetPags.map(function (p) { return { data: p.data, valor: p.valor }; }); if (pags.length && !sinal) sinal = pagsSoma(pags);
-    var cpf = cpfDigits(document.getElementById('f-cpf').value), pacote = document.getElementById('f-pacote').value, hini = document.getElementById('f-hini').value, hfim = document.getElementById('f-hfim').value;
-    if (ed) { ed.hini = hini; ed.hfim = hfim; ed.cpf = cpf; ed.pacote = pacote; ed.obs = obs; ed.pags = pags; ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.total = total; ed.sinal = sinal; ed.datas = sheetDates.slice().sort(); ed.optin = optin; if (ed.sinal >= ed.total) ed.pagamento = 'pago'; logRes('RESERVA_EDITADA'); closeSheet(true); renderAll(); toast('Reserva atualizada!'); return; }
-    var id = nextId(); RES.push({ id: id, nome: nome, tipo: tipo, datas: sheetDates.slice().sort(), total: total, sinal: sinal, pagamento: sinal >= total ? 'pago' : 'pendente', status: 'confirmada', tel: tel, email: email, optin: optin, criado: HOJE, pags: pags, obs: obs, cpf: cpf, pacote: pacote, hini: hini, hfim: hfim });
+    var cpf = cpfDigits(document.getElementById('f-cpf').value), hini = document.getElementById('f-hini').value, hfim = document.getElementById('f-hfim').value;
+    if (ed) { ed.hini = hini; ed.hfim = hfim; ed.cpf = cpf; ed.obs = obs; ed.pags = pags; ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.total = total; ed.sinal = sinal; ed.datas = sheetDates.slice().sort(); ed.optin = optin; if (ed.sinal >= ed.total) ed.pagamento = 'pago'; logRes('RESERVA_EDITADA'); closeSheet(true); renderAll(); toast('Reserva atualizada!'); return; }
+    var id = nextId(); RES.push({ id: id, nome: nome, tipo: tipo, datas: sheetDates.slice().sort(), total: total, sinal: sinal, pagamento: sinal >= total ? 'pago' : 'pendente', status: 'confirmada', tel: tel, email: email, optin: optin, criado: HOJE, pags: pags, obs: obs, cpf: cpf, hini: hini, hfim: hfim });
     logRes('RESERVA_CRIADA'); closeSheet(true); renderAll(); toast('Reserva ' + id + ' criada!');
     openSheet('contrato', id, 'created');
   };
@@ -2733,7 +2732,6 @@ var LOGO_DARK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAGBCAYAAAApL
 var CTR = { busy: false, img: null };
 /* Dados da LOCADORA: preencha doc (CNPJ/CPF) e end (endereço) para saírem no contrato; em branco saem como linha para preencher à mão. */
 var LOC = { nome: "Bela Vista – Gestão de Eventos", doc: "", end: "", rep: "Robson Thiago Xavier de Sousa", foro: "Araguari/MG", wa: "(34) 99120-9275" };
-var PKGC = { "Básico": { h: 6, p: 50 }, "Plus": { h: 8, p: 100 }, "Premium": { h: 12, p: 200 } };
 var MESES_L = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function cpfDigits(v) { return String(v || "").replace(/\D/g, "").slice(0, 11); }
 function fmtCPF(v) { v = cpfDigits(v); return v.length <= 3 ? v : v.length <= 6 ? v.slice(0, 3) + "." + v.slice(3) : v.length <= 9 ? v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6) : v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6, 9) + "-" + v.slice(9); }
@@ -2756,7 +2754,7 @@ function horaTxt(r) {
   return "das " + hh(r.hini) + " às " + hh(r.hfim) + (dia ? " do dia seguinte" : "") + " (" + h + (h === 1 ? " hora" : " horas") + (mi ? " e " + mi + " min" : "") + ")";
 }
 function contratoBlocos(r) {
-  var B = [], blank = "______________________", dts = r.datas.map(fmtDate), saldo = Math.max(0, r.total - (r.sinal || 0)), pk = PKGC[r.pacote];
+  var B = [], blank = "______________________", dts = r.datas.map(fmtDate), saldo = Math.max(0, r.total - (r.sinal || 0));
   var T = function (t, x) { B.push({ t: t, x: x }); };
   var hTxt = horaTxt(r), dataTxt = dts.length > 1 ? "nas datas " + dts.join(", ") : "na data " + dts[0];
   T("title", "CONTRATO DE LOCAÇÃO DE ESPAÇO PARA EVENTOS");
@@ -2769,7 +2767,7 @@ function contratoBlocos(r) {
 
   T("h", "2. DO OBJETO");
   T("p", "2.1. O presente contrato tem por objeto a locação temporária do espaço de eventos da LOCADORA, em Araguari/MG, para a realização de evento do tipo \"" + (r.tipo || "Outro") + "\", " + dataTxt + ".");
-  T("p", "2.2. " + (hTxt ? "O espaço será utilizado " + (dts.length > 1 ? "em cada uma das datas, " : "") + hTxt + ", período contratado para a realização do evento." : "O horário de utilização é o combinado entre as partes por escrito (WhatsApp ou proposta).") + " " + (pk ? "Pacote contratado: " + r.pacote + ", com capacidade máxima de " + pk.p + " pessoas." : "A capacidade máxima do espaço é de 200 (duzentas) pessoas."));
+  T("p", "2.2. " + (hTxt ? "O espaço será utilizado " + (dts.length > 1 ? "em cada uma das datas, " : "") + hTxt + ", período contratado para a realização do evento." : "O horário de utilização é o combinado entre as partes por escrito (WhatsApp ou proposta).") + " A capacidade máxima do espaço é de 200 (duzentas) pessoas.");
   T("p", "2.3. O espaço será entregue limpo, em bom estado de conservação e funcionamento, o que será confirmado na vistoria de entrada (Anexo I). A locação compreende exclusivamente o uso do espaço e de suas instalações. Serviços de terceiros, como buffet, bebidas, DJ ou banda, decoração, fotografia, segurança e salva-vidas, não fazem parte deste contrato nem estão incluídos no valor da locação em nenhuma hipótese; sua contratação, pagamento e acompanhamento são de exclusiva responsabilidade do(a) LOCATÁRIO(A).");
 
   T("h", "3. DO VALOR E DA FORMA DE PAGAMENTO");
@@ -3536,9 +3534,9 @@ if (LIVE) (function () {
     var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
     var datas = sheetDates.slice().sort(), hoje = isoToday(), obs = document.getElementById('f-obs').value.trim(), pags = sheetPags.map(function (p) { return { data: p.data, valor: p.valor }; });
     if (pags.length && !sinal) sinal = pagsSoma(pags);
-    var cpf = cpfDigits(document.getElementById('f-cpf').value), pacote = document.getElementById('f-pacote').value, hini = document.getElementById('f-hini').value, hfim = document.getElementById('f-hfim').value;
+    var cpf = cpfDigits(document.getElementById('f-cpf').value), hini = document.getElementById('f-hini').value, hfim = document.getElementById('f-hfim').value;
     var start = Math.max.apply(null, [0].concat(RES.map(function (r) { var m = /^VF-(\d+)/.exec(String(r._doc || r.id)); return m ? +m[1] : 0; }))) + 1;
-    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: sinal >= total ? 'pago' : 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin, obs: obs, pagamentos: pags, cpf: cpf, pacote: pacote, hora_inicio: hini, hora_fim: hfim }; };
+    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: sinal >= total ? 'pago' : 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin, obs: obs, pagamentos: pags, cpf: cpf, hora_inicio: hini, hora_fim: hfim }; };
     function tryCreate(n) {
       var codigo = 'VF-' + String(n).padStart(3, '0'), ref = LV.db.collection('reservas').doc(codigo);
       return LV.db.runTransaction(function (tx) { return tx.get(ref).then(function (s) { if (s.exists) throw { code: 'dup' }; tx.set(ref, dados(codigo)); }); }).then(function () { return codigo; }, function (x) { if (x && x.code === 'dup' && n < start + 30) return tryCreate(n + 1); throw x; });
@@ -3567,7 +3565,7 @@ if (LIVE) (function () {
     var datas = (Array.isArray(d.datas) && d.datas.length ? d.datas : (d.data ? [d.data] : [])).map(iso10).filter(Boolean);
     if (!datas.length) return null;
     var pg = d.pagamento === 'pago' ? 'pago' : 'pendente', st = d.status === 'cancelada' ? 'cancelada' : (d.status === 'pendente' ? 'pendente' : 'confirmada');
-    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, obs: String(d.obs || ''), cpf: cpfDigits(d.cpf), pacote: String(d.pacote || ''), hini: String(d.hora_inicio || ''), hfim: String(d.hora_fim || ''), pags: (Array.isArray(d.pagamentos) ? d.pagamentos : []).filter(function (p) { return p && iso10(p.data) && Number(p.valor) > 0; }).map(function (p) { return { data: iso10(p.data), valor: Number(p.valor) }; }), criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
+    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, obs: String(d.obs || ''), cpf: cpfDigits(d.cpf), hini: String(d.hora_inicio || ''), hfim: String(d.hora_fim || ''), pags: (Array.isArray(d.pagamentos) ? d.pagamentos : []).filter(function (p) { return p && iso10(p.data) && Number(p.valor) > 0; }).map(function (p) { return { data: iso10(p.data), valor: Number(p.valor) }; }), criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
   }
   function mapDesp(id, d) {
     var data = iso10(d.data); if (!data) return null;
