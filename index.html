@@ -523,6 +523,7 @@ article.res:focus-visible { outline: 2px solid var(--green); outline-offset: 2px
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pwrap .addbtn { color: #05150b; } }
 @media (prefers-reduced-motion: no-preference) { .pwrap .addbtn { transition: transform .15s ease; } .pwrap .addbtn:active { transform: scale(.9) rotate(90deg); } }
 .pwrap button { width: 48px; min-height: 48px; border-radius: 14px; background: var(--bg); display: grid; place-items: center; flex: none; }
+.pwrap .dpf { flex: 1; width: auto; min-width: 0; min-height: 52px; border-radius: 16px; background: var(--bg); display: flex; align-items: center; justify-content: space-between; } /* o seletor de data não herda o estilo dos botões pequenos (olho da senha) */
 .st.vi { background: var(--violet-soft); color: var(--violet-ink); }
 .filters { display: flex; flex-direction: column; gap: 10px; }
 .mapbox { border-radius: 18px; background: var(--bg); overflow: hidden; }
