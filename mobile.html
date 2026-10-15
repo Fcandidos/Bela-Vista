@@ -497,7 +497,12 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .ctr .cgold { display: block; width: 70px; height: 2px; background: #bf9b68; margin: 6px auto 8px; }
 .ctr .ck { color: #03301f; font-weight: 700; }
 .ctr .sg { display: flex; gap: 8px; align-items: flex-end; margin: 22px 0 6px; } .ctr .sg b { color: #03301f; } .ctr .sg span { flex: 1; border-bottom: 1px solid #222624; padding: 0 6px 2px; min-height: 20px; font-style: italic; }
-.ctr table.it td { width: 50%; vertical-align: top; }
+.ctr table.it { margin: 10px 0 16px; border: 1px solid #d9c7a3; border-radius: 8px; overflow: hidden; font-size: 13px; }
+.ctr table.it th { background: #03301f; color: #fff; padding: 9px 8px; border-bottom: 2px solid #bf9b68; font-weight: 700; }
+.ctr table.it th:nth-child(1), .ctr table.it th:nth-child(3) { text-align: center; } .ctr table.it th:nth-child(4) { text-align: right; }
+.ctr table.it td { border: 0; border-bottom: 1px solid #eadfc6; padding: 8px; vertical-align: top; }
+.ctr table.it tr:nth-child(even) td { background: #fbf6ea; }
+.ctr table.it td:nth-child(1) { text-align: center; color: #03301f; font-weight: 700; width: 34px; } .ctr table.it td:nth-child(3) { text-align: center; width: 44px; } .ctr table.it td:nth-child(4) { text-align: right; font-weight: 700; white-space: nowrap; }
 .ctr h5 { color: #03301f; font-size: 13.5px; margin: 14px 0 3px; }
 .ctr h4 { color: #03301f; font-size: 14px; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #d9c7a3; }
 .ctr p { margin: 0 0 8px; text-align: justify; color: #222624; }
@@ -2795,12 +2800,20 @@ function contratoBlocos(r) {
   else T("cl", "O LOCADOR cede ao LOCATÁRIO(A) o espaço identificado no objeto do presente, para ser utilizado das ____:____ horas do dia " + dts.join(", ") + " até às ____:____ horas do dia ____/____/______ " + fimTxt, "Cláusula 3ª -");
   T("cl", "Constitui-se objeto deste contrato a locação da área com estrutura de alvenaria com churrasqueira e pia com balcões de mármore, banheiro com espelho (R$ 280,00) (acessibilidade e fraldário), banheiro masculino com espelho (R$280,00) e banheiro feminino com espelho (R$280,00) e área da piscina com torneira e mangueira de jardim (R$100,00), casa de máquina da piscina (R$5.000,00). Com os seguintes itens móveis e seus valores descritos em reais para fins de ressarcimento:", "Cláusula 4ª -");
   T("itens", [
-    [["1 TV 58’ da marca Sansumg (R$3.000,00)"], ["1 fogão 2 bocas (R$200,00)"]],
-    [["1 aparelho de som amplificador (para FM, pendrive, cartão de memória e Bluetooth) com nove autofalantes fixados na laje (R$3.500,00)"], ["1 grelha para churrasco (R$80,00)", "1 purificador de água Soft (R$1.100,00)", "1 freezer horizontal Consul CHA31EB branco 309 L 220 V (R$ 2.520,00)"]],
-    [["4 mesas de plástico cinza da marca JRplásticos, 1 (R$79,00 cada)"], ["16 cadeiras de plástico cor cinza da marca JRplásticos (R$ 52,00 cada)"]],
-    [["Cama elástica 3,05m Pula Pula trampolim + Escada + rede (R$ 1.910,00)"], ["Escorregador Grande – Escada Vermelha e rampa Azul – Lacuca Brinquedos (R$ 610,00)"]],
-    [["Fraldário Trocador Fixar na parede com colchonete (R$ 650,00)"], ["22 grelhas ralo linear perfurada em inox 20x100 cm (R$ 189,97 cada uma)"]],
-    [["5 toldos com braços flexíveis (R$ 11.000,00)"], ["3 ventiladores Ventisol, 50 cm (R$ 200,00 cada)"]]
+    ["TV 58’ da marca Sansumg", "1", "R$ 3.000,00"],
+    ["Fogão 2 bocas", "1", "R$ 200,00"],
+    ["Aparelho de som amplificador (para FM, pendrive, cartão de memória e Bluetooth) com nove autofalantes fixados na laje", "1", "R$ 3.500,00"],
+    ["Grelha para churrasco", "1", "R$ 80,00"],
+    ["Purificador de água Soft", "1", "R$ 1.100,00"],
+    ["Freezer horizontal Consul CHA31EB branco 309 L 220 V", "1", "R$ 2.520,00"],
+    ["Mesas de plástico cinza da marca JRplásticos", "4", "R$ 79,00 cada"],
+    ["Cadeiras de plástico cor cinza da marca JRplásticos", "16", "R$ 52,00 cada"],
+    ["Cama elástica 3,05m Pula Pula trampolim + Escada + rede", "1", "R$ 1.910,00"],
+    ["Escorregador Grande – Escada Vermelha e rampa Azul – Lacuca Brinquedos", "1", "R$ 610,00"],
+    ["Fraldário Trocador Fixar na parede com colchonete", "1", "R$ 650,00"],
+    ["Grelhas ralo linear perfurada em inox 20x100 cm", "22", "R$ 189,97 cada"],
+    ["Toldos com braços flexíveis", "5", "R$ 11.000,00"],
+    ["Ventiladores Ventisol, 50 cm", "3", "R$ 200,00 cada"]
   ]);
   T("cl", "Ficará a cargo do(a) LOCATÁRIO(A) providenciar o suprimento do material que irá consumir no evento, tais como: talheres, panelas, copos, toalhas de papel, papel higiênico, sabão, material de cozinha, entre outros de sua necessidade.", "Cláusula 5ª -");
   T("cl", "Pelo uso do espaço o LOCATÁRIO(A) pagará um aluguel no valor de: " + mnyExt(r.total) + ", pagos da seguinte forma: " + (saldo > 0 ? ((r.sinal || 0) > 0 ? mnyExt(r.sinal) : "___________") + " de entrada (sinal) e o remanescente devendo ser PAGO TOTALMENTE um dia antes do início da reunião familiar." : "valor total já pago integralmente."), "Cláusula 6ª –");
@@ -2834,7 +2847,7 @@ function contratoHTML(r) {
     if (b.t === "lab") return "<h5>" + esc(b.x) + "</h5>";
     if (b.t === "cl") return "<p><b class=\"ck\">" + esc(b.k) + "</b> " + esc(b.x) + "</p>";
     if (b.t === "li") return "<p class=\"cli\">" + esc(b.x) + "</p>";
-    if (b.t === "itens") return "<table class=\"it\">" + b.x.map(function (row) { return "<tr>" + row.map(function (c) { return "<td>" + c.map(esc).join("<br>") + "</td>"; }).join("") + "</tr>"; }).join("") + "</table>";
+        if (b.t === "itens") return "<table class=\"it\"><tr><th>Nº</th><th>Item</th><th>Qtd.</th><th>Valor</th></tr>" + b.x.map(function (row, i) { return "<tr><td>" + (i + 1) + "</td><td>" + esc(row[0]) + "</td><td>" + esc(row[1]) + "</td><td>" + esc(row[2]) + "</td></tr>"; }).join("") + "</table>";
     if (b.t === "sig2") return "<p class=\"cs\" style=\"text-align:right;margin-top:16px\">" + esc(b.x.local) + "</p><div class=\"sg\"><b>Locatário(a)</b><span>" + esc(b.x.a) + "</span></div><div class=\"sg\"><b>Locador</b><span>" + esc(b.x.b) + "</span></div>";
     return "";
   }).join("");
@@ -2867,12 +2880,18 @@ function contratoPdf(r, cb) {
             ln.forEach(function (l, i) { if (y + LH > BOT) np(); if (i === 0) { doc.setFont(F, "bold"); doc.setTextColor(G[0], G[1], G[2]); doc.text(b.k, M, y); doc.setFont(F, "normal"); doc.setTextColor(INK[0], INK[1], INK[2]); doc.text(l, M + lw2, y); } else { doc.setFont(F, "normal"); doc.setTextColor(INK[0], INK[1], INK[2]); doc.text(l, M, y); } y += LH; }); y += 1.2;
           }
           else if (b.t === "itens") {
-            var cwi = 85, pad = 2.4, lh2 = 4.6; doc.setFont(F, "normal"); doc.setFontSize(10);
-            b.x.forEach(function (row) {
-              var cells = row.map(function (items) { var ls = []; items.forEach(function (it) { doc.splitTextToSize(it, cwi - 2 * pad).forEach(function (l) { ls.push(l); }); }); return ls; }), h = Math.max(cells[0].length, cells[1].length) * lh2 + 2 * pad - 0.4;
-              if (y + h > BOT) np(); doc.setDrawColor(190, 180, 160); doc.setLineWidth(0.25); doc.rect(M, y, cwi, h); doc.rect(M + cwi, y, cwi, h); doc.setFont(F, "normal"); doc.setFontSize(10); doc.setTextColor(INK[0], INK[1], INK[2]);
-              cells.forEach(function (ls, ci) { ls.forEach(function (l, li) { doc.text(l, M + ci * cwi + pad, y + pad + 3.1 + li * lh2); }); }); y += h;
-            }); y += 5;
+            var cw4 = [13, 107, 16, 34], pad = 2.4, lh2 = 4.5, hd = 8;
+            var head = function () { if (y + hd + 14 > BOT) np(); doc.setFillColor(G[0], G[1], G[2]); doc.rect(M, y, W, hd, "F"); doc.setFont(F, "bold"); doc.setFontSize(10); doc.setTextColor(255, 255, 255); doc.text("Nº", M + cw4[0] / 2, y + 5.4, { align: "center" }); doc.text("Item", M + cw4[0] + pad, y + 5.4); doc.text("Qtd.", M + cw4[0] + cw4[1] + cw4[2] / 2, y + 5.4, { align: "center" }); doc.text("Valor", M + W - pad, y + 5.4, { align: "right" }); doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.7); doc.line(M, y + hd, M + W, y + hd); y += hd; };
+            head(); doc.setFont(F, "normal"); doc.setFontSize(10);
+            b.x.forEach(function (row, i) {
+              doc.setFont(F, "normal"); doc.setFontSize(10); var ls = doc.splitTextToSize(row[0], cw4[1] - 2 * pad), h = ls.length * lh2 + 2 * pad - 0.6;
+              if (y + h > BOT) { np(); head(); }
+              if (i % 2 === 1) { doc.setFillColor(251, 246, 234); doc.rect(M, y, W, h, "F"); }
+              doc.setDrawColor(222, 208, 180); doc.setLineWidth(0.2); doc.line(M, y + h, M + W, y + h); doc.setFont(F, "bold"); doc.setTextColor(G[0], G[1], G[2]); doc.text(String(i + 1), M + cw4[0] / 2, y + pad + 3, { align: "center" });
+              doc.setFont(F, "normal"); doc.setTextColor(INK[0], INK[1], INK[2]); ls.forEach(function (l, k) { doc.text(l, M + cw4[0] + pad, y + pad + 3 + k * lh2); });
+              doc.text(row[1], M + cw4[0] + cw4[1] + cw4[2] / 2, y + pad + 3, { align: "center" }); doc.setFont(F, "bold"); doc.text(row[2], M + W - pad, y + pad + 3, { align: "right" }); y += h;
+            });
+            doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.5); doc.line(M, y, M + W, y); y += 6;
           }
           else if (b.t === "sig2") {
             if (y + 58 > BOT) np(); y += 5; doc.setFont(F, "normal"); doc.setFontSize(10.5); doc.setTextColor(INK[0], INK[1], INK[2]); doc.text(b.x.local, 210 - M, y, { align: "right" }); y += 15;
