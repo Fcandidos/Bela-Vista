@@ -482,6 +482,10 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 @keyframes dpPop { from { transform: scale(.7); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .dp, #dpLayer, .dp-grid, .dp-d.s, .dp-mon { animation: none !important; } }
 
+.fld textarea { font: inherit; font-size: 16px; padding: 12px 16px; min-height: 84px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; min-width: 0; resize: vertical; }
+.pgrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+.pgrow > div { min-width: 0; }
+#pgs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .fld input, .fld select { font: inherit; font-size: 16px; padding: 0 16px; min-height: 52px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; min-width: 0; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .err { color: var(--red-ink); font-size: 13px; font-weight: 600; min-height: 18px; margin-bottom: 8px; }
@@ -2161,7 +2165,7 @@ function toast(t, undo) {
 }
 
 /* ---------- sheets (nova reserva / nova despesa) ---------- */
-var lastFocus = null, sheetDates = [], confirmCb = null;
+var lastFocus = null, sheetDates = [], sheetPags = [], confirmCb = null;
 function showSheet(html, cls) {
   var locked = /\block\b/.test(cls || ''); cls = (cls || '').replace(/\block\b/, '').trim();
   lastFocus = document.activeElement;
@@ -2192,9 +2196,23 @@ function confirmSheet(msg, label, cb) {
   showSheet('<div class="grab"></div><h2 id="sheetT">Confirmar</h2><p style="margin-bottom:16px;color:var(--muted)">' + esc(msg) + '</p><div class="btns"><button class="btn out" data-close="1">Voltar</button><button class="btn danger" data-confirm="1">' + esc(label) + '</button></div>');
 }
 function renderDts() { document.getElementById('dts').innerHTML = sheetDates.map(function (d) { return '<span class="chip-d">' + fmtDate(d) + '<button type="button" data-rmdate="' + d + '" aria-label="Remover ' + fmtDate(d) + '">' + ic('x') + '</button></span>'; }).join('') || '<span class="sub">Nenhuma data adicionada</span>'; }
+function pagsSoma(l) { return Math.round((l || []).reduce(function (a, p) { return a + (+p.valor || 0); }, 0) * 100) / 100; }
+function renderPgs() {
+  var el = document.getElementById('pgs'); if (!el) return;
+  el.innerHTML = sheetPags.map(function (p, i) { return '<span class="chip-d">' + fmtDate(p.data) + ' · ' + brl.format(p.valor) + '<button type="button" data-rmpag="' + i + '" data-keep="1" aria-label="Remover pagamento de ' + fmtDate(p.data) + '">' + ic('x') + '</button></span>'; }).join('') || '<span class="sub">Nenhum pagamento lançado</span>';
+  sumUpdate();
+}
+function tryAddPag() {
+  var er = document.getElementById('sErr'), dv = document.getElementById('f-pdt').value, v = parseMoeda(document.getElementById('f-pval').value);
+  if (!dv || !validDate(dv)) { er.textContent = 'Escolha a data do pagamento.'; return; }
+  if (!(v > 0)) { er.textContent = 'Informe o valor do pagamento.'; return; }
+  er.textContent = ''; sheetPags.push({ data: dv, valor: v }); sheetPags.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
+  document.getElementById('f-pval').value = ''; renderPgs();
+}
 function sumUpdate() {
-  var t = parseMoeda(document.getElementById('f-total').value), sn = parseMoeda(document.getElementById('f-sinal').value);
-  document.getElementById('sumT').textContent = t ? brl.format(t) : '—'; document.getElementById('sumS').textContent = sn ? brl.format(sn) : '—'; document.getElementById('sumR').textContent = t ? brl.format(Math.max(0, t - sn)) : '—';
+  var t = parseMoeda(document.getElementById('f-total').value), sn = parseMoeda(document.getElementById('f-sinal').value), pg = pagsSoma(sheetPags), ef = sn || pg;
+  document.getElementById('sumT').textContent = t ? brl.format(t) : '—'; document.getElementById('sumS').textContent = ef ? brl.format(ef) : '—'; document.getElementById('sumR').textContent = t ? brl.format(Math.max(0, t - ef)) : '—';
+  var sp = document.getElementById('sumP'); if (sp) sp.textContent = pg ? brl.format(pg) + ' (' + sheetPags.length + ')' : '—';
 }
 function openSheet(kind, arg, from, preDate) {
   if (SHEETS[kind]) return SHEETS[kind](arg, from, preDate);
@@ -2340,6 +2358,8 @@ document.addEventListener('click', function (e) {
   else if (d.pay) openSheet('pago', d.pay);
   else if (d.pix) { var key = document.getElementById('pixKey').textContent; try { navigator.clipboard.writeText(key).then(function () { toast('Chave PIX copiada'); }, function () { toast('Não foi possível copiar. Selecione a chave e copie.'); }); } catch (er) { toast('Não foi possível copiar. Selecione a chave e copie.'); } }
   else if (d.adddate) tryAddDate();
+  else if (d.addpag) tryAddPag();
+  else if (d.rmpag != null) { sheetPags.splice(+d.rmpag, 1); renderPgs(); }
   else if (d.rmdate) { sheetDates = sheetDates.filter(function (x) { return x !== d.rmdate; }); renderDts(); }
   else if (d.pw) { var pi = document.getElementById(d.pw); pi.type = pi.type === 'password' ? 'text' : 'password'; b.innerHTML = ic(pi.type === 'password' ? 'eye' : 'eyeoff'); }
   else if (d.clearlogs) comReauth(function () { LOGS = []; logEvent('LOGS_LIMPOS', AUTH.email); renderAdm(); toast('Logs apagados'); });
@@ -2469,7 +2489,7 @@ function validDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >
 /* ---- detalhes da reserva ---- */
 SHEETS.detalhe = function (id, from) {
   var x = findRes(id); if (!x) return; var act = x.status !== 'cancelada', saldo = Math.max(0, x.total - x.sinal);
-  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
+  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
   var b = '<div class="btns" style="margin-top:16px">', ed = can('reservas');
   if (!ed) b += backBtn(from) + '</div>'; else {
   if (act && x.pagamento === 'pendente') b += '<button class="btn block" data-act="pay:' + x.id + '" data-keep="1">Registrar pagamento</button>';
@@ -2586,7 +2606,7 @@ ACT.walog = function (id) { var r = findRes(id); if (!r) return; var t = documen
 
 /* ---- nova reserva / editar reserva ---- */
 SHEETS.reserva = function (editId, from, preDate) {
-  if (!needRes()) return; var ed = editId ? findRes(editId) : null; sheetDates = ed ? ed.datas.slice() : (preDate ? [preDate] : []);
+  if (!needRes()) return; var ed = editId ? findRes(editId) : null; sheetDates = ed ? ed.datas.slice() : (preDate ? [preDate] : []); sheetPags = ed && ed.pags ? ed.pags.map(function (p) { return { data: p.data, valor: p.valor }; }) : [];
   var diaTxt = preDate ? new Date(preDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
   showSheet('<div class="grab"></div><h2 id="sheetT">' + (ed ? 'Editar reserva' : 'Nova reserva') + '</h2>' + (preDate && !ed ? '<p class="sub" style="margin:-12px 0 16px">' + esc(diaTxt.charAt(0).toUpperCase() + diaTxt.slice(1)) + '</p>' : '') + '<form id="sf" novalidate data-edit="' + (ed ? ed.id : '') + '">' +
     '<div class="fld"><label for="f-nome">Nome do cliente *</label><input id="f-nome" type="text" maxlength="80" autocomplete="off" placeholder="Nome completo"></div>' +
@@ -2594,20 +2614,23 @@ SHEETS.reserva = function (editId, from, preDate) {
     '<div class="fld"><label for="f-tipo">Tipo de evento</label><select id="f-tipo">' + TIPOS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></div>' +
     '<div class="fld"><label for="f-email">E-mail do cliente</label><input id="f-email" type="email" list="emDom" maxlength="120" autocomplete="off" placeholder="cliente@email.com"><datalist id="emDom"></datalist></div>' +
     '<div class="two"><div class="fld"><label for="f-total">Valor do evento *</label><input id="f-total" type="text" inputmode="numeric" data-mask="moeda" autocomplete="off" placeholder="R$ 0,00"></div><div class="fld"><label for="f-sinal">Sinal</label><input id="f-sinal" type="text" inputmode="numeric" data-mask="moeda" autocomplete="off" placeholder="R$ 0,00"></div></div>' +
-    '<div class="sum">' + kvr('Valor total', '<span id="sumT">—</span>') + kvr('Sinal informado', '<span id="sumS">—</span>') + kvr('Saldo restante', '<span id="sumR">—</span>') + '</div>' +
+    '<div class="sum">' + kvr('Valor total', '<span id="sumT">—</span>') + kvr('Sinal informado', '<span id="sumS">—</span>') + kvr('Saldo restante', '<span id="sumR">—</span>') + kvr('Pagamentos lançados', '<span id="sumP">—</span>') + '</div>' +
     '<div class="fld"><label for="f-dadd">Datas do evento * (uma ou mais)</label><div class="pwrap"><input id="f-dadd" type="date" value="' + (preDate || addDays(HOJE, 30)) + '"><button type="button" class="addbtn" data-adddate="1" data-keep="1" aria-label="Adicionar data">' + ic('plus') + '</button></div><div id="dts"></div></div>' +
+    '<div class="fld"><label>Pagamentos recebidos (opcional)</label><p class="hint" style="margin:-2px 0 4px">Cliente pagou em parcelas? Lance cada pagamento com a data e o valor. Não use as datas do evento para isso.</p><div class="pgrow"><div><label for="f-pdt" class="sub">Data do pagamento</label><input id="f-pdt" type="date" value="' + HOJE + '"></div><div><label for="f-pval" class="sub">Valor pago</label><input id="f-pval" type="text" inputmode="numeric" data-mask="moeda" autocomplete="off" placeholder="R$ 0,00"></div></div><button type="button" class="btn ghost block" data-addpag="1" data-keep="1">' + ic('plus') + ' Adicionar pagamento</button><div id="pgs"></div></div>' +
+    '<div class="fld"><label for="f-obs">Observação (opcional)</label><textarea id="f-obs" maxlength="300" placeholder="Ex.: Cliente pagou em 8 parcelas de R$ 93,75; evento em 07/11."></textarea></div>' +
     '<label class="optin" for="f-optin"><input id="f-optin" type="checkbox" checked><span><b>Aceito receber mensagens no WhatsApp</b><br>Confirmações de reserva, lembretes de pagamento e avisos do evento.</span></label>' +
     '<p class="err" id="sErr" role="alert"></p><button class="btn block" type="submit">' + (ed ? 'Salvar alterações' : 'Salvar reserva') + '</button></form>');
-  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; sumUpdate(); }
-  renderDts();
+  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; document.getElementById('f-obs').value = ed.obs || ''; sumUpdate(); }
+  renderDts(); renderPgs();
   document.getElementById('sf').onsubmit = function (e) {
     e.preventDefault(); var er = document.getElementById('sErr'), nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
-    var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !tel ? 'Informe um telefone válido com DDD.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
+    var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !tel ? 'Informe um telefone válido com DDD.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : pagsSoma(sheetPags) > total ? 'A soma dos pagamentos (' + brl.format(pagsSoma(sheetPags)) + ') passa do valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
     if (!msg) { var eid = ed ? ed.id : ''; for (var i = 0; i < sheetDates.length; i++) if (dateTaken(sheetDates[i], eid)) { msg = 'A data ' + fmtDate(sheetDates[i]) + ' já está reservada.'; break; } }
     if (msg) { er.textContent = msg; return; }
     var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
-    if (ed) { ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.total = total; ed.sinal = sinal; ed.datas = sheetDates.slice().sort(); ed.optin = optin; if (ed.sinal >= ed.total) ed.pagamento = 'pago'; logRes('RESERVA_EDITADA'); closeSheet(true); renderAll(); toast('Reserva atualizada!'); return; }
-    var id = nextId(); RES.push({ id: id, nome: nome, tipo: tipo, datas: sheetDates.slice().sort(), total: total, sinal: sinal, pagamento: 'pendente', status: 'confirmada', tel: tel, email: email, optin: optin, criado: HOJE });
+    var obs = document.getElementById('f-obs').value.trim(), pags = sheetPags.map(function (p) { return { data: p.data, valor: p.valor }; }); if (pags.length && !sinal) sinal = pagsSoma(pags);
+    if (ed) { ed.obs = obs; ed.pags = pags; ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.total = total; ed.sinal = sinal; ed.datas = sheetDates.slice().sort(); ed.optin = optin; if (ed.sinal >= ed.total) ed.pagamento = 'pago'; logRes('RESERVA_EDITADA'); closeSheet(true); renderAll(); toast('Reserva atualizada!'); return; }
+    var id = nextId(); RES.push({ id: id, nome: nome, tipo: tipo, datas: sheetDates.slice().sort(), total: total, sinal: sinal, pagamento: sinal >= total ? 'pago' : 'pendente', status: 'confirmada', tel: tel, email: email, optin: optin, criado: HOJE, pags: pags, obs: obs });
     logRes('RESERVA_CRIADA'); closeSheet(true); renderAll(); toast('Reserva ' + id + ' criada!');
     if (optin) openSheet('wa', id, 'confirmacao', 'created');
   };
@@ -3280,14 +3303,15 @@ if (LIVE) (function () {
   function liveSaveRes(e) {
     e.preventDefault(); var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]');
     var nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
-    var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !tel ? 'Informe um telefone válido com DDD.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
+    var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !tel ? 'Informe um telefone válido com DDD.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : pagsSoma(sheetPags) > total ? 'A soma dos pagamentos (' + brl.format(pagsSoma(sheetPags)) + ') passa do valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
     if (!msg) for (var i = 0; i < sheetDates.length; i++) if (dateTaken(sheetDates[i], '')) { msg = 'A data ' + fmtDate(sheetDates[i]) + ' já está reservada.'; break; }
     if (msg) { er.textContent = msg; return; }
     if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
     var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
-    var datas = sheetDates.slice().sort(), hoje = isoToday();
+    var datas = sheetDates.slice().sort(), hoje = isoToday(), obs = document.getElementById('f-obs').value.trim(), pags = sheetPags.map(function (p) { return { data: p.data, valor: p.valor }; });
+    if (pags.length && !sinal) sinal = pagsSoma(pags);
     var start = Math.max.apply(null, [0].concat(RES.map(function (r) { var m = /^VF-(\d+)/.exec(String(r._doc || r.id)); return m ? +m[1] : 0; }))) + 1;
-    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin }; };
+    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: sinal >= total ? 'pago' : 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin, obs: obs, pagamentos: pags }; };
     function tryCreate(n) {
       var codigo = 'VF-' + String(n).padStart(3, '0'), ref = LV.db.collection('reservas').doc(codigo);
       return LV.db.runTransaction(function (tx) { return tx.get(ref).then(function (s) { if (s.exists) throw { code: 'dup' }; tx.set(ref, dados(codigo)); }); }).then(function () { return codigo; }, function (x) { if (x && x.code === 'dup' && n < start + 30) return tryCreate(n + 1); throw x; });
@@ -3316,7 +3340,7 @@ if (LIVE) (function () {
     var datas = (Array.isArray(d.datas) && d.datas.length ? d.datas : (d.data ? [d.data] : [])).map(iso10).filter(Boolean);
     if (!datas.length) return null;
     var pg = d.pagamento === 'pago' ? 'pago' : 'pendente', st = d.status === 'cancelada' ? 'cancelada' : (d.status === 'pendente' ? 'pendente' : 'confirmada');
-    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
+    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, obs: String(d.obs || ''), pags: (Array.isArray(d.pagamentos) ? d.pagamentos : []).filter(function (p) { return p && iso10(p.data) && Number(p.valor) > 0; }).map(function (p) { return { data: iso10(p.data), valor: Number(p.valor) }; }), criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
   }
   function mapDesp(id, d) {
     var data = iso10(d.data); if (!data) return null;
