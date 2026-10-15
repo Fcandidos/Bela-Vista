@@ -495,6 +495,7 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .ctr .clogo { text-align: center; margin: 2px 0 6px; } .ctr .clogo img { width: 110px; max-width: 40%; height: auto; }
 .ctr h3 { text-align: center; color: #03301f; font-size: 17px; letter-spacing: .02em; margin: 6px 0 2px; }
 .ctr .cgold { display: block; width: 70px; height: 2px; background: #bf9b68; margin: 6px auto 8px; }
+.ctr h5 { color: #03301f; font-size: 13.5px; margin: 14px 0 3px; }
 .ctr h4 { color: #03301f; font-size: 14px; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #d9c7a3; }
 .ctr p { margin: 0 0 8px; text-align: justify; color: #222624; }
 .ctr .cs { text-align: center; font-style: italic; color: #6e7672; }
@@ -2731,7 +2732,7 @@ var LOGO_DARK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAGBCAYAAAApL
 /* ---------- Contrato de locação (PDF) ---------- */
 var CTR = { busy: false, img: null };
 /* Dados da LOCADORA: preencha doc (CNPJ/CPF) e end (endereço) para saírem no contrato; em branco saem como linha para preencher à mão. */
-var LOC = { nome: "Bela Vista – Gestão de Eventos", doc: "", end: "", rep: "Robson Thiago Xavier de Sousa", foro: "Araguari/MG", wa: "(34) 99120-9275" };
+var LOC = { nome: "Recanto Bela Vista", locador: "Adriana Bárbara Rocha Xavier de Sousa", end: "Rua Neusa Gonçalves Cascão, nº 80, Bairro Solar Park Bela Vista, cidade de Araguari, estado de Minas Gerais", rg: "", cpf: "", foro: "Araguari/MG", wa: "(34) 99120-9275" };
 var MESES_L = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 function cpfDigits(v) { return String(v || "").replace(/\D/g, "").slice(0, 11); }
 function fmtCPF(v) { v = cpfDigits(v); return v.length <= 3 ? v : v.length <= 6 ? v.slice(0, 3) + "." + v.slice(3) : v.length <= 9 ? v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6) : v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6, 9) + "-" + v.slice(9); }
@@ -2753,92 +2754,67 @@ function horaTxt(r) {
   var h = Math.floor(m / 60), mi = m % 60;
   return "das " + hh(r.hini) + " às " + hh(r.hfim) + (dia ? " do dia seguinte" : "") + " (" + h + (h === 1 ? " hora" : " horas") + (mi ? " e " + mi + " min" : "") + ")";
 }
+function extenso(v) {
+  var U = ["zero", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"], D = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"], C = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+  function ate999(n) { if (n === 100) return "cem"; var c = Math.floor(n / 100), r = n % 100, p = []; if (c) p.push(C[c]); if (r) p.push(r < 20 ? U[r] : D[Math.floor(r / 10)] + (r % 10 ? " e " + U[r % 10] : "")); return p.join(" e "); }
+  function inteiro(n) {
+    if (n === 0) return "zero"; var mi = Math.floor(n / 1e6), mil = Math.floor((n % 1e6) / 1000), r = n % 1000, p = [];
+    if (mi) p.push(ate999(mi) + (mi === 1 ? " milhão" : " milhões")); if (mil) p.push(mil === 1 ? "mil" : ate999(mil) + " mil"); if (r) p.push(ate999(r));
+    return p.reduce(function (a, x, i) { return i === 0 ? x : a + (i === p.length - 1 && (r && r < 100 || r % 100 === 0 && r) ? " e " : ", ") + x; }, "");
+  }
+  v = Math.round((+v || 0) * 100); var reais = Math.floor(v / 100), cent = v % 100, out = [];
+  if (reais) out.push(inteiro(reais) + (reais === 1 ? " real" : (reais % 1e6 === 0 ? " de reais" : " reais")));
+  if (cent) out.push(inteiro(cent) + (cent === 1 ? " centavo" : " centavos"));
+  return out.length ? out.join(" e ") : "zero real";
+}
+function mnyExt(v) { return mny(v) + " (" + extenso(v) + ")"; }
+function proxDia(iso) { var d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + 1); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); }
+
+/* Estrutura do contrato (baseada no contrato da Recanto Bela Vista): usada na pré-visualização e no PDF. Tipos: title, sub, p, cl, li, sig */
 function contratoBlocos(r) {
-  var B = [], blank = "______________________", dts = r.datas.map(fmtDate), saldo = Math.max(0, r.total - (r.sinal || 0));
-  var T = function (t, x) { B.push({ t: t, x: x }); };
-  var hTxt = horaTxt(r), dataTxt = dts.length > 1 ? "nas datas " + dts.join(", ") : "na data " + dts[0];
-  T("title", "CONTRATO DE LOCAÇÃO DE ESPAÇO PARA EVENTOS");
-  T("sub", "Contrato nº " + r.id + " · " + LOC.nome);
+  var B = [], L = "______________________", T = function (t, x, k) { B.push({ t: t, x: x, k: k }); }, dts = r.datas.map(fmtDate), saldo = Math.max(0, r.total - (r.sinal || 0));
+  var ano = (r.criado || HOJE).slice(0, 4), cl = 0, C = function (x) { cl++; T("cl", x, "Cláusula " + cl + "ª"); };
+  var rgLoc = LOC.rg ? "RG nº " + LOC.rg : "RG nº " + L, cpfLoc = LOC.cpf ? "CPF nº " + LOC.cpf : "CPF nº " + L;
+  T("title", "CONTRATO PARTICULAR DE LOCAÇÃO Nº " + r.id + "/" + ano);
+  T("sub", "ÁREA DE LAZER " + LOC.nome.toUpperCase());
 
-  T("h", "1. DAS PARTES");
-  T("p", "LOCADORA: " + LOC.nome + ", " + (LOC.doc ? "inscrita sob o nº " + LOC.doc : "inscrita sob o CNPJ/CPF nº " + blank) + ", com sede em " + (LOC.end || blank) + ", neste ato representada por " + LOC.rep + ", doravante denominada LOCADORA.");
-  T("p", "LOCATÁRIO(A): " + r.nome + ", inscrito(a) no CPF sob o nº " + (r.cpf ? fmtCPF(r.cpf) : blank) + ", telefone/WhatsApp " + (r.tel || blank) + (r.email ? ", e-mail " + r.email : "") + ", doravante denominado(a) LOCATÁRIO(A).");
-  T("p", "As partes acima identificadas têm entre si justo e contratado o presente instrumento, que se regerá pelas cláusulas e condições a seguir.");
+  T("p", "LOCADOR: " + LOC.locador + ", brasileira, casada, portadora do documento " + rgLoc + " e " + cpfLoc + ", proprietária da ÁREA DE LAZER denominada " + LOC.nome.toUpperCase() + ", estabelecida na " + LOC.end + ", simplesmente denominada LOCADOR, e de outro lado:");
+  T("p", "LOCATÁRIO(A): " + r.nome + ", portador(a) do RG nº " + L + " e CPF nº " + (r.cpf ? fmtCPF(r.cpf) : L) + ", residente na Rua " + L + ", cidade " + L + ", CEP " + L + ", telefone " + (r.tel || L) + (r.email ? ", e-mail " + r.email : "") + ", doravante denominado(a) LOCATÁRIO(A).");
+  T("p", "OBJETO: Locação da Área de Lazer \"" + LOC.nome + "\". Pelo presente instrumento particular, e na melhor forma de direito, as partes acima nomeadas têm entre si, certo e ajustado o presente contrato, que se regerá pelas seguintes cláusulas e condições que mutuamente aceitam, a saber:");
 
-  T("h", "2. DO OBJETO");
-  T("p", "2.1. O presente contrato tem por objeto a locação temporária do espaço de eventos da LOCADORA, em Araguari/MG, para a realização de evento do tipo \"" + (r.tipo || "Outro") + "\", " + dataTxt + ".");
-  T("p", "2.2. " + (hTxt ? "O espaço será utilizado " + (dts.length > 1 ? "em cada uma das datas, " : "") + hTxt + ", período contratado para a realização do evento." : "O horário de utilização é o combinado entre as partes por escrito (WhatsApp ou proposta).") + " A capacidade máxima do espaço é de 200 (duzentas) pessoas.");
-  T("p", "2.3. O espaço será entregue limpo, em bom estado de conservação e funcionamento, o que será confirmado na vistoria de entrada (Anexo I). A locação compreende exclusivamente o uso do espaço e de suas instalações. Serviços de terceiros, como buffet, bebidas, DJ ou banda, decoração, fotografia, segurança e salva-vidas, não fazem parte deste contrato nem estão incluídos no valor da locação em nenhuma hipótese; sua contratação, pagamento e acompanhamento são de exclusiva responsabilidade do(a) LOCATÁRIO(A).");
+  C("A ÁREA DE LAZER " + LOC.nome.toUpperCase() + " destina-se exclusivamente a atividades de cunho familiar. Não sendo admitida a realização de eventos com finalidade lucrativa, assim como fica vedado o uso para eventos diferente do contratado; e nem mesmo a sublocação ou empréstimo total ou parcial para terceiros alheios à locação.");
+  C("Desde já, o(a) LOCATÁRIO(A) fica ciente de que a capacidade máxima do espaço é de 120 pessoas adultas incluindo área coberta e não coberta.");
+  var fim = function (iso) { return r.hfim <= r.hini ? proxDia(iso) : iso; }, finalidade = "para o fim de realizar " + (r.tipo ? "evento do tipo \"" + r.tipo + "\"" : L) + ".";
+  if (r.hini && r.hfim && r.datas.length === 1) C("O LOCADOR cede ao LOCATÁRIO(A) o espaço identificado no objeto do presente, para ser utilizado das " + r.hini + " horas do dia " + dts[0] + " até às " + r.hfim + " horas do dia " + fmtDate(fim(r.datas[0])) + ", " + finalidade);
+  else if (r.hini && r.hfim) C("O LOCADOR cede ao LOCATÁRIO(A) o espaço identificado no objeto do presente, para ser utilizado, em cada uma das datas " + dts.join(", ") + ", das " + r.hini + " horas até às " + r.hfim + " horas" + (r.hfim <= r.hini ? " do dia seguinte" : "") + ", " + finalidade);
+  else C("O LOCADOR cede ao LOCATÁRIO(A) o espaço identificado no objeto do presente, para ser utilizado das ____:____ horas do dia " + dts.join(", ") + " até às ____:____ horas do dia " + L + ", " + finalidade);
+  C("Constitui-se objeto deste contrato a locação da área com estrutura de alvenaria com churrasqueira e pia com balcões de mármore, banheiro com espelho (R$ 280,00) (acessibilidade e fraldário), banheiro masculino com espelho (R$ 280,00) e banheiro feminino com espelho (R$ 280,00) e área da piscina com torneira e mangueira de jardim (R$ 100,00), casa de máquina da piscina (R$ 5.000,00). Com os seguintes itens móveis e seus valores descritos em reais para fins de ressarcimento:");
+  ["1 TV 58\" da marca Samsung (R$ 3.000,00)", "1 fogão 2 bocas (R$ 200,00)", "1 aparelho de som amplificador (para FM, pendrive, cartão de memória e Bluetooth) com nove autofalantes fixados na laje (R$ 3.500,00)", "1 grelha para churrasco (R$ 80,00)", "1 purificador de água Soft (R$ 1.100,00)", "1 freezer horizontal Consul CHA31EB branco 309 L 220 V (R$ 2.520,00)", "4 mesas de plástico cinza da marca JRplásticos (R$ 79,00 cada)", "16 cadeiras de plástico cor cinza da marca JRplásticos (R$ 52,00 cada)", "Cama elástica 3,05 m Pula Pula trampolim + escada + rede (R$ 1.910,00)", "Escorregador grande, escada vermelha e rampa azul, Lacuca Brinquedos (R$ 610,00)", "Fraldário trocador de fixar na parede com colchonete (R$ 650,00)", "22 grelhas ralo linear perfurada em inox 20x100 cm (R$ 189,97 cada uma)", "5 toldos com braços flexíveis (R$ 11.000,00)", "3 ventiladores Ventisol, 50 cm (R$ 200,00 cada)"].forEach(function (i) { T("li", i); });
+  C("Ficará a cargo do(a) LOCATÁRIO(A) providenciar o suprimento do material que irá consumir no evento, tais como: talheres, panelas, copos, toalhas de papel, papel higiênico, sabão, material de cozinha, entre outros de sua necessidade.");
+  C("Pelo uso do espaço o(a) LOCATÁRIO(A) pagará um aluguel no valor de " + mnyExt(r.total) + (saldo > 0 ? ", pagos da seguinte forma: " + ((r.sinal || 0) > 0 ? mnyExt(r.sinal) + " de entrada (sinal) e o remanescente de " + mnyExt(saldo) : "o valor total") + " devendo ser PAGO TOTALMENTE um dia antes do início da reunião familiar." : ", integralmente quitado."));
+  if (r.pags && r.pags.length) T("p", "Pagamentos já recebidos pelo LOCADOR: " + r.pags.map(function (p) { return fmtDate(p.data) + " – " + mny(p.valor); }).join("; ") + ".");
+  C("É de responsabilidade do(a) LOCATÁRIO(A) o recolhimento dos encargos referentes a Direitos Autorais, bem como o cumprimento da Lei do Silêncio (que não estipula horário), para o uso de música ao vivo ou mecânica, durante a realização do evento.");
+  T("p", "PARÁGRAFO ÚNICO: Não será permitido outro som diferente do que possui no estabelecimento, valendo o bom senso da maioria para saber se o volume do som ambiente prejudica vizinhos da proximidade do local independente do horário da festa, já que a perturbação aos vizinhos pode gerar em MULTA a ser paga pelo(a) LOCATÁRIO(A) E/OU A DEVOLUÇÃO DAS CHAVES DO LOCAL AO LOCADOR sem restituição dos valores pagos.");
+  T("p", "PARÁGRAFO PRIMEIRO: Este contrato é intransferível, seja de pessoa ou de data. No caso de desistência em período menor de 45 dias o valor já pago não será devolvido ou reembolsado ao(à) LOCATÁRIO(A). E, no caso de desistência a menos de 20 dias da data reservada o restante do valor não pago será devido pelo(a) LOCATÁRIO(A) para cobrir o prejuízo de não locação para outra pessoa. Em caso de justificativa por causas que envolvam saúde de familiares de primeiro grau poderá ser combinada uma nova data, sem prejuízo para ambas as partes.");
+  C("Os danos causados ao patrimônio móvel e não móvel serão reparados em comum acordo com o LOCADOR, correndo a despesa total por conta do(a) LOCATÁRIO(A). Os usuários deverão zelar por todo patrimônio móvel e imóvel, ficando então o(a) LOCATÁRIO(A) responsável por fiscalizar e fazer cumprir.");
+  C("O LOCADOR NÃO se responsabiliza pelos atos e danos praticados pelo(a) LOCATÁRIO(A) e convidados, inclusive acidentes ocorridos nas áreas interna e externa. Será exigido bom comportamento e havendo reclamação da vizinhança sobre qualquer conduta que venha a ferir qualquer artigo presente na Constituição Brasileira, Código Civil ou Código Penal Brasileiro será apurado e o(a) LOCATÁRIO(A) responderá em juízo pelos atos cometidos durante o evento, tornando o LOCADOR isento de qualquer responsabilidade. Podendo o LOCADOR rescindir o contrato intervindo com o fim do evento e retenção das chaves do local sem restituição de valores, caso ocorra intervenção da Polícia Militar e/ou de vizinhos por problemas relatados pela vizinhança.");
+  C("Não será permitida, para sustentação de balões, faixas, cartazes e painéis, OU QUALQUER ARTIGO DE DECORAÇÃO a colocação de pregos, parafusos e outros objetos que danifiquem a pintura das paredes, teto e colunas do espaço.");
+  C("Após o horário definido para término do evento o(a) LOCATÁRIO(A) se compromete a devolver a área de lazer impreterivelmente no horário identificado como fim do evento constante na cláusula 3ª deste, nas condições de asseio e manutenção como foi recebido.");
+  C("O(A) LOCATÁRIO(A) se responsabiliza pelo bom uso da piscina, não sendo permitido utensílios de vidro em sua proximidade, nem comidas e bebidas. O(A) LOCATÁRIO(A) e seus responsáveis DEVERÃO ESTAR ATENTOS aos menores e/ou incapacitados para evitar qualquer tipo de ACIDENTE NA PISCINA, não havendo qualquer responsabilidade por parte do LOCADOR com afogamentos ou acidentes similares. O(A) LOCATÁRIO(A) fica ciente que é proibido mexer na casa de máquina da piscina e que partículas que normalmente se decantarem ao longo da locação não serão retiradas. O(A) LOCATÁRIO(A) é responsável por observar o nível de água da piscina e a saída de água conforme instrução do LOCADOR. Ocasionando ressarcimento ao LOCADOR por parte do(a) LOCATÁRIO(A) no valor de R$ 500,00 (quinhentos reais) caso o motor seja danificado (condição verificada pelo LOCADOR).");
+  T("p", "PARÁGRAFO ÚNICO: Caso a devolução do espaço não ocorra na forma estipulada nesta cláusula por atitudes do(a) LOCATÁRIO(A) este deverá imediatamente ressarcir financeiramente ao LOCADOR o possível dano causado nas instalações físicas, asseio e manutenção, e ainda, prejuízos decorrentes pela extrapolação do horário limite do evento, sendo FIXADO o valor de R$ 30,00 a cada quinze minutos de atraso na devolução das chaves ao LOCADOR.");
+  C("O(A) LOCATÁRIO(A) declara a responsabilidade de vistoriar a área no momento da entrega das chaves, esclarecendo todas as dúvidas quanto ao uso, capacidade e disponibilidades, obrigando-se a restituir o imóvel finda a locação, no estado em que recebeu, sendo que qualquer observação feita pelo(a) LOCATÁRIO(A) deverá ser advertida ao LOCADOR imediatamente na recepção das chaves para início da locação.");
+  C("O LOCADOR não se responsabiliza pelo extravio ou danos a quaisquer objetos deixados pelo(a) LOCATÁRIO(A) e/ou seus convidados nas dependências e imediações do espaço, antes, durante e após o evento.");
+  C("O LOCADOR não se responsabiliza por catástrofes naturais e/ou falta de energia elétrica ocorrida antes e durante o período de locação. Na ocorrência de qualquer fato que impossibilite TOTALMENTE a utilização da área no total período acordado, o LOCADOR se prontificará a disponibilizar outra data em comum acordo para realização do evento, sem custos adicionais para ambas as partes, porém com valores atualizados para a data do novo evento.");
+  C("É de responsabilidade do(a) LOCATÁRIO(A) a organização básica das dependências, colocando todo o lixo em sacos fechados nos locais para isso destinados, retirando sobras de alimento e de decoração, recolocando móveis e objetos em seus locais originais, desligando luzes, verificando fechamento de torneiras, janelas e portas. A vistoria após a entrega das chaves é de responsabilidade do LOCADOR, assim que possível.");
+  C("O(A) LOCATÁRIO(A) se responsabiliza em verificar todas as Placas Indicativas de Segurança e Proibições do local, zelando pelo correto uso das áreas pelos seus convidados orientando-os e advertindo-os caso necessário.");
+  C("Fica o(a) LOCATÁRIO(A) ciente de que a CERCA ELÉTRICA e CÂMERA DE MONITORAMENTO EXTERNO permanecem ligados durante todo o tempo e que o local denominado neste como ÁREA DE LAZER " + LOC.nome.toUpperCase() + " fica sob responsabilidade do(a) LOCATÁRIO(A) durante toda a vigência deste contrato de locação.");
+  C("E por estarem assim justas e contratadas as partes no início qualificadas, assinam o presente instrumento de locação temporária em duas vias de igual teor, elegendo o foro da Comarca de Araguari - MG, para dirimir todas as dúvidas não alcançadas ou omitidas pelo presente instrumento particular de locação temporária.");
+  T("sig", { local: "Araguari, MG, " + fmtDate(r.criado || HOJE), loc: "LOCATÁRIO(A)", locSub: r.nome, nome: "LOCADOR", cpf: LOC.locador });
 
-  T("h", "3. DO VALOR E DA FORMA DE PAGAMENTO");
-  T("p", "3.1. Pela locação, o(a) LOCATÁRIO(A) pagará à LOCADORA o valor total de " + mny(r.total) + ", assim composto: sinal de " + mny(r.sinal || 0) + (saldo > 0 ? " e saldo de " + mny(saldo) + "." : ", estando o valor integralmente quitado."));
-  if (r.pags && r.pags.length) T("p", "3.2. Pagamentos já recebidos pela LOCADORA, dos quais o(a) LOCATÁRIO(A) recebe quitação até a respectiva data: " + r.pags.map(function (p) { return fmtDate(p.data) + " – " + mny(p.valor); }).join("; ") + ".");
-  else T("p", "3.2. O sinal é pago no ato da reserva e o saldo deve ser pago até 7 (sete) dias antes da data do evento, por PIX ou outro meio acordado, mediante comprovante enviado à LOCADORA pelo WhatsApp " + LOC.wa + ".");
-  T("p", "3.3. A data somente fica reservada e garantida após a confirmação do pagamento do sinal. Sem essa confirmação, a LOCADORA poderá disponibilizar a data a terceiros.");
-  T("p", "3.4. O atraso no pagamento de qualquer parcela sujeita o(a) LOCATÁRIO(A) a multa de 2% (dois por cento) e juros de 1% (um por cento) ao mês, calculados sobre o valor em atraso. Havendo saldo em aberto até 7 (sete) dias antes do evento, a LOCADORA poderá considerar a reserva cancelada por culpa do(a) LOCATÁRIO(A), aplicando-se a cláusula 5.");
-  T("p", "3.5. O período excedente ao contratado somente será permitido com autorização prévia da LOCADORA e será cobrado à parte, de forma proporcional ao valor contratado.");
-
-  T("h", "4. DA DATA, DO HORÁRIO E DA REMARCAÇÃO");
-  T("p", "4.1. O evento será realizado " + (dts.length > 1 ? "nas datas " + dts.join(", ") : "em " + dts[0]) + (hTxt ? ", " + hTxt : ", no horário combinado entre as partes") + ". Esse horário integra o período contratado e deve ser respeitado por todos os presentes.");
-  T("p", "4.1.1. O atraso na chegada do(a) LOCATÁRIO(A) ou de seus convidados não prorroga o horário de término. O horário final é improrrogável: qualquer tempo excedente depende de autorização prévia da LOCADORA e será cobrado nos termos da cláusula 3.5.");
-  T("p", "4.2. A remarcação da data é permitida uma única vez, sem custo, desde que solicitada por escrito com, no mínimo, 30 (trinta) dias de antecedência e sujeita à disponibilidade de agenda. Pedidos fora desse prazo são tratados como cancelamento.");
-
-  T("h", "5. DO CANCELAMENTO E DA DESISTÊNCIA");
-  T("p", "5.1. Em caso de cancelamento ou desistência pelo(a) LOCATÁRIO(A), solicitados por escrito, será observada a seguinte política em relação ao sinal pago:");
-  T("li", "mais de 15 (quinze) dias antes do evento: devolução integral do sinal;");
-  T("li", "de 8 (oito) a 15 (quinze) dias antes do evento: retenção de 50% (cinquenta por cento) do sinal pela LOCADORA, com devolução do restante;");
-  T("li", "7 (sete) dias ou menos antes do evento, ou não comparecimento: o sinal não é reembolsável.");
-  T("p", "5.2. A devolução, quando devida, será feita pelo mesmo meio do pagamento em até 10 (dez) dias úteis. Valores pagos além do sinal serão devolvidos conforme a mesma regra, descontados eventuais débitos do(a) LOCATÁRIO(A).");
-  T("p", "5.3. Se a LOCADORA precisar cancelar o evento por motivo próprio, devolverá integralmente os valores recebidos, ou remarcará a data de comum acordo, sem ônus ao(à) LOCATÁRIO(A).");
-  T("p", "5.4. Nenhuma das partes responderá por descumprimento causado por caso fortuito ou força maior (como calamidade, interdição por autoridade pública ou falta prolongada de energia ou água), hipótese em que se aplicará a remarcação prevista na cláusula 4.2, sem custo e sem prazo mínimo.");
-
-  T("h", "6. DAS REGRAS DE USO DO ESPAÇO");
-  T("p", "6.1. O(A) LOCATÁRIO(A) é responsável pela conduta de seus convidados, fornecedores e prestadores durante todo o período em que estiverem no local, devendo zelar pelo cumprimento deste contrato.");
-  T("p", "6.2. É obrigatório respeitar a lotação máxima do contrato (cláusula 2.2). A LOCADORA poderá restringir o acesso de pessoas que excedam esse limite, por segurança.");
-  T("p", "6.3. É proibido, em todo o espaço:");
-  T("li", "uso de fogos de artifício, sinalizadores, espumas, tintas, confete metalizado, glitter ou qualquer material que danifique ou suje de forma de difícil remoção;");
-  T("li", "pregar, parafusar, furar ou colar objetos em paredes, pisos, forros, portas ou móveis, bem como usar fitas adesivas que danifiquem a pintura;");
-  T("li", "uso, porte ou comércio de drogas ilícitas, armas de qualquer tipo ou materiais inflamáveis e explosivos;");
-  T("li", "fornecer bebidas alcoólicas a menores de 18 (dezoito) anos;");
-  T("li", "fumar ou usar cigarro eletrônico em áreas fechadas;");
-  T("li", "a entrada de animais, salvo cão de assistência, e a prática de jogos e brincadeiras que ofereçam risco às pessoas ou ao imóvel;");
-  T("li", "cobrança de ingresso ou venda de produtos por terceiros sem autorização prévia da LOCADORA.");
-  T("p", "6.4. O som e a música devem ser encerrados no horário final do período contratado e mantidos em volume compatível com a legislação municipal de controle de ruído e com a boa convivência com a vizinhança. Eventuais multas ou autuações decorrentes do evento são de responsabilidade do(a) LOCATÁRIO(A).");
-  T("p", "6.5. A utilização da piscina e das áreas externas, quando incluídas, é de inteira responsabilidade do(a) LOCATÁRIO(A) e de seus convidados. Crianças e pessoas que não saibam nadar devem permanecer sob supervisão constante de adultos responsáveis, sendo recomendável a contratação de salva-vidas. É proibido pular na piscina com copos, garrafas ou objetos de vidro.");
-  T("p", "6.6. Equipamentos, móveis e utensílios da LOCADORA devem permanecer no local e ser usados apenas para sua finalidade. É vedado retirar qualquer item do espaço.");
-  T("p", "6.7. Os fornecedores contratados pelo(a) LOCATÁRIO(A) devem cumprir estas regras, e o(a) LOCATÁRIO(A) responde por eles perante a LOCADORA. Equipamentos que exijam instalação elétrica diferente da disponível devem ser informados previamente à LOCADORA.");
-  T("p", "6.8. A LOCADORA poderá interromper o evento, sem devolução de valores, em caso de descumprimento grave das regras, risco à segurança de pessoas ou ao imóvel, ou conduta que exponha terceiros a perigo, sem prejuízo das medidas legais cabíveis.");
-
-  T("h", "7. DA VISTORIA, DOS DANOS, QUEBRAS E PERDAS");
-  T("p", "7.1. Haverá vistoria de entrada e de saída, acompanhadas pelo(a) LOCATÁRIO(A) ou por pessoa por ele(a) indicada, com o registro do estado do espaço e dos itens no Anexo I, podendo ser complementado por fotos e vídeos, que servirão como prova.");
-  T("p", "7.2. O(A) LOCATÁRIO(A) responde integralmente pelos danos, quebras, perdas, furtos e extravios causados ao imóvel, móveis, utensílios, louças, copos, talheres, eletrodomésticos, equipamentos de som e iluminação, piscina, jardim, portões, câmeras e demais bens da LOCADORA, quando provocados por ele(a), seus convidados, fornecedores ou prestadores de serviço, ainda que sem intenção, ressalvado o desgaste natural pelo uso normal.");
-  T("p", "7.3. O valor a ressarcir corresponderá ao custo de reparo ou ao valor de reposição do bem por item equivalente, comprovado por orçamento, nota fiscal ou valor de mercado, informado pela LOCADORA ao(à) LOCATÁRIO(A) por escrito, com fotos, em até 5 (cinco) dias úteis após o evento.");
-  T("p", "7.4. O pagamento deverá ser feito em até 5 (cinco) dias úteis após o recebimento da comunicação. A LOCADORA poderá compensar esse valor com eventuais quantias a devolver ao(à) LOCATÁRIO(A) e, não havendo pagamento, adotar as medidas legais de cobrança, incluindo protesto, com os encargos da cláusula 3.4.");
-  T("p", "7.5. A sujeira excessiva, o descarte inadequado de lixo, de entulho ou de restos de decoração, ou o uso de materiais vedados na cláusula 6.3 poderão gerar cobrança de taxa de limpeza extra, proporcional ao serviço necessário. A limpeza comum pós-evento está incluída no valor da locação. Lixo, decoração e objetos pessoais devem ser retirados até o fim do período contratado.");
-  T("p", "7.6. Objetos pessoais ou de fornecedores esquecidos no local serão guardados por até 30 (trinta) dias, a contar do evento, sem responsabilidade da LOCADORA por perda, extravio ou deterioração.");
-
-  T("h", "8. DAS RESPONSABILIDADES");
-  T("p", "8.1. A LOCADORA não se responsabiliza por objetos, valores, veículos ou pertences de convidados e fornecedores, nem por acidentes, mal súbito ou incidentes envolvendo pessoas presentes no evento, salvo se decorrentes comprovadamente de falha estrutural do imóvel sob sua responsabilidade.");
-  T("p", "8.2. O(A) LOCATÁRIO(A) é responsável por autorizações, licenças, taxas e direitos aplicáveis ao evento, incluindo direitos autorais de música quando exigidos, bem como pela segurança e pela contratação de profissionais que entenda necessários.");
-  T("p", "8.3. O(A) LOCATÁRIO(A) é responsável pelas obrigações trabalhistas, fiscais e de segurança dos fornecedores que contratar.");
-
-  T("h", "9. DOS DADOS PESSOAIS (LGPD)");
-  T("p", "9.1. Os dados pessoais do(a) LOCATÁRIO(A) (nome, CPF, telefone e e-mail) serão tratados pela LOCADORA apenas para a celebração e execução deste contrato, cumprimento de obrigações legais e contato sobre a reserva, em conformidade com a Lei nº 13.709/2018 (LGPD).");
-  T("p", "9.2. As mensagens de confirmação, lembretes de pagamento e avisos do evento pelo WhatsApp seguem a autorização dada pelo(a) LOCATÁRIO(A) no ato da reserva, que pode ser revogada a qualquer momento por pedido à LOCADORA.");
-
-  T("h", "10. DISPOSIÇÕES GERAIS");
-  T("p", "10.1. Este contrato é firmado em caráter pessoal e intransferível; o(a) LOCATÁRIO(A) não poderá ceder, sublocar ou emprestar o espaço a terceiros.");
-  T("p", "10.2. O descumprimento de qualquer cláusula por uma das partes autoriza a outra a rescindir o contrato, sem prejuízo das perdas e danos comprovados.");
-  T("p", "10.3. Qualquer alteração deste contrato só terá validade se feita por escrito e aceita pelas duas partes, inclusive por mensagem de WhatsApp ou e-mail. A tolerância de uma das partes quanto a descumprimento não implica renúncia ao direito.");
-  T("p", "10.4. As partes declaram ter lido e compreendido todas as cláusulas, concordando com seus termos. Fica eleito o foro da comarca de " + LOC.foro + " para dirimir quaisquer dúvidas decorrentes deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.");
-  T("sig", { local: "Araguari/MG, " + extData(r.criado || HOJE), loc: LOC.nome, locSub: LOC.rep, nome: r.nome, cpf: r.cpf ? "CPF " + fmtCPF(r.cpf) : "CPF " + blank });
-
-  T("pagebreak", "");
-  T("title", "ANEXO I – VISTORIA DO ESPAÇO");
-  T("sub", "Contrato nº " + r.id + " · Evento " + dataTxt);
-  T("p", "Marque OK ou descreva a observação (avaria, falta de item, quantidade) na entrada e na saída. Em caso de divergência entre as vistorias, a LOCADORA poderá comprovar com fotos e vídeos.");
-  T("table", ["Salão e piso", "Paredes e pintura", "Portas, portões e fechaduras", "Banheiros", "Cozinha e eletrodomésticos", "Mesas e cadeiras (quantidade)", "Louças, copos e talheres", "Som, iluminação e tomadas", "Ar-condicionado / ventiladores", "Piscina e área molhada", "Churrasqueira e área externa", "Jardim e estacionamento", "Outros"]);
-  T("sig", { local: "Entrada: ____/____/______   Saída: ____/____/______", loc: "LOCADORA (vistoria)", nome: r.nome + " (LOCATÁRIO)", cpf: "" });
+  T("p", "RECIBO: abaixo segue, assinado pelo LOCADOR, como forma de recibo, informações sobre o pagamento total ou parcial desta locação estabelecidos na cláusula 6ª deste contrato:");
+  if (r.pags && r.pags.length) { r.pags.forEach(function (p) { T("li", "Recebi de " + r.nome + (r.cpf ? ", CPF " + fmtCPF(r.cpf) : "") + ", em " + fmtDate(p.data) + ", a quantia de " + mnyExt(p.valor) + ", referente à locação do espaço (contrato " + r.id + ")."); }); }
+  else T("li", "Recebi de " + r.nome + (r.cpf ? ", CPF " + fmtCPF(r.cpf) : "") + ", em ____/____/______, a quantia de " + (r.sinal > 0 ? mnyExt(r.sinal) : "R$ ______________") + ", referente à locação do espaço (contrato " + r.id + ").");
+  T("sig", { local: "Araguari, MG, ____/____/______", loc: "LOCADOR", locSub: LOC.locador, nome: "", cpf: "" });
   return B;
 }
 
@@ -2848,9 +2824,10 @@ function contratoHTML(r) {
     if (b.t === "sub") return "<p class=\"cs\">" + esc(b.x) + "</p>";
     if (b.t === "h") return "<h4>" + esc(b.x) + "</h4>";
     if (b.t === "p") return "<p>" + esc(b.x) + "</p>";
+    if (b.t === "cl") return "<h5>" + esc(b.k) + "</h5><p>" + esc(b.x) + "</p>";
     if (b.t === "li") return "<p class=\"cli\">" + esc(b.x) + "</p>";
     if (b.t === "table") return "<table><tr><th>Item</th><th>Entrada</th><th>Saída</th></tr>" + b.x.map(function (i) { return "<tr><td>" + esc(i) + "</td><td></td><td></td></tr>"; }).join("") + "</table>";
-    if (b.t === "sig") return "<p class=\"cs\" style=\"margin-top:18px\">" + esc(b.x.local) + "</p><div class=\"csig\"><span>" + esc(b.x.loc) + (b.x.locSub ? "<br>" + esc(b.x.locSub) : "") + "</span><span>" + esc(b.x.nome) + (b.x.cpf ? "<br>" + esc(b.x.cpf) : "") + "</span></div>";
+    if (b.t === "sig") return "<p class=\"cs\" style=\"margin-top:18px\">" + esc(b.x.local) + "</p><div class=\"csig\"><span>" + esc(b.x.loc) + (b.x.locSub ? "<br>" + esc(b.x.locSub) : "") + "</span>" + (b.x.nome ? "<span>" + esc(b.x.nome) + (b.x.cpf ? "<br>" + esc(b.x.cpf) : "") + "</span>" : "") + "</div>";
     return "<hr>";
   }).join("");
 }
@@ -2875,6 +2852,7 @@ function contratoPdf(r, cb) {
           if (b.t === "title") { if (y + 18 > BOT) np(); doc.setFont(F, "bold"); doc.setFontSize(15.5); doc.setTextColor(G[0], G[1], G[2]); doc.splitTextToSize(b.x, W).forEach(function (l) { doc.text(l, 105, y, { align: "center" }); y += 7; }); doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.5); doc.line(85, y - 3, 125, y - 3); y += 2; }
           else if (b.t === "sub") { doc.setFont(F, "italic"); doc.setFontSize(10); doc.setTextColor(MUT[0], MUT[1], MUT[2]); doc.text(b.x, 105, y, { align: "center" }); y += 8; }
           else if (b.t === "h") { if (y + 20 > BOT) np(); y += 3; doc.setFont(F, "bold"); doc.setFontSize(11); doc.setTextColor(G[0], G[1], G[2]); doc.text(b.x, M, y); doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.3); doc.line(M, y + 1.6, M + W, y + 1.6); y += 6.6; }
+          else if (b.t === "cl") { if (y + 15 > BOT) np(); y += 1.6; doc.setFont(F, "bold"); doc.setFontSize(10.5); doc.setTextColor(G[0], G[1], G[2]); doc.text(b.k, M, y); y += 5; wrap(b.x, M, W); y += 1.4; }
           else if (b.t === "p") { wrap(b.x, M, W); y += 1.6; }
           else if (b.t === "li") { doc.setFont(F, "normal"); doc.setFontSize(10.5); doc.splitTextToSize(b.x, W - 10).forEach(function (l, i) { doc.setTextColor(INK[0], INK[1], INK[2]); if (i === 0) { if (y + LH > BOT) np(); doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]); doc.circle(M + 4, y - 1.2, 0.7, "F"); } line(l, M + 8); }); y += 0.9; }
           else if (b.t === "pagebreak") { np(); }
@@ -2885,8 +2863,8 @@ function contratoPdf(r, cb) {
           }
           else if (b.t === "sig") {
             if (y + 46 > BOT) np(); y += 7; doc.setFont(F, "normal"); doc.setFontSize(10.5); doc.setTextColor(INK[0], INK[1], INK[2]); doc.text(b.x.local, M, y); y += 22;
-            doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.3); doc.line(M, y, M + 76, y); doc.line(M + 94, y, M + W, y); y += 4.8; doc.setFontSize(10);
-            doc.text(b.x.loc, M, y); doc.text(b.x.nome, M + 94, y); if (b.x.locSub || b.x.cpf) { y += 4.4; if (b.x.locSub) doc.text(b.x.locSub, M, y); if (b.x.cpf) doc.text(b.x.cpf, M + 94, y); } y += 10;
+            doc.setDrawColor(INK[0], INK[1], INK[2]); doc.setLineWidth(0.3); doc.line(M, y, M + 76, y); if (b.x.nome) doc.line(M + 94, y, M + W, y); y += 4.8; doc.setFontSize(10);
+            doc.text(b.x.loc, M, y); if (b.x.nome) doc.text(b.x.nome, M + 94, y); if (b.x.locSub || b.x.cpf) { y += 4.4; if (b.x.locSub) doc.text(b.x.locSub, M, y); if (b.x.cpf) doc.text(b.x.cpf, M + 94, y); } y += 10;
           }
         });
         var n = doc.getNumberOfPages(), wm = null; try { wm = new doc.GState({ opacity: 0.045 }); } catch (e) {}
@@ -2895,8 +2873,8 @@ function contratoPdf(r, cb) {
           if (logo && wm) { doc.saveGraphicsState(); doc.setGState(wm); doc.addImage(LOGO_DARK, "PNG", 105 - 55, 148 - 50, 110, 110 * LR, undefined, "FAST"); doc.restoreGraphicsState(); }
           if (p > 1) { if (logo) doc.addImage(LOGO_DARK, "PNG", M, 8, 13, 13 * LR, undefined, "FAST"); doc.setFont(F, "italic"); doc.setFontSize(9); doc.setTextColor(MUT[0], MUT[1], MUT[2]); doc.text("Contrato " + r.id + " · " + r.nome, 210 - M, 16, { align: "right" }); doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.3); doc.line(M, 22.5, 210 - M, 22.5); }
           doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]); doc.setLineWidth(0.3); doc.line(M, 284, 210 - M, 284);
-          doc.setFont(F, "normal"); doc.setFontSize(8.5); doc.setTextColor(MUT[0], MUT[1], MUT[2]);
-          doc.text("Bela Vista · Gestão de Eventos · Araguari/MG · WhatsApp " + LOC.wa, M, 289); doc.text("Página " + p + " de " + n, 210 - M, 289, { align: "right" });
+          doc.setFont(F, "normal"); doc.setFontSize(8); doc.setTextColor(MUT[0], MUT[1], MUT[2]);
+          doc.text(LOC.nome + " · Rua Neusa Gonçalves Cascão, 80 · Solar Park Bela Vista · Araguari/MG · WhatsApp " + LOC.wa, M, 289); doc.text("Página " + p + " de " + n, 210 - M, 289, { align: "right" });
         }
         cb(doc.output("blob"));
       } catch (e) { cb(null); }
@@ -3625,6 +3603,8 @@ if (LIVE) (function () {
       LV.db.collection('usuarios').get().then(function (snap) { var me = curUser(); USERS.length = 0; snap.docs.forEach(function (d) { USERS.push(mapUser(d.id, d.data())); }); if (me && !findUser(me.email)) USERS.unshift(me); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
     }
   }
+  /* RG e CPF do locador ficam só no banco (config/locador), nunca no código público do site */
+  function loadLocador() { try { LV.db.collection('config').doc('locador').get().then(function (d) { if (d.exists) { var x = d.data() || {}; if (x.rg) LOC.rg = String(x.rg); if (x.cpf) LOC.cpf = String(x.cpf); } }, function () {}); } catch (e) {} }
   function loadProfile(email) {
     var q = function (e) { return LV.db.collection('usuarios').where('email', '==', e).limit(1).get(); };
     return q(email).then(function (s) { return s.empty && email !== email.toLowerCase() ? q(email.toLowerCase()) : s; }).then(function (s) {
@@ -3659,7 +3639,7 @@ if (LIVE) (function () {
     var me = pf ? mapUser(pf.id, pf.data) : mapUser('principal', { email: email, tipo: 'admin', status: 'ativo', permissoes: null });
     me.email = email; USERS.length = 0; USERS.push(me);
     try { localStorage.setItem(KEY_AT, String(Date.now())); } catch (e) {}
-    if (!LV.started) { LV.started = true; listen('reservas', mapRes, RES); listen('despesas', mapDesp, DESP); loadChecklist(); }
+    if (!LV.started) { LV.started = true; listen('reservas', mapRes, RES); listen('despesas', mapDesp, DESP); loadChecklist(); loadLocador(); }
     window.__noIntro = !!silent; enterApp(me); window.__noIntro = false;
     setTimeout(loadAdminLists, 600);
   }
@@ -3714,7 +3694,7 @@ if (LIVE) (function () {
   var doLogoutRaw = doLogout;
   window.doLogout = function (reason) {
     var had = !!AUTH.email; doLogoutRaw(reason); if (!had) return;
-    stopListeners(); clearData(); try { localStorage.removeItem(KEY_AT); } catch (e) {}
+    stopListeners(); clearData(); LOC.rg = ''; LOC.cpf = ''; try { localStorage.removeItem(KEY_AT); } catch (e) {}
     try { if (LV.auth) LV.auth.signOut(); } catch (e) {}
     startPublic();
   };
