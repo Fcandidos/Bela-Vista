@@ -66,6 +66,11 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html { background: var(--bg); }
+/* comportamento de aplicativo: sem rolagem lateral, sem 'puxar para atualizar' e sem efeito elástico */
+html, body { overscroll-behavior: none; }
+html { touch-action: pan-y; -webkit-text-size-adjust: 100%; }
+body { overflow-x: clip; max-width: 100%; -webkit-touch-callout: none; }
+.sheet, .dp, .ctr, .tbl, .chips, #scroller { overscroll-behavior: contain; }
 body {
   position: relative;
   margin: 0; background: var(--bg); color: var(--fg);
