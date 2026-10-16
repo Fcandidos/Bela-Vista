@@ -2118,7 +2118,7 @@ function belaInit() {
   window.setVoiceIco = setV;
   /* ---- escuta da Bela (microfone): fale "Bela" + pergunta ---- */
   var SRC = window.SpeechRecognition || window.webkitSpeechRecognition, mb = document.getElementById('belaMic'), rec = null, micOn = false, ctxUntil = 0;
-  var WAKE = /((ei|hey|oi|ok)\s+)?(bela|vela|pela)[,.!?]*/gi, WAKE1 = /(bela|vela|pela)/i;
+  var WAKE = /(\b(ei|hey|oi|ok)\s+)?\b(bela|vela|pela)\b[,.!?]*/gi, WAKE1 = /\b(bela|vela|pela)\b/i;
   function micUi() { mb.innerHTML = ic('mic'); mb.setAttribute('aria-pressed', micOn); mb.setAttribute('aria-label', micOn ? 'Desativar escuta da Bela' : 'Ativar escuta da Bela'); mb.classList.toggle('on', micOn); }
   function micIdle() { if (!busy) orbState('idle', micOn ? 'Ouvindo… diga “Bela”' : 'Pergunte algo à Bela'); }
   function micStop() { var r = rec; rec = null; if (r) { r.onend = r.onerror = r.onresult = null; try { r.abort(); } catch (e) {} } }
