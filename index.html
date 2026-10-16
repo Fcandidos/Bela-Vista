@@ -2070,9 +2070,10 @@ function belaSpeak(text, done) {
   if (!voiceOn || !window.speechSynthesis) { dg('fala ignorada: voz ' + (voiceOn ? 'sem suporte no navegador' : 'desligada')); return; }
   dg('falar: vozes=' + speechSynthesis.getVoices().length + ' speaking=' + speechSynthesis.speaking + ' paused=' + speechSynthesis.paused);
   try {
-    speechSynthesis.cancel(); if (speechSynthesis.paused) speechSynthesis.resume();
-    /* Chrome/Android descarta o speak() logo depois do cancel(): espera um instante e confere se começou */
-    setTimeout(function () {
+    /* iPhone/Safari só fala se speak() for chamado direto no toque: só cancela e espera quando já há fala em andamento */
+    var had = speechSynthesis.speaking || speechSynthesis.pending;
+    if (had) speechSynthesis.cancel(); if (speechSynthesis.paused) speechSynthesis.resume();
+    var run = function () {
       var say = function () {
         var u = new SpeechSynthesisUtterance(text); u.lang = 'pt-BR'; u.rate = voiceRate; u.pitch = voicePitch;
         var vs = speechSynthesis.getVoices(), v = vs.filter(function (x) { return x.name === voiceName; })[0] || vs.filter(function (x) { return /^pt/i.test(x.lang); })[0]; if (v) u.voice = v;
@@ -2082,9 +2083,21 @@ function belaSpeak(text, done) {
       };
       say();
       setTimeout(function () { if (!ended && !speechSynthesis.speaking && !speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(function () { if (!ended) say(); }, 200); } }, 900);
-    }, 80);
+    };
+    if (had) setTimeout(run, 80); else run();
   } catch (e) {}
 }
+/* libera a voz no primeiro toque (iPhone/Safari bloqueia fala fora de um toque do usuário) */
+var VOICE_UNLOCKED = false;
+function unlockVoice() {
+  if (VOICE_UNLOCKED || !window.speechSynthesis) return;
+  try {
+    var u = new SpeechSynthesisUtterance(' '); u.volume = 0;
+    var ok = function () { if (VOICE_UNLOCKED) return; VOICE_UNLOCKED = true; dg('voz liberada pelo toque'); ['touchend', 'click'].forEach(function (t) { document.removeEventListener(t, unlockVoice, true); }); };
+    u.onstart = ok; u.onend = ok; speechSynthesis.speak(u);
+  } catch (e) {}
+}
+['touchend', 'click'].forEach(function (t) { document.addEventListener(t, unlockVoice, true); });
 function addMsg(q, a, instant) {
   var chat = document.getElementById('chat');
   var rows = a.rows.map(function (r) { return '<div class="kv"><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
