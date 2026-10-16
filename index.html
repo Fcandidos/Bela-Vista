@@ -422,6 +422,7 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .kv b { flex: none; font-weight: 700; }
 .bela-acts { display: flex; gap: 10px; align-items: center; }
 body.in-bela .nav { display: none; }
+#belaMic.on { background: var(--green); color: #fff; }
 body.in-bela .askbar { bottom: env(safe-area-inset-bottom, 0px); }
 body.in-bela #v-bela .chat { padding-bottom: 90px; }
 .askbar { position: fixed; left: 0; right: 0; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 9; padding: 8px max(20px, env(safe-area-inset-right, 0px)) 10px max(20px, env(safe-area-inset-left, 0px)); background: none; }
@@ -1258,7 +1259,7 @@ textarea.area { font: inherit; font-size: 16px; padding: 12px 14px; min-height: 
     <section class="view" id="v-bela" hidden>
       <div class="page-head phead">
         <div><h1 class="page-t">Bela</h1><p class="page-s">Assistente inteligente do seu negócio</p></div>
-        <div class="bela-acts"><button class="round" id="voiceBtn" aria-label="Voz da Bela ligada" aria-pressed="true"></button><button class="round" id="belaHome" type="button" aria-label="Voltar ao início"></button></div>
+        <div class="bela-acts"><button class="round" id="belaMic" type="button" aria-label="Ativar escuta da Bela" aria-pressed="false"></button><button class="round" id="voiceBtn" aria-label="Voz da Bela ligada" aria-pressed="true"></button><button class="round" id="belaHome" type="button" aria-label="Voltar ao início"></button></div>
       </div>
       <div class="orb-wrap">
         <div class="orb" id="orb" data-state="idle" aria-hidden="true"><canvas id="orbCv"></canvas></div>
@@ -1271,7 +1272,7 @@ textarea.area { font: inherit; font-size: 16px; padding: 12px 14px; min-height: 
         <input id="askIn" type="text" maxlength="200" placeholder="Pergunte algo à Bela…" enterkeyhint="send">
         <button type="submit" aria-label="Enviar pergunta"><span data-i="send"></span></button>
       </div></form>
-      <p class="note">Neste protótipo você conversa por texto. O microfone e a escuta de “Bela” ficam no site completo.</p>
+      <p class="note">Toque no microfone e diga “Bela” seguido da pergunta.</p>
     </section>
 
     <!-- FINANCEIRO (Financeiro · Despesas · Relatórios) -->
@@ -1440,6 +1441,7 @@ var P = {
   check: '<path d="M4 12.5 9.5 18 20 6.5"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
   send: '<path d="M21 3 10 14M21 3l-6.5 18-3.5-7-7-3.5z"/>',
+  mic: '<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4"/>',
   vol: '<path d="M4 9.5v5h4l5 4v-13l-5 4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
   volx: '<path d="M4 9.5v5h4l5 4v-13l-5 4zM17 9.5l5 5M22 9.5l-5 5"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
@@ -2093,8 +2095,8 @@ function ask(q, instant) {
   q = q.trim(); if (!q || busy) return;
   var a = belaAnswer(q);
   if (instant) { addMsg(q, a, true); return; }
-  busy = true; setBusy(true); orbState('thinking', 'Pensando…');
-  setTimeout(function () { addMsg(q, a); orbState('speaking', 'Falando…'); belaSpeak(a.say, function () { orbState('idle', 'Pergunte algo à Bela'); busy = false; setBusy(false); }); }, 900);
+  busy = true; setBusy(true); if (window.belaMicPause) window.belaMicPause(); orbState('thinking', 'Pensando…');
+  setTimeout(function () { addMsg(q, a); orbState('speaking', 'Falando…'); belaSpeak(a.say, function () { orbState('idle', 'Pergunte algo à Bela'); busy = false; setBusy(false); if (window.belaMicResume) window.belaMicResume(); }); }, 900);
 }
 function belaInit() {
   OrbFX.init(document.getElementById('orbCv'));
@@ -2114,6 +2116,35 @@ function belaInit() {
   vb.onclick = function () { openSheet('voz'); };
   var bh = document.getElementById('belaHome'); bh.innerHTML = ic('home'); bh.onclick = function () { go('inicio'); };
   window.setVoiceIco = setV;
+  /* ---- escuta da Bela (microfone): fale "Bela" + pergunta ---- */
+  var SRC = window.SpeechRecognition || window.webkitSpeechRecognition, mb = document.getElementById('belaMic'), rec = null, micOn = false, ctxUntil = 0;
+  var WAKE = /((ei|hey|oi|ok)\s+)?(bela|vela|pela)[,.!?]*/gi, WAKE1 = /(bela|vela|pela)/i;
+  function micUi() { mb.innerHTML = ic('mic'); mb.setAttribute('aria-pressed', micOn); mb.setAttribute('aria-label', micOn ? 'Desativar escuta da Bela' : 'Ativar escuta da Bela'); mb.classList.toggle('on', micOn); }
+  function micIdle() { if (!busy) orbState('idle', micOn ? 'Ouvindo… diga “Bela”' : 'Pergunte algo à Bela'); }
+  function micStop() { var r = rec; rec = null; if (r) { r.onend = r.onerror = r.onresult = null; try { r.abort(); } catch (e) {} } }
+  function micHandle(alts) {
+    var i, hit = -1; for (i = 0; i < alts.length; i++) if (WAKE1.test(alts[i])) { hit = i; break; }
+    if (hit < 0 && Date.now() > ctxUntil) return;
+    var q = (hit < 0 ? alts[0] : alts[hit]).replace(WAKE, '').replace(/\s+/g, ' ').trim(); ctxUntil = Date.now() + 20000;
+    if (!q) { busy = true; setBusy(true); orbState('speaking', 'Falando…'); belaSpeak('Aqui! Pode falar.', function () { busy = false; setBusy(false); micIdle(); micStart(); }); return; }
+    ask(q);
+  }
+  function micStart() {
+    if (!micOn || busy || rec || curView !== 'bela') return;
+    var r = rec = new SRC(); r.lang = 'pt-BR'; r.continuous = false; r.interimResults = false; r.maxAlternatives = 3;
+    r.onresult = function (e) { if (busy) return; var res = e.results[e.results.length - 1], alts = []; for (var j = 0; j < res.length; j++) alts.push(res[j].transcript); micStop(); micHandle(alts); };
+    r.onerror = function (e) { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { micOn = false; micStop(); micUi(); micIdle(); toast('Microfone bloqueado. Libere o acesso nas configurações do navegador.'); } };
+    r.onend = function () { if (rec === r) { rec = null; if (micOn && !busy) setTimeout(micStart, 250); } };
+    try { r.start(); } catch (e) { rec = null; }
+  }
+  window.belaMicPause = micStop;
+  window.belaMicResume = function () { micIdle(); micStart(); };
+  window.belaMicOff = function () { if (!micOn) return; micOn = false; micStop(); micUi(); micIdle(); };
+  mb.onclick = function () {
+    if (!SRC) { toast('Este navegador não suporta reconhecimento de voz.'); return; }
+    micOn = !micOn; micUi(); micIdle(); if (micOn) micStart(); else micStop();
+  };
+  micUi();
   setV(); ask('Quanto faturei esse mês?', true);
 }
 
@@ -2181,7 +2212,7 @@ function go(id) {
   var cur = SUBS.indexOf(id) > -1 ? (backTo || 'mais') : id;
   document.querySelectorAll('#nav button').forEach(function (b) { if (b.dataset.t === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   if (id === 'bela') OrbFX.start(); else OrbFX.stop();
-  document.body.classList.toggle('in-bela', id === 'bela');
+  document.body.classList.toggle('in-bela', id === 'bela'); if (id !== 'bela' && window.belaMicOff) window.belaMicOff();
   document.getElementById('homeTop').hidden = id !== 'inicio'; document.getElementById('stickTop').hidden = id !== 'inicio';
   if (framed()) document.getElementById('scroller').scrollTop = 0; else window.scrollTo(0, 0);
   updHome();
