@@ -2059,13 +2059,16 @@ function belaAnswer(q) {
   }
   return { t: 'Não entendi essa', big: null, rows: [['Tente', 'faturamento, lucro, despesas, próximas reservas ou pagamentos pendentes']], say: 'Desculpe, não entendi. Pergunte sobre faturamento, lucro, despesas ou reservas.' };
 }
+var DIAG = [], DIAG_T0 = Date.now();
+function dg(m) { DIAG.push(((Date.now() - DIAG_T0) / 1000).toFixed(1) + 's ' + m); if (DIAG.length > 70) DIAG.shift(); var p = document.getElementById('vz-diag'); if (p) { p.textContent = DIAG.join('\n'); p.scrollTop = p.scrollHeight; } }
 var voiceOn = true, belaTimer = null, busy = false, voiceRate = 1.05, voicePitch = 1.1, voiceName = '';
 function orbState(st, txt) { document.getElementById('orb').dataset.state = st; OrbFX.poke(); MiniFX.poke(); document.getElementById('orbDot').dataset.s = st; document.getElementById('orbTxt').textContent = txt; }
 function belaSpeak(text, done) {
   clearTimeout(belaTimer);
   var ended = false, fin = function () { if (ended) return; ended = true; clearTimeout(belaTimer); done(); };
   belaTimer = setTimeout(fin, Math.max(4000, text.length * 110));
-  if (!voiceOn || !window.speechSynthesis) return;
+  if (!voiceOn || !window.speechSynthesis) { dg('fala ignorada: voz ' + (voiceOn ? 'sem suporte no navegador' : 'desligada')); return; }
+  dg('falar: vozes=' + speechSynthesis.getVoices().length + ' speaking=' + speechSynthesis.speaking + ' paused=' + speechSynthesis.paused);
   try {
     speechSynthesis.cancel(); if (speechSynthesis.paused) speechSynthesis.resume();
     /* Chrome/Android descarta o speak() logo depois do cancel(): espera um instante e confere se começou */
@@ -2073,7 +2076,8 @@ function belaSpeak(text, done) {
       var say = function () {
         var u = new SpeechSynthesisUtterance(text); u.lang = 'pt-BR'; u.rate = voiceRate; u.pitch = voicePitch;
         var vs = speechSynthesis.getVoices(), v = vs.filter(function (x) { return x.name === voiceName; })[0] || vs.filter(function (x) { return /^pt/i.test(x.lang); })[0]; if (v) u.voice = v;
-        u.onend = fin; u.onerror = function (e) { var er = e && e.error; if (er && !/interrupted|canceled/.test(er)) toast(er === 'not-allowed' ? 'Toque na tela e tente de novo para liberar a voz.' : 'A voz do celular não respondeu (' + er + ').'); };
+        u.onstart = function () { dg('fala: começou'); };
+        u.onend = function () { dg('fala: terminou'); fin(); }; u.onerror = function (e) { var er = e && e.error; dg('fala: ERRO ' + er); if (er && !/interrupted|canceled/.test(er)) toast(er === 'not-allowed' ? 'Toque na tela e tente de novo para liberar a voz.' : 'A voz do celular não respondeu (' + er + ').'); };
         speechSynthesis.speak(u);
       };
       say();
@@ -2140,18 +2144,23 @@ function belaInit() {
     if (!micOn || busy || rec || curView !== 'bela') return;
     var r = rec = new SRC(); r.lang = 'pt-BR'; r.continuous = false; r.interimResults = true; r.maxAlternatives = 3;
     var gotAudio = false, chk = first !== true ? 0 : setTimeout(function () { if (!gotAudio && rec === r) { micOn = false; micStop(); micUi(); micIdle(); toast('O microfone não abriu. Verifique a permissão de microfone do navegador e tente de novo.'); } }, 5000);
-    r.onaudiostart = function () { gotAudio = true; clearTimeout(chk); if (!busy) orbState('idle', Date.now() < ctxUntil ? 'Pode falar…' : 'Ouvindo… diga “Bela”'); };
+    r.onstart = function () { dg('mic: iniciou'); };
+    r.onsoundstart = function () { dg('mic: ouviu som'); };
+    r.onspeechstart = function () { dg('mic: ouviu voz'); };
+    r.onnomatch = function () { dg('mic: não entendeu'); };
+    r.onaudiostart = function () { dg('mic: áudio aberto'); gotAudio = true; clearTimeout(chk); if (!busy) orbState('idle', Date.now() < ctxUntil ? 'Pode falar…' : 'Ouvindo… diga “Bela”'); };
     r.onresult = function (e) {
       if (busy) return; gotAudio = true; clearTimeout(chk);
+      dg('mic: resultado ' + (e.results[e.results.length - 1].isFinal ? 'final' : 'parcial') + ' "' + e.results[e.results.length - 1][0].transcript + '"');
       var res = e.results[e.results.length - 1], alts = []; for (var j = 0; j < res.length; j++) alts.push(res[j].transcript);
       if (!res.isFinal) { orbState('idle', 'Ouvi: ' + alts[0]); return; }
       orbState('idle', 'Ouvi: ' + alts[0]); micStop(); micHandle(alts);
     };
     r.onerror = function (e) {
-      var er = e && e.error, msg = { 'not-allowed': 'Microfone bloqueado. Libere o acesso nas configurações do navegador.', 'service-not-allowed': 'O reconhecimento de voz está bloqueado neste navegador. Abra no Safari/Chrome (não no app instalado ou no navegador do WhatsApp/Instagram).', 'audio-capture': 'Não encontrei um microfone disponível. Verifique se outro app o está usando.', 'network': 'Sem conexão com o serviço de voz do navegador.', 'language-not-supported': 'Este navegador não reconhece português por voz.' }[er];
+      var er = e && e.error; dg('mic: ERRO ' + er); var msg = { 'not-allowed': 'Microfone bloqueado. Libere o acesso nas configurações do navegador.', 'service-not-allowed': 'O reconhecimento de voz está bloqueado neste navegador. Abra no Safari/Chrome (não no app instalado ou no navegador do WhatsApp/Instagram).', 'audio-capture': 'Não encontrei um microfone disponível. Verifique se outro app o está usando.', 'network': 'Sem conexão com o serviço de voz do navegador.', 'language-not-supported': 'Este navegador não reconhece português por voz.' }[er];
       if (msg) { micOn = false; micStop(); micUi(); micIdle(); toast(msg); }
     };
-    r.onend = function () { clearTimeout(chk); if (rec === r) { rec = null; if (micOn && !busy) setTimeout(micStart, 250); } };
+    r.onend = function () { dg('mic: encerrou'); clearTimeout(chk); if (rec === r) { rec = null; if (micOn && !busy) setTimeout(micStart, 250); } };
     try { r.start(); } catch (e) { rec = null; clearTimeout(chk); if (first === true) { micOn = false; micUi(); micIdle(); toast('Não consegui iniciar o microfone (' + (e && e.name || 'erro') + ').'); } }
   }
   window.belaMicPause = micStop;
@@ -3327,7 +3336,16 @@ SHEETS.voz = function () {
     '<div class="fld" style="margin-top:14px"><label for="vz-voice">Voz</label><select id="vz-voice">' + (vs.length ? vs.map(function (v) { return '<option value="' + esc(v.name) + '"' + (v.name === voiceName ? ' selected' : '') + '>' + esc(v.name) + ' (' + esc(v.lang) + ')</option>'; }).join('') : '<option value="">Voz padrão do aparelho</option>') + '</select></div>' +
     '<div class="fld"><label for="vz-rate">Velocidade <span class="vz-v" id="vz-rate-v">' + voiceRate.toFixed(2) + 'x</span></label><input id="vz-rate" type="range" min="0.6" max="1.8" step="0.05" value="' + voiceRate + '"></div>' +
     '<div class="fld"><label for="vz-pitch">Tom <span class="vz-v" id="vz-pitch-v">' + voicePitch.toFixed(2) + '</span></label><input id="vz-pitch" type="range" min="0.5" max="2" step="0.05" value="' + voicePitch + '"></div>' +
-    '<div class="btns"><button class="btn ghost" type="button" data-act="voztest" data-keep="1">Testar voz</button><button class="btn" type="button" data-close="1">Concluir</button></div>');
+    '<div class="btns"><button class="btn ghost" type="button" data-act="voztest" data-keep="1">Testar voz</button><button class="btn ghost" type="button" data-act="vzdiag" data-keep="1">Diagnóstico</button><button class="btn" type="button" data-close="1">Concluir</button></div>' +
+    '<pre id="vz-diag" style="margin:12px 0 0;max-height:170px;overflow:auto;font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;user-select:text;-webkit-user-select:text;background:rgba(0,0,0,.06);border-radius:8px;padding:8px">' + esc(DIAG.join('\n')) + '</pre>');
+};
+ACT.vzdiag = function () {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, ss = window.speechSynthesis;
+  dg('app: ' + (navigator.standalone || matchMedia('(display-mode: standalone)').matches ? 'instalado na tela inicial' : 'navegador') + ' | https=' + isSecureContext);
+  dg('navegador: ' + (navigator.userAgent || '').slice(0, 110));
+  dg('voz(fala): ' + (ss ? 'ok, vozes=' + ss.getVoices().length + ', pt=' + ss.getVoices().filter(function (x) { return /^pt/i.test(x.lang); }).length : 'SEM SUPORTE'));
+  dg('reconhecimento(escuta): ' + (SR ? 'ok' : 'SEM SUPORTE'));
+  if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'microphone' }).then(function (r) { dg('permissão do microfone: ' + r.state); }, function () { dg('permissão do microfone: não consultável'); });
 };
 ACT.voztest = function () { var was = voiceOn; voiceOn = true; belaSpeak('Olá! Eu sou a Bela, assistente do seu negócio.', function () { voiceOn = was; }); };
 document.addEventListener('change', function (e) {
