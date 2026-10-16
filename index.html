@@ -514,7 +514,14 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .st.ctb { cursor: pointer; background: #f4ecd9; color: #7a5a1f; border: 1px solid #e3d3ac; font: inherit; font-size: 12px; font-weight: 700; padding: 4px 10px; min-height: 28px; }
 .st.ctb:active { transform: scale(.94); }
 .fld input, .fld select { font: inherit; font-size: 16px; padding: 0 16px; min-height: 52px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; min-width: 0; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+/* tela presa no celular: o painel (nova/editar reserva etc.) não rola para os lados, não puxa a página de trás e os campos de data/hora (iPhone) não alargam a tela */
+.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.scrim { overscroll-behavior: contain; }
+html:has(#scrim:not([hidden])), html:has(#scrim:not([hidden])) body { overflow: hidden; }
+.fld, .two > .fld, .pwrap { min-width: 0; max-width: 100%; }
+.fld input, .fld select, .fld textarea { max-width: 100%; min-width: 0; }
+.fld input[type="time"], .fld input[type="date"] { -webkit-appearance: none; appearance: none; width: 100%; min-width: 0; }
 .err { color: var(--red-ink); font-size: 13px; font-weight: 600; min-height: 18px; margin-bottom: 8px; }
 .toast { display: flex; align-items: center; gap: 14px; position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--forest); color: #fff; padding: 12px 18px; border-radius: 999px; font-weight: 600; font-size: 14px; z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,.3); max-width: calc(100% - 32px); text-align: center; }
 :root[data-theme="dark"] .toast { background: var(--lime); color: #11230a; }
