@@ -2065,7 +2065,7 @@ var voiceOn = true, belaTimer = null, busy = false, voiceRate = 1.05, voicePitch
 function orbState(st, txt) { document.getElementById('orb').dataset.state = st; OrbFX.poke(); MiniFX.poke(); document.getElementById('orbDot').dataset.s = st; document.getElementById('orbTxt').textContent = txt; }
 function belaSpeak(text, done) {
   clearTimeout(belaTimer);
-  var ended = false, fin = function () { if (ended) return; ended = true; clearTimeout(belaTimer); done(); };
+  var started = false, tries = 0, ended = false, fin = function () { if (ended) return; ended = true; clearTimeout(belaTimer); done(); };
   belaTimer = setTimeout(fin, Math.max(4000, text.length * 110));
   if (!voiceOn || !window.speechSynthesis) { dg('fala ignorada: voz ' + (voiceOn ? 'sem suporte no navegador' : 'desligada')); return; }
   dg('falar: vozes=' + speechSynthesis.getVoices().length + ' speaking=' + speechSynthesis.speaking + ' paused=' + speechSynthesis.paused);
@@ -2077,12 +2077,18 @@ function belaSpeak(text, done) {
       var say = function () {
         var u = new SpeechSynthesisUtterance(text); u.lang = 'pt-BR'; u.rate = voiceRate; u.pitch = voicePitch;
         var vs = speechSynthesis.getVoices(), v = vs.filter(function (x) { return x.name === voiceName; })[0] || vs.filter(function (x) { return /^pt/i.test(x.lang); })[0]; if (v) u.voice = v;
-        u.onstart = function () { dg('fala: começou'); };
+        u.onstart = function () { started = true; dg('fala: começou'); };
         u.onend = function () { dg('fala: terminou'); fin(); }; u.onerror = function (e) { var er = e && e.error; dg('fala: ERRO ' + er); if (er && !/interrupted|canceled/.test(er)) toast(er === 'not-allowed' ? 'Toque na tela e tente de novo para liberar a voz.' : 'A voz do celular não respondeu (' + er + ').'); };
         speechSynthesis.speak(u);
       };
       say();
-      setTimeout(function () { if (!ended && !speechSynthesis.speaking && !speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(function () { if (!ended) say(); }, 200); } }, 900);
+      var wd = function () {
+        if (ended || started) return;
+        if (++tries > 2) { dg('fala: não iniciou'); return; }
+        dg('fala: não iniciou, tentando de novo (' + tries + ')'); speechSynthesis.cancel();
+        setTimeout(function () { if (!ended && !started) { say(); setTimeout(wd, 1300); } }, 300);
+      };
+      setTimeout(wd, 1300);
     };
     if (had) setTimeout(run, 80); else run();
   } catch (e) {}
@@ -2148,10 +2154,10 @@ function belaInit() {
   function micStop() { var r = rec; rec = null; if (r) { r.onend = r.onerror = r.onresult = null; try { r.abort(); } catch (e) {} } }
   function micHandle(alts) {
     var i, hit = -1; for (i = 0; i < alts.length; i++) if (WAKE1.test(alts[i])) { hit = i; break; }
-    if (hit < 0 && Date.now() > ctxUntil) { setTimeout(micStart, 250); return; }
+    if (hit < 0 && Date.now() > ctxUntil) { dg('mic: ignorado (sem “Bela”)'); setTimeout(micStart, 700); return; }
     var q = (hit < 0 ? alts[0] : alts[hit]).replace(WAKE, '').replace(/\s+/g, ' ').trim(); ctxUntil = Date.now() + 20000;
-    if (!q) { orbState('idle', 'Pode falar…'); setTimeout(micStart, 250); return; }
-    ask(q);
+    if (!q) { dg('mic: só “Bela”, aguardando pergunta'); orbState('idle', 'Pode falar…'); setTimeout(micStart, 700); return; }
+    dg('mic: pergunta “' + q + '”'); ask(q);
   }
   function micStart(first) {
     if (!micOn || busy || rec || curView !== 'bela') return;
@@ -2183,8 +2189,6 @@ function belaInit() {
     if (!SRC) { toast('Este navegador não suporta reconhecimento de voz.'); return; }
     micOn = !micOn; micUi(); micIdle(); ctxUntil = 0;
     if (micOn) {
-      /* libera a voz da Bela no celular: precisa de um toque do usuário (igual ao desbloqueio do computador) */
-      try { if (window.speechSynthesis) { var uu = new SpeechSynthesisUtterance(' '); uu.volume = 0; speechSynthesis.speak(uu); } } catch (e) {}
       micStart(true);
     } else micStop();
   };
