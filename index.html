@@ -2133,9 +2133,12 @@ function belaInit() {
     if (!micOn || busy || rec || curView !== 'bela') return;
     var r = rec = new SRC(); r.lang = 'pt-BR'; r.continuous = false; r.interimResults = false; r.maxAlternatives = 3;
     r.onresult = function (e) { if (busy) return; var res = e.results[e.results.length - 1], alts = []; for (var j = 0; j < res.length; j++) alts.push(res[j].transcript); micStop(); micHandle(alts); };
-    r.onerror = function (e) { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { micOn = false; micStop(); micUi(); micIdle(); toast('Microfone bloqueado. Libere o acesso nas configurações do navegador.'); } };
+    r.onerror = function (e) {
+      var er = e && e.error, msg = { 'not-allowed': 'Microfone bloqueado. Libere o acesso nas configurações do navegador.', 'service-not-allowed': 'O reconhecimento de voz está bloqueado neste navegador. Abra no Safari/Chrome (não no app instalado ou no navegador do WhatsApp/Instagram).', 'audio-capture': 'Não encontrei um microfone disponível. Verifique se outro app o está usando.', 'network': 'Sem conexão com o serviço de voz do navegador.', 'language-not-supported': 'Este navegador não reconhece português por voz.' }[er];
+      if (msg) { micOn = false; micStop(); micUi(); micIdle(); toast(msg); }
+    };
     r.onend = function () { if (rec === r) { rec = null; if (micOn && !busy) setTimeout(micStart, 250); } };
-    try { r.start(); } catch (e) { rec = null; }
+    try { r.start(); } catch (e) { rec = null; micOn = false; micUi(); micIdle(); toast('Não consegui iniciar o microfone (' + (e && e.name || 'erro') + ').'); }
   }
   window.belaMicPause = micStop;
   window.belaMicResume = function () { micIdle(); micStart(); };
