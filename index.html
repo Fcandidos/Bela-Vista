@@ -420,6 +420,10 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .kv { display: flex; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); font-size: 15px; }
 .kv span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .kv b { flex: none; font-weight: 700; }
+.bela-acts { display: flex; gap: 10px; align-items: center; }
+body.in-bela .nav { display: none; }
+body.in-bela .askbar { bottom: env(safe-area-inset-bottom, 0px); }
+body.in-bela #v-bela .chat { padding-bottom: 90px; }
 .askbar { position: fixed; left: 0; right: 0; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 9; padding: 8px max(20px, env(safe-area-inset-right, 0px)) 10px max(20px, env(safe-area-inset-left, 0px)); background: none; }
 .askin { max-width: 480px; margin: 0 auto; display: flex; gap: 8px; background: var(--card); padding: 6px; border-radius: 999px; box-shadow: 0 8px 26px rgba(10,40,25,.16); border: 1px solid var(--line); }
 #v-bela .chat { padding-bottom: 120px; }
@@ -1254,7 +1258,7 @@ textarea.area { font: inherit; font-size: 16px; padding: 12px 14px; min-height: 
     <section class="view" id="v-bela" hidden>
       <div class="page-head phead">
         <div><h1 class="page-t">Bela</h1><p class="page-s">Assistente inteligente do seu negócio</p></div>
-        <button class="round" id="voiceBtn" aria-label="Voz da Bela ligada" aria-pressed="true"></button>
+        <div class="bela-acts"><button class="round" id="voiceBtn" aria-label="Voz da Bela ligada" aria-pressed="true"></button><button class="round" id="belaHome" type="button" aria-label="Voltar ao início"></button></div>
       </div>
       <div class="orb-wrap">
         <div class="orb" id="orb" data-state="idle" aria-hidden="true"><canvas id="orbCv"></canvas></div>
@@ -2108,6 +2112,7 @@ function belaInit() {
   var vb = document.getElementById('voiceBtn');
   function setV() { vb.innerHTML = ic(voiceOn ? 'vol' : 'volx'); vb.setAttribute('aria-pressed', voiceOn); vb.setAttribute('aria-label', voiceOn ? 'Voz da Bela ligada' : 'Voz da Bela desligada'); }
   vb.onclick = function () { openSheet('voz'); };
+  var bh = document.getElementById('belaHome'); bh.innerHTML = ic('home'); bh.onclick = function () { go('inicio'); };
   window.setVoiceIco = setV;
   setV(); ask('Quanto faturei esse mês?', true);
 }
@@ -2176,6 +2181,7 @@ function go(id) {
   var cur = SUBS.indexOf(id) > -1 ? (backTo || 'mais') : id;
   document.querySelectorAll('#nav button').forEach(function (b) { if (b.dataset.t === cur) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   if (id === 'bela') OrbFX.start(); else OrbFX.stop();
+  document.body.classList.toggle('in-bela', id === 'bela');
   document.getElementById('homeTop').hidden = id !== 'inicio'; document.getElementById('stickTop').hidden = id !== 'inicio';
   if (framed()) document.getElementById('scroller').scrollTop = 0; else window.scrollTo(0, 0);
   updHome();
