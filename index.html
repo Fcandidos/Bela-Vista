@@ -3646,6 +3646,7 @@ if (LIVE) (function () {
   /* ---- bloqueio de escrita (fase 1) ---- */
   var RO_MSG = 'Somente leitura por enquanto. Para editar, use o site no computador.';
   var BLOCK_SHEETS = { pago: 1, reverter: 1, cancelar: 1, deletar: 1, despesa: 1, novouser: 1, perm: 1, email: 1, primeiroacesso: 1 };
+  delete BLOCK_SHEETS.despesa; /* nova despesa liberada; editar/excluir seguem bloqueados (BLOCK_ACTS) */
   var BLOCK_ACTS = { pay: 1, rev: 1, mail: 1, cancelres: 1, delres: 1, delres2: 1, editdesp: 1, deldesp: 1, perm: 1, saveperm: 1, resetpw: 1, togglu: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
   function ro() { toast(RO_MSG); }
   document.addEventListener('click', function (e) {
@@ -3656,7 +3657,7 @@ if (LIVE) (function () {
     else if (d.act) { var nm = d.act.split(':')[0]; if (BLOCK_ACTS[nm]) block = true; }
     if (block) { e.preventDefault(); e.stopImmediatePropagation(); ro(); }
   }, true);
-  document.addEventListener('submit', function (e) { if ((e.target.id === 'sf' && !e.target.querySelector('#f-nome')) || e.target.id === 'pwForm' || e.target.id === 'clForm') { e.preventDefault(); e.stopImmediatePropagation(); ro(); } }, true);
+  document.addEventListener('submit', function (e) { if ((e.target.id === 'sf' && !e.target.querySelector('#f-nome') && !e.target.querySelector('#f-ddata')) || e.target.id === 'pwForm' || e.target.id === 'clForm') { e.preventDefault(); e.stopImmediatePropagation(); ro(); } }, true);
   ['openSheet'].forEach(function (nm) { var o = window[nm]; window[nm] = function (kind) { if (BLOCK_SHEETS[kind]) { ro(); return; } return o.apply(this, arguments); }; });
 
   /* ---- nova reserva (única escrita liberada nesta fase): grava no MESMO formato do site ---- */
@@ -3705,6 +3706,25 @@ if (LIVE) (function () {
     });
   }
     document.addEventListener('submit', function (e) { if (e.target.id === 'sf' && e.target.querySelector('#f-nome') && true) { e.preventDefault(); e.stopImmediatePropagation(); liveSaveRes(e); } }, true);
+
+  /* ---- nova despesa: grava no MESMO formato do site ({id,data,cat,desc,obs,valor}) ---- */
+  function liveSaveDesp(e) {
+    e.preventDefault(); var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]');
+    var dt = document.getElementById('f-ddata').value, val = parseMoeda(document.getElementById('f-dval').value), desc = document.getElementById('f-ddesc').value.trim(), obs = document.getElementById('f-dobs').value.trim();
+    if (!dt || !validDate(dt) || !CAT[catSel] || !desc || !(val > 0)) { er.textContent = 'Preencha data, categoria, descrição e valor.'; return; }
+    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var id = 'D-' + Date.now(), dados = { id: id, data: dt, cat: catSel, desc: desc, valor: val, obs: obs };
+    btn.disabled = true; er.textContent = '';
+    var timeout = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
+    Promise.race([LV.db.collection('despesas').doc(id).set(dados), timeout]).then(function () {
+      if (!DESP.some(function (d) { return d.id === id; })) DESP.push({ id: id, data: dt, cat: catSel, desc: desc, valor: val, obs: obs });
+      closeSheet(true); renderAll(); toast('Despesa lançada!');
+    }, function (x) {
+      btn.disabled = false; var c = x && x.code || '';
+      er.textContent = c === 'permission-denied' ? 'Sem permissão para lançar despesas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A despesa NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a despesa. Tente novamente.';
+    });
+  }
+  document.addEventListener('submit', function (e) { if (e.target.id === 'sf' && e.target.querySelector('#f-ddata')) { e.preventDefault(); e.stopImmediatePropagation(); liveSaveDesp(e); } }, true);
 
   /* ---- mapeamento: documentos do site -> modelo do app ---- */
   function iso10(v) { v = String(v || ''); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : ''; }
