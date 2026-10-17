@@ -3646,15 +3646,15 @@ if (LIVE) (function () {
   /* ---- bloqueio de escrita (fase 1) ---- */
   var RO_MSG = 'Somente leitura por enquanto. Para editar, use o site no computador.';
   /* Liberado: nova/editar reserva, pagamento, reverter, cancelar, despesas (nova/editar), checklist (marcar/adicionar), ativar/desativar usuário, permissões.
-     SEGUE BLOQUEADO (regra do dono: o app nunca apaga nada): excluir reserva/despesa/tarefa/usuário, limpar logs/sessões, e-mails, redefinir senha, criar usuário. */
-  var BLOCK_SHEETS = { deletar: 1, novouser: 1, email: 1, primeiroacesso: 1 };
-  var BLOCK_ACTS = { mail: 1, delres: 1, delres2: 1, deldesp: 1, resetpw: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
+     Exclusão liberada pelo dono só para reserva, despesa e tarefa do checklist. SEGUE BLOQUEADO: excluir usuário, limpar logs/sessões, e-mails, redefinir senha, criar usuário. */
+  var BLOCK_SHEETS = { novouser: 1, email: 1, primeiroacesso: 1 };
+  var BLOCK_ACTS = { mail: 1, resetpw: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
   function ro() { toast(RO_MSG); }
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('button,[data-det]') : null; if (!b) return;
     var d = b.dataset || {}, block = false;
     if (d.sheet && BLOCK_SHEETS[d.sheet]) block = true;
-    else if (d.ckdel || d.clearlogs || d.killall || d.kill) block = true;
+    else if (d.clearlogs || d.killall || d.kill) block = true;
     else if (d.ck && !LV.ckLoaded) { e.preventDefault(); e.stopImmediatePropagation(); toast('Aguarde a lista carregar.'); return; }
     else if (d.act) { var nm = d.act.split(':')[0]; if (BLOCK_ACTS[nm]) block = true; }
     if (block) { e.preventDefault(); e.stopImmediatePropagation(); ro(); }
@@ -3712,6 +3712,32 @@ if (LIVE) (function () {
     else upd = { status: 'cancelada' };
     liveWrite(LV.db.collection('reservas').doc(x._doc).update(upd), btn, er, function () { if (f.onsubmit) f.onsubmit(e); }, 'A alteração');
   }
+
+  /* ---- excluir reserva (pede a senha) e excluir despesa: apagam o documento no Firestore ---- */
+  ACT.delres2 = function (id) {
+    if (!needRes()) return; var x = findRes(id); if (!x || !x._doc) return;
+    comReauth(function () {
+      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      liveWrite(LV.db.collection('reservas').doc(x._doc).delete(), null, null, function () {
+        var i = RES.findIndex(function (r) { return r._doc === x._doc; }); if (i > -1) RES.splice(i, 1);
+        logRes('RESERVA_EXCLUIDA'); closeSheet(true); renderAll(); toast('Reserva deletada permanentemente');
+      }, 'A exclusão');
+    });
+  };
+  ACT.deldesp = function (id) {
+    if (!needDesp()) return; var d = DESP.filter(function (x) { return x.id === id; })[0]; if (!d || !d._doc) return;
+    confirmSheet('Excluir a despesa “' + d.desc + '” de ' + brl.format(d.valor) + '?', 'Excluir', function () {
+      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      var bak = { id: d.id, data: d.data, cat: d.cat, desc: d.desc, valor: d.valor, obs: d.obs || '' }, docId = d._doc;
+      liveWrite(LV.db.collection('despesas').doc(docId).delete(), null, null, function () {
+        var i = DESP.findIndex(function (x) { return x._doc === docId; }); if (i > -1) DESP.splice(i, 1);
+        renderAll();
+        toast('Despesa excluída', function () {
+          LV.db.collection('despesas').doc(docId).set(bak).then(function () { if (!DESP.some(function (x) { return x._doc === docId; })) DESP.push({ id: bak.id, _doc: docId, data: bak.data, cat: bak.cat, desc: bak.desc, valor: bak.valor, obs: bak.obs }); renderAll(); toast('Despesa restaurada'); }, function () { toast('Não foi possível restaurar a despesa.'); });
+        });
+      }, 'A exclusão');
+    });
+  };
 
   /* ---- usuários: ativar/desativar e permissões (nada é apagado) ---- */
   var togguRaw = ACT.togglu;
