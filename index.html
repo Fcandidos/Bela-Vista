@@ -3645,20 +3645,101 @@ if (LIVE) (function () {
 
   /* ---- bloqueio de escrita (fase 1) ---- */
   var RO_MSG = 'Somente leitura por enquanto. Para editar, use o site no computador.';
-  var BLOCK_SHEETS = { pago: 1, reverter: 1, cancelar: 1, deletar: 1, despesa: 1, novouser: 1, perm: 1, email: 1, primeiroacesso: 1 };
-  delete BLOCK_SHEETS.despesa; /* nova despesa liberada; editar/excluir seguem bloqueados (BLOCK_ACTS) */
-  var BLOCK_ACTS = { pay: 1, rev: 1, mail: 1, cancelres: 1, delres: 1, delres2: 1, editdesp: 1, deldesp: 1, perm: 1, saveperm: 1, resetpw: 1, togglu: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
+  /* Liberado: nova/editar reserva, pagamento, reverter, cancelar, despesas (nova/editar), checklist (marcar/adicionar), ativar/desativar usuário, permissões.
+     SEGUE BLOQUEADO (regra do dono: o app nunca apaga nada): excluir reserva/despesa/tarefa/usuário, limpar logs/sessões, e-mails, redefinir senha, criar usuário. */
+  var BLOCK_SHEETS = { deletar: 1, novouser: 1, email: 1, primeiroacesso: 1 };
+  var BLOCK_ACTS = { mail: 1, delres: 1, delres2: 1, deldesp: 1, resetpw: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
   function ro() { toast(RO_MSG); }
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('button,[data-det]') : null; if (!b) return;
     var d = b.dataset || {}, block = false;
     if (d.sheet && BLOCK_SHEETS[d.sheet]) block = true;
-    else if (d.pay || d.ck || d.ckdel || d.clearlogs || d.killall || d.kill) block = true;
+    else if (d.ckdel || d.clearlogs || d.killall || d.kill) block = true;
+    else if (d.ck && !LV.ckLoaded) { e.preventDefault(); e.stopImmediatePropagation(); toast('Aguarde a lista carregar.'); return; }
     else if (d.act) { var nm = d.act.split(':')[0]; if (BLOCK_ACTS[nm]) block = true; }
     if (block) { e.preventDefault(); e.stopImmediatePropagation(); ro(); }
   }, true);
-  document.addEventListener('submit', function (e) { if ((e.target.id === 'sf' && !e.target.querySelector('#f-nome') && !e.target.querySelector('#f-ddata')) || e.target.id === 'pwForm' || e.target.id === 'clForm') { e.preventDefault(); e.stopImmediatePropagation(); ro(); } }, true);
-  ['openSheet'].forEach(function (nm) { var o = window[nm]; window[nm] = function (kind) { if (BLOCK_SHEETS[kind]) { ro(); return; } return o.apply(this, arguments); }; });
+  /* formulários: cada um tem seu salvamento real; qualquer outro continua bloqueado */
+  document.addEventListener('submit', function (e) {
+    var t = e.target, id = t.id, q = function (s) { return t.querySelector(s); };
+    if (id === 'clForm' && !LV.ckLoaded) { e.preventDefault(); e.stopImmediatePropagation(); toast('Aguarde a lista carregar.'); return; }
+    if (id === 'clForm') return;
+    if (id !== 'sf' && id !== 'pwForm') return;
+    if (id === 'sf' && (q('#f-nome') || q('#f-ddata'))) return; /* reserva e despesa: tratados abaixo */
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (id === 'sf' && q('#f-reauth')) liveReauth(e);
+    else if (id === 'sf' && (q('#f-ptipo') || q('#f-rmot') || q('#f-cmot'))) liveResAct(e);
+    else ro();
+  }, true);
+  ['openSheet'].forEach(function (nm) { var o = window[nm]; window[nm] = function (kind, arg) { if (BLOCK_SHEETS[kind]) { ro(); return; } if (kind === 'pago' || kind === 'reverter' || kind === 'cancelar') LV.resArg = arg; if (kind === 'despesa') LV.despArg = arg; return o.apply(this, arguments); }; });
+
+  /* ---- confirmar senha (ações críticas): reautentica no Firebase com a senha real ---- */
+  function liveReauth(e) {
+    var f = e.target, er = document.getElementById('sErr'), v = document.getElementById('f-reauth').value, u = fbReady() && LV.auth.currentUser;
+    if (!v) { er.textContent = 'Informe sua senha.'; return; }
+    if (!u || !u.email) { er.textContent = 'Sessão expirada. Entre de novo.'; return; }
+    var btn = f.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, v)).then(function () {
+      closeSheet(true); var cb = reauthCb; reauthCb = null; if (cb) cb();
+    }, function (x) {
+      if (btn) btn.disabled = false; var c = x && x.code || '';
+      if (/network|unavailable|timeout/.test(c)) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+      reauthTries++; document.getElementById('f-reauth').value = '';
+      if (reauthTries >= 5 || /too-many/.test(c)) { reauthCb = null; closeSheet(true); logEvent('LOGIN_ERRO', AUTH.email); toast('Muitas tentativas. Ação cancelada.'); return; }
+      er.textContent = 'Senha incorreta. Tente novamente.';
+    });
+  }
+
+  /* ---- reserva: registrar pagamento / reverter / cancelar (grava o campo no doc, depois roda a rotina do app) ---- */
+  function liveWrite(promise, btn, er, okFn, what) {
+    var timeout = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
+    if (btn) btn.disabled = true; if (er) er.textContent = '';
+    Promise.race([promise, timeout]).then(okFn, function (x) {
+      if (btn) btn.disabled = false; var c = x && x.code || '';
+      var m = c === 'permission-denied' ? 'Sem permissão para esta ação.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. ' + what + ' NÃO foi salvo. Tente novamente.' : 'Não foi possível salvar. Tente novamente.';
+      if (er) er.textContent = m; else toast(m);
+    });
+  }
+  function liveResAct(e) {
+    var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]'), x = findRes(LV.resArg), upd;
+    if (!x || !x._doc) { er.textContent = 'Reserva não encontrada.'; return; }
+    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    if (f.querySelector('#f-ptipo')) {
+      if (!document.getElementById('f-pdata').value) { er.textContent = 'Informe a data do pagamento.'; return; }
+      var sn = document.getElementById('f-ptipo').value === 'sinal' ? Math.min(x.total, Math.max(x.sinal, x.total * 0.5)) : x.total;
+      upd = { sinal: sn }; if (sn >= x.total) upd.pagamento = 'pago'; if (x.status === 'pendente') upd.status = 'confirmada';
+    } else if (f.querySelector('#f-rmot')) upd = { pagamento: 'pendente' };
+    else upd = { status: 'cancelada' };
+    liveWrite(LV.db.collection('reservas').doc(x._doc).update(upd), btn, er, function () { if (f.onsubmit) f.onsubmit(e); }, 'A alteração');
+  }
+
+  /* ---- usuários: ativar/desativar e permissões (nada é apagado) ---- */
+  var togguRaw = ACT.togglu;
+  ACT.togglu = function (id) {
+    var u = USERS.filter(function (x) { return x.id === id; })[0]; if (!u || !isAdmin() || u.principal || u.email === AUTH.email) return deny();
+    if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+    liveWrite(LV.db.collection('usuarios').doc(u.id).update({ status: u.status === 'ativo' ? 'inativo' : 'ativo' }), null, null, function () { togguRaw(id); }, 'A alteração');
+  };
+  ACT.saveperm = function (email) {
+    var u = findUser(email); if (!u || !isAdmin() || u.principal || u.email === AUTH.email) return deny();
+    var ps = Array.prototype.slice.call(document.querySelectorAll('#permList input:checked')).map(function (c) { return c.value; }).filter(function (v) { return ALLM.indexOf(v) > -1; });
+    comReauth(function () {
+      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      liveWrite(LV.db.collection('usuarios').doc(u.id).update({ permissoes: ps }), null, null, function () { u.perms = ps; logEvent('PERMISSOES_ALTERADAS', AUTH.email); closeSheet(true); renderAdm(); toast('Permissões salvas'); }, 'A alteração');
+    });
+  };
+
+  /* ---- checklist: marcar/adicionar grava a lista inteira em checklist/items (remover segue bloqueado) ---- */
+  function ckSer() { return JSON.stringify(CHECK.map(function (t) { return { id: t.id, txt: t.txt, feito: !!t.on }; })); }
+  var renderCheckRaw = renderCheck;
+  window.renderCheck = function () {
+    renderCheckRaw();
+    if (!LV.ckLoaded || !AUTH.email) return;
+    var s = ckSer(); if (s === LV.ckLast) return;
+    var prev = LV.ckLast; LV.ckLast = s;
+    if (!fbReady() || !LV.auth.currentUser) return;
+    LV.db.collection('checklist').doc('items').set({ data: JSON.parse(s) }, { merge: true }).catch(function () { LV.ckLast = prev; toast('Não foi possível salvar a lista. Tente novamente.'); });
+  };
 
   /* ---- nova reserva (única escrita liberada nesta fase): grava no MESMO formato do site ---- */
   function liveSaveRes(e) {
@@ -3713,6 +3794,11 @@ if (LIVE) (function () {
     var dt = document.getElementById('f-ddata').value, val = parseMoeda(document.getElementById('f-dval').value), desc = document.getElementById('f-ddesc').value.trim(), obs = document.getElementById('f-dobs').value.trim();
     if (!dt || !validDate(dt) || !CAT[catSel] || !desc || !(val > 0)) { er.textContent = 'Preencha data, categoria, descrição e valor.'; return; }
     if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var ed = DESP.filter(function (d) { return d.id === LV.despArg; })[0];
+    if (ed && ed._doc) {
+      liveWrite(LV.db.collection('despesas').doc(ed._doc).update({ data: dt, cat: catSel, desc: desc, valor: val, obs: obs }), btn, er, function () { if (f.onsubmit) f.onsubmit(e); }, 'A alteração');
+      return;
+    }
     var id = 'D-' + Date.now(), dados = { id: id, data: dt, cat: catSel, desc: desc, valor: val, obs: obs };
     btn.disabled = true; er.textContent = '';
     var timeout = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
@@ -3736,7 +3822,7 @@ if (LIVE) (function () {
   }
   function mapDesp(id, d) {
     var data = iso10(d.data); if (!data) return null;
-    return { id: String(d.id || id), data: data, cat: CAT[d.cat] ? d.cat : 'outros', desc: String(d.desc || d.descricao || 'Despesa'), valor: Number(d.valor) || 0, obs: String(d.obs || '') };
+    return { id: String(d.id || id), _doc: id, data: data, cat: CAT[d.cat] ? d.cat : 'outros', desc: String(d.desc || d.descricao || 'Despesa'), valor: Number(d.valor) || 0, obs: String(d.obs || '') };
   }
   function brDate(v) { v = iso10(v); return v ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '—'; }
   function mapUser(id, d) {
@@ -3778,7 +3864,7 @@ if (LIVE) (function () {
   function loadChecklist() {
     LV.db.collection('checklist').doc('items').get().then(function (doc) {
       var arr = doc.exists && doc.data() && Array.isArray(doc.data().data) ? doc.data().data : [];
-      CHECK.length = 0; arr.forEach(function (t, i) { CHECK.push({ id: t.id != null ? t.id : i + 1, txt: String(t.txt || ''), on: !!t.feito }); }); if (AUTH.email) renderCheck();
+      CHECK.length = 0; arr.forEach(function (t, i) { CHECK.push({ id: t.id != null ? t.id : i + 1, txt: String(t.txt || ''), on: !!t.feito }); }); LV.ckLast = ckSer(); LV.ckLoaded = true; if (AUTH.email) renderCheck();
     }, function () {});
   }
   function loadAdminLists() {
