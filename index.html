@@ -2413,7 +2413,7 @@ var PAGES = {
   seguranca: function () {
     var checks = [['Sessão expira por inatividade (10 minutos) e após 8 horas', true], ['Bloqueio após 5 tentativas de login (15 minutos)', true], ['Textos exibidos de forma segura, contra injeção de código (XSS)', true], ['Senha reconfirmada em ações críticas', true], ['Permissões por módulo aplicadas na interface', true], ['Redefinição de senha sem revelar se o e-mail existe', true], ['Registro de acessos e eventos', true], ['Conexão HTTPS', location.protocol === 'https:'], ['Autenticação e dados em servidor com senha em hash', false]], okn = checks.filter(function (c) { return c[1]; }).length;
     return head('Segurança', 'Auditoria · Autenticação · Proteções ativas') +
-      '<div class="card"><div class="card-h"><div class="logo t-green">' + ic('shield') + '</div><div><h3>Score de segurança</h3><p>Avaliação geral do sistema</p></div></div><div class="goal">' + ringSVG(Math.round(okn / checks.length * 100)) + '<div><strong>' + okn + ' de ' + checks.length + '</strong><span>proteções ativas</span></div></div><div style="margin-top:8px">' + checks.map(function (c) { return '<div class="crow"><i class="' + (c[1] ? '' : 'no') + '">' + ic(c[1] ? 'check' : 'x') + '</i><span>' + c[0] + '</span></div>'; }).join('') + '</div><p class="hint">' + (LIVE ? 'Login pela autenticação do Firebase, a mesma conta do site. Esta fase do app mobile é somente leitura: nada é gravado no banco.' : 'Esta versão roda só no navegador: o login é uma simulação e os dados não ficam guardados em servidor. Em produção, use a autenticação real do sistema.') + '</p></div>' +
+      '<div class="card"><div class="card-h"><div class="logo t-green">' + ic('shield') + '</div><div><h3>Score de segurança</h3><p>Avaliação geral do sistema</p></div></div><div class="goal">' + ringSVG(Math.round(okn / checks.length * 100)) + '<div><strong>' + okn + ' de ' + checks.length + '</strong><span>proteções ativas</span></div></div><div style="margin-top:8px">' + checks.map(function (c) { return '<div class="crow"><i class="' + (c[1] ? '' : 'no') + '">' + ic(c[1] ? 'check' : 'x') + '</i><span>' + c[0] + '</span></div>'; }).join('') + '</div><p class="hint">' + (LIVE ? 'Login pela autenticação do Firebase, a mesma conta do site. As ações feitas aqui são gravadas no mesmo banco do site.' : 'Esta versão roda só no navegador: o login é uma simulação e os dados não ficam guardados em servidor. Em produção, use a autenticação real do sistema.') + '</p></div>' +
       '<div class="card"><div class="card-h"><div class="logo t-blue">' + ic('user') + '</div><div><h3>Sessão atual</h3></div></div>' + sessInfo() + '</div>' +
       '<div class="card"><div class="card-h"><div class="logo t-amber">' + ic('alert') + '</div><div><h3>Tentativas de login</h3></div></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>' + att.count + ' de ' + LOGIN_MAX + ' tentativas</span><span class="' + (att.blockedUntil ? 'err-t' : 'ok-t') + '">' + (att.blockedUntil ? 'Bloqueado' : 'Sem bloqueio') + '</span></div><div class="progress"><i style="width:' + Math.max(2, att.count / LOGIN_MAX * 100) + '%"></i></div><p class="sub">Depois de 5 erros seguidos o acesso fica bloqueado por 15 minutos.</p></div>' +
       '<div class="card"><div class="card-h"><div class="logo t-violet">' + ic('lock') + '</div><div><h3>Alterar senha</h3><p>Mínimo 8 caracteres com números e letras</p></div></div><form id="pwForm" novalidate>' +
@@ -3647,14 +3647,15 @@ if (LIVE) (function () {
   var RO_MSG = 'Somente leitura por enquanto. Para editar, use o site no computador.';
   /* Liberado: nova/editar reserva, pagamento, reverter, cancelar, despesas (nova/editar), checklist (marcar/adicionar), ativar/desativar usuário, permissões.
      Exclusão liberada pelo dono só para reserva, despesa e tarefa do checklist. SEGUE BLOQUEADO: excluir usuário, limpar logs/sessões, e-mails, redefinir senha, criar usuário. */
-  var BLOCK_SHEETS = { novouser: 1, email: 1, primeiroacesso: 1 };
-  var BLOCK_ACTS = { mail: 1, resetpw: 1, deluser: 1, cleansess: 1, cleanwalog: 1 };
+  var BLOCK_SHEETS = { novouser: 1, primeiroacesso: 1 }; /* só aparece p/ usuário com senha provisória do modo demo; no real a pessoa define a senha pelo e-mail */
+  var BLOCK_ACTS = { deluser: 1, cleansess: 1 };
   function ro() { toast(RO_MSG); }
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('button,[data-det]') : null; if (!b) return;
     var d = b.dataset || {}, block = false;
-    if (d.sheet && BLOCK_SHEETS[d.sheet]) block = true;
-    else if (d.clearlogs || d.killall || d.kill) block = true;
+    if (d.killall || d.kill) { e.preventDefault(); e.stopImmediatePropagation(); if (d.killall) liveKillAll(); else liveKill(+d.kill); return; }
+    if (d.clearlogs) block = true;
+    else if (d.sheet && BLOCK_SHEETS[d.sheet]) block = true;
     else if (d.ck && !LV.ckLoaded) { e.preventDefault(); e.stopImmediatePropagation(); toast('Aguarde a lista carregar.'); return; }
     else if (d.act) { var nm = d.act.split(':')[0]; if (BLOCK_ACTS[nm]) block = true; }
     if (block) { e.preventDefault(); e.stopImmediatePropagation(); ro(); }
@@ -3667,7 +3668,8 @@ if (LIVE) (function () {
     if (id !== 'sf' && id !== 'pwForm') return;
     if (id === 'sf' && (q('#f-nome') || q('#f-ddata'))) return; /* reserva e despesa: tratados abaixo */
     e.preventDefault(); e.stopImmediatePropagation();
-    if (id === 'sf' && q('#f-reauth')) liveReauth(e);
+    if (id === 'pwForm') livePw(e);
+    else if (id === 'sf' && q('#f-reauth')) liveReauth(e);
     else if (id === 'sf' && (q('#f-ptipo') || q('#f-rmot') || q('#f-cmot'))) liveResAct(e);
     else ro();
   }, true);
@@ -3739,7 +3741,48 @@ if (LIVE) (function () {
     });
   };
 
-  /* ---- usuários: ativar/desativar e permissões (nada é apagado) ---- */
+  /* ---- administração: encerrar sessões, redefinir senha, trocar a própria senha. Criar/excluir usuário e limpar logs/sessões ficam só no site do computador ---- */
+  function liveOnline() { if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return false; } return true; }
+  function liveKill(i) {
+    var s = SESS[i]; if (!s || !s._doc) { toast('Sessão não encontrada.'); return; }
+    confirmSheet('Encerrar a sessão de ' + s.u + '?', 'Encerrar', function () {
+      if (!liveOnline()) return;
+      liveWrite(LV.db.collection('sessoes_ativas').doc(s._doc).update({ status: 'offline', encerradoPor: 'admin', encerradoEm: new Date().toISOString() }), null, null, function () { s.ping = 9999; s.st = 'offline'; renderAdm(); toast('Sessão encerrada'); }, 'O encerramento');
+    });
+  }
+  function liveKillAll() {
+    confirmSheet('Encerrar todas as sessões ativas?', 'Encerrar', function () {
+      if (!liveOnline()) return;
+      liveWrite(LV.db.collection('sessoes_ativas').where('status', '==', 'online').get().then(function (snap) {
+        var b = LV.db.batch(), n = 0, now = Date.now();
+        snap.docs.forEach(function (d) { var p = d.data().ultimo_ping_iso ? new Date(d.data().ultimo_ping_iso).getTime() : 0; if (now - p < 120000) { b.update(d.ref, { status: 'offline' }); n++; } });
+        return n ? b.commit().then(function () { return n; }) : 0;
+      }), null, null, function (n) { SESS.forEach(function (x) { x.ping = 9999; x.st = 'offline'; }); renderAdm(); toast(n + ' sessões encerradas'); }, 'O encerramento');
+    });
+  }
+  ACT.resetpw = function (email) {
+    var u = findUser(email); if (!u || !isAdmin()) return deny();
+    confirmSheet('Enviar e-mail de redefinição de senha para ' + email + '?', 'Enviar', function () {
+      var now = Date.now(), list = (resetReq[email] || []).filter(function (t) { return now - t < 3600000; });
+      if (list.length >= 3) { toast('Limite de 3 redefinições por hora para este e-mail'); return; }
+      if (!liveOnline()) return;
+      LV.auth.sendPasswordResetEmail(email).then(function () { list.push(now); resetReq[email] = list; toast('E-mail de redefinição enviado para ' + email); }, function () { toast('Não foi possível enviar o e-mail.'); });
+    });
+  };
+  function livePw(e) {
+    var a = document.getElementById('pwAtual').value, n = document.getElementById('pwNew').value, c = document.getElementById('pwConf').value, er = document.getElementById('sErr'), q = reqList(n), u = fbReady() && LV.auth.currentUser;
+    er.textContent = !a ? 'Informe a senha atual.' : !pwOk(n) ? 'A nova senha precisa ter 8 caracteres ou mais, com letras e números.' : n !== c ? 'A confirmação não confere com a nova senha.' : a === n ? 'A nova senha precisa ser diferente da atual.' : !u || !u.email ? 'Sessão expirada. Entre de novo.' : '';
+    if (er.textContent) return;
+    var form = e.target, btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
+    u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, a)).then(function () { return u.updatePassword(n); }).then(function () {
+      btn.disabled = false; form.reset(); document.getElementById('pwBar').style.width = '0'; document.getElementById('pwReq').innerHTML = reqList('').html; document.getElementById('pwTxt').textContent = 'Digite a nova senha'; logEvent('SENHA_ALTERADA', AUTH.email); toast('Senha alterada!');
+    }, function (x) {
+      btn.disabled = false; var c2 = x && x.code || '';
+      er.textContent = /wrong-password|invalid-credential|invalid-login/.test(c2) ? 'Senha atual incorreta.' : c2 === 'auth/weak-password' ? 'Senha fraca. Escolha outra.' : /network|unavailable/.test(c2) ? 'Sem conexão com o servidor. Tente novamente.' : /too-many/.test(c2) ? 'Muitas tentativas. Aguarde alguns minutos.' : 'Não foi possível alterar a senha.';
+    });
+  }
+
+  /* ---- usuários: ativar/desativar e permissões ---- */
   var togguRaw = ACT.togglu;
   ACT.togglu = function (id) {
     var u = USERS.filter(function (x) { return x.id === id; })[0]; if (!u || !isAdmin() || u.principal || u.email === AUTH.email) return deny();
@@ -3863,9 +3906,9 @@ if (LIVE) (function () {
     if (!CITY[loc] && d.latitude != null && d.longitude != null && isFinite(+d.latitude) && isFinite(+d.longitude)) CITY[loc] = [+d.latitude, +d.longitude];
     return { ts: isoLocal(d.data_hora_iso), ev: String(d.tipo_evento || 'EVENTO').slice(0, 40), email: String(d.usuario_email || '—').toLowerCase(), loc: loc, disp: devLabel(d.tipo_dispositivo), ip: String(d.ip_usuario || '—') };
   }
-  function mapSess(d) {
+  function mapSess(d, docId) {
     var ping = Math.max(0, Math.round((Date.now() - new Date(d.ultimo_ping_iso || d.data_login_iso || 0).getTime()) / 60000)), loc = [d.cidade, d.regiao].filter(function (x) { return x && x !== 'null'; }).join(', ') || 'Local desconhecido';
-    return { u: String(d.usuario_email || '').toLowerCase(), disp: devLabel(d.tipo_dispositivo), loc: loc, ping: isFinite(ping) ? ping : 9999, st: d.status };
+    return { _doc: docId, u: String(d.usuario_email || '').toLowerCase(), disp: devLabel(d.tipo_dispositivo), loc: loc, ping: isFinite(ping) ? ping : 9999, st: d.status };
   }
 
   /* ---- Firebase ---- */
@@ -3898,7 +3941,7 @@ if (LIVE) (function () {
       LV.db.collection('logs_acesso').orderBy('data_hora_iso', 'desc').limit(200).get().then(function (snap) { LOGS.length = 0; snap.docs.forEach(function (d) { LOGS.push(mapLog(d.data())); }); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
     }
     if (can('sessoes') || can('online')) {
-      LV.db.collection('sessoes_ativas').orderBy('data_login_iso', 'desc').limit(100).get().then(function (snap) { SESS.length = 0; snap.docs.forEach(function (d) { SESS.push(mapSess(d.data())); }); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
+      LV.db.collection('sessoes_ativas').orderBy('data_login_iso', 'desc').limit(100).get().then(function (snap) { SESS.length = 0; snap.docs.forEach(function (d) { SESS.push(mapSess(d.data(), d.id)); }); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
     }
     if (can('usuarios')) {
       LV.db.collection('usuarios').get().then(function (snap) { var me = curUser(); USERS.length = 0; snap.docs.forEach(function (d) { USERS.push(mapUser(d.id, d.data())); }); if (me && !findUser(me.email)) USERS.unshift(me); if (AUTH.email && curView === 'adm') renderAdm(); }, function () {});
