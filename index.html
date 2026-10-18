@@ -1773,7 +1773,7 @@ function renderRes() {
   var q = norm(resQ);
   var l = RES.filter(function (r) { return (filtro === 'all' || r.status === filtro) && (!q || norm(r.nome).indexOf(q) > -1 || norm(r.id).indexOf(q) > -1); });
   var s = document.getElementById('resSort').value.split('-'), dir = s[1] === 'asc' ? 1 : -1;
-  l = sortTbl(l, s[0], dir, { data: function (r) { return primeira(r); }, total: function (r) { return r.total; }, id: function (r) { return +r.id.slice(3); }, nome: function (r) { return r.nome.toLowerCase(); }, status: function (r) { return r.status; } });
+  l = sortTbl(l, s[0], dir, { data: function (r) { return primeira(r); }, total: function (r) { return r.total; }, id: function (r) { var m = /(\d+)/.exec(r.id); return m ? +m[1] : 0; }, nome: function (r) { return r.nome.toLowerCase(); }, status: function (r) { return r.status; } });
   document.getElementById('resCount').textContent = l.length + (l.length === 1 ? ' reserva' : ' reservas');
   var at2 = l.filter(function (r) { return r.status !== 'cancelada'; });
   document.getElementById('resTot').innerHTML = l.length ? '<div class="card tot"><small>TOTAL · ' + at2.length + (at2.length === 1 ? ' reserva ativa' : ' reservas ativas') + '</small><div class="tot-g"><div><span>Total</span><b>' + brl0.format(previsto(at2)) + '</b></div><div><span>Sinais</span><b class="warn-t">' + brl0.format(sum(at2.map(function (r) { return r.sinal; }))) + '</b></div><div><span>Já recebido</span><b class="ok-t">' + brl0.format(recebido(at2)) + '</b></div><div><span>A receber</span><b class="warn-t">' + brl0.format(aReceber(at2)) + '</b></div></div></div>' : '';
