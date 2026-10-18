@@ -3698,14 +3698,14 @@ if (LIVE) (function () {
     if (btn) btn.disabled = true; if (er) er.textContent = '';
     Promise.race([promise, timeout]).then(okFn, function (x) {
       if (btn) btn.disabled = false; var c = x && x.code || '';
-      var m = c === 'permission-denied' ? 'Sem permissão para esta ação.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. ' + what + ' NÃO foi salvo. Tente novamente.' : 'Não foi possível salvar. Tente novamente.';
+      var m = c === 'permission-denied' ? 'Sem permissão para esta ação.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. ' + what + ' NÃO foi salvo. Tente novamente.' : 'Não foi possível salvar (' + (c || 'erro') + '). Tente novamente.';
       if (er) er.textContent = m; else toast(m);
     });
   }
   function liveResAct(e) {
     var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]'), x = findRes(LV.resArg), upd;
     if (!x || !x._doc) { er.textContent = 'Reserva não encontrada.'; return; }
-    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var why = liveWhy(); if (why) { er.textContent = why; return; }
     if (f.querySelector('#f-ptipo')) {
       if (!document.getElementById('f-pdata').value) { er.textContent = 'Informe a data do pagamento.'; return; }
       var sn = document.getElementById('f-ptipo').value === 'sinal' ? Math.min(x.total, Math.max(x.sinal, x.total * 0.5)) : x.total;
@@ -3719,7 +3719,7 @@ if (LIVE) (function () {
   ACT.delres2 = function (id) {
     if (!needRes()) return; var x = findRes(id); if (!x || !x._doc) return;
     comReauth(function () {
-      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      var why = liveWhy(); if (why) { toast(why); return; }
       liveWrite(LV.db.collection('reservas').doc(x._doc).delete(), null, null, function () {
         var i = RES.findIndex(function (r) { return r._doc === x._doc; }); if (i > -1) RES.splice(i, 1);
         logRes('RESERVA_EXCLUIDA'); closeSheet(true); renderAll(); toast('Reserva deletada permanentemente');
@@ -3729,7 +3729,7 @@ if (LIVE) (function () {
   ACT.deldesp = function (id) {
     if (!needDesp()) return; var d = DESP.filter(function (x) { return x.id === id; })[0]; if (!d || !d._doc) return;
     confirmSheet('Excluir a despesa “' + d.desc + '” de ' + brl.format(d.valor) + '?', 'Excluir', function () {
-      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      var why = liveWhy(); if (why) { toast(why); return; }
       var bak = { id: d.id, data: d.data, cat: d.cat, desc: d.desc, valor: d.valor, obs: d.obs || '' }, docId = d._doc;
       liveWrite(LV.db.collection('despesas').doc(docId).delete(), null, null, function () {
         var i = DESP.findIndex(function (x) { return x._doc === docId; }); if (i > -1) DESP.splice(i, 1);
@@ -3742,7 +3742,7 @@ if (LIVE) (function () {
   };
 
   /* ---- administração: encerrar sessões, redefinir senha, trocar a própria senha. Criar/excluir usuário e limpar logs/sessões ficam só no site do computador ---- */
-  function liveOnline() { if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return false; } return true; }
+  function liveOnline() { var why = liveWhy(); if (why) { toast(why); return false; } return true; }
   function liveKill(i) {
     var s = SESS[i]; if (!s || !s._doc) { toast('Sessão não encontrada.'); return; }
     confirmSheet('Encerrar a sessão de ' + s.u + '?', 'Encerrar', function () {
@@ -3786,14 +3786,14 @@ if (LIVE) (function () {
   var togguRaw = ACT.togglu;
   ACT.togglu = function (id) {
     var u = USERS.filter(function (x) { return x.id === id; })[0]; if (!u || !isAdmin() || u.principal || u.email === AUTH.email) return deny();
-    if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+    var why = liveWhy(); if (why) { toast(why); return; }
     liveWrite(LV.db.collection('usuarios').doc(u.id).update({ status: u.status === 'ativo' ? 'inativo' : 'ativo' }), null, null, function () { togguRaw(id); }, 'A alteração');
   };
   ACT.saveperm = function (email) {
     var u = findUser(email); if (!u || !isAdmin() || u.principal || u.email === AUTH.email) return deny();
     var ps = Array.prototype.slice.call(document.querySelectorAll('#permList input:checked')).map(function (c) { return c.value; }).filter(function (v) { return ALLM.indexOf(v) > -1; });
     comReauth(function () {
-      if (!fbReady() || !LV.auth.currentUser) { toast('Sem conexão com o servidor. Tente novamente.'); return; }
+      var why = liveWhy(); if (why) { toast(why); return; }
       liveWrite(LV.db.collection('usuarios').doc(u.id).update({ permissoes: ps }), null, null, function () { u.perms = ps; logEvent('PERMISSOES_ALTERADAS', AUTH.email); closeSheet(true); renderAdm(); toast('Permissões salvas'); }, 'A alteração');
     });
   };
@@ -3806,7 +3806,7 @@ if (LIVE) (function () {
     if (!LV.ckLoaded || !AUTH.email) return;
     var s = ckSer(); if (s === LV.ckLast) return;
     var prev = LV.ckLast; LV.ckLast = s;
-    if (!fbReady() || !LV.auth.currentUser) return;
+    var why = liveWhy(); if (why) { LV.ckLast = prev; toast(why); return; }
     LV.db.collection('checklist').doc('items').set({ data: JSON.parse(s) }, { merge: true }).catch(function () { LV.ckLast = prev; toast('Não foi possível salvar a lista. Tente novamente.'); });
   };
 
@@ -3818,7 +3818,7 @@ if (LIVE) (function () {
     var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !validCPF(document.getElementById('f-cpf').value) ? 'Informe um CPF válido.' : !tel ? 'Informe um telefone válido com DDD.' : (!document.getElementById('f-hini').value || !document.getElementById('f-hfim').value) ? 'Informe o horário de início e de término do evento.' : document.getElementById('f-hini').value === document.getElementById('f-hfim').value ? 'O horário de término deve ser diferente do início.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : pagsSoma(sheetPags) > total ? 'A soma dos pagamentos (' + brl.format(pagsSoma(sheetPags)) + ') passa do valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
     if (!msg) for (var i = 0; i < sheetDates.length; i++) if (dateTaken(sheetDates[i], ed ? ed.id : '')) { msg = 'A data ' + fmtDate(sheetDates[i]) + ' já está reservada.'; break; }
     if (msg) { er.textContent = msg; return; }
-    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var why = liveWhy(); if (why) { er.textContent = why; return; }
     var optin = document.getElementById('f-optin').checked, tipo = document.getElementById('f-tipo').value; if (TIPOS.indexOf(tipo) < 0) tipo = 'Outro';
     var datas = sheetDates.slice().sort(), hoje = isoToday(), obs = document.getElementById('f-obs').value.trim(), pags = sheetPags.map(function (p) { return { data: p.data, valor: p.valor }; });
     if (pags.length && !sinal) sinal = pagsSoma(pags);
@@ -3852,7 +3852,7 @@ if (LIVE) (function () {
       openSheet('contrato', codigo, 'created');
     }, function (x) {
       btn.disabled = false; var c = x && x.code || '';
-      er.textContent = c === 'permission-denied' ? 'Sem permissão para criar reservas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A reserva NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a reserva. Tente novamente.';
+      er.textContent = c === 'permission-denied' ? 'Sem permissão para criar reservas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A reserva NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a reserva (' + (c || 'erro') + '). Tente novamente.';
     });
   }
     document.addEventListener('submit', function (e) { if (e.target.id === 'sf' && e.target.querySelector('#f-nome') && true) { e.preventDefault(); e.stopImmediatePropagation(); liveSaveRes(e); } }, true);
@@ -3862,7 +3862,7 @@ if (LIVE) (function () {
     e.preventDefault(); var f = e.target, er = document.getElementById('sErr'), btn = f.querySelector('button[type="submit"]');
     var dt = document.getElementById('f-ddata').value, val = parseMoeda(document.getElementById('f-dval').value), desc = document.getElementById('f-ddesc').value.trim(), obs = document.getElementById('f-dobs').value.trim();
     if (!dt || !validDate(dt) || !CAT[catSel] || !desc || !(val > 0)) { er.textContent = 'Preencha data, categoria, descrição e valor.'; return; }
-    if (!fbReady() || !LV.auth.currentUser) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
+    var why = liveWhy(); if (why) { er.textContent = why; return; }
     var ed = DESP.filter(function (d) { return d.id === LV.despArg; })[0];
     if (ed && ed._doc) {
       liveWrite(LV.db.collection('despesas').doc(ed._doc).update({ data: dt, cat: catSel, desc: desc, valor: val, obs: obs }), btn, er, function () { if (f.onsubmit) f.onsubmit(e); }, 'A alteração');
@@ -3876,7 +3876,7 @@ if (LIVE) (function () {
       closeSheet(true); renderAll(); toast('Despesa lançada!');
     }, function (x) {
       btn.disabled = false; var c = x && x.code || '';
-      er.textContent = c === 'permission-denied' ? 'Sem permissão para lançar despesas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A despesa NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a despesa. Tente novamente.';
+      er.textContent = c === 'permission-denied' ? 'Sem permissão para lançar despesas.' : /unavailable|timeout|network|aborted/.test(c) ? 'Sem conexão com o servidor. A despesa NÃO foi salva. Tente novamente.' : 'Não foi possível salvar a despesa (' + (c || 'erro') + '). Tente novamente.';
     });
   }
   document.addEventListener('submit', function (e) { if (e.target.id === 'sf' && e.target.querySelector('#f-ddata')) { e.preventDefault(); e.stopImmediatePropagation(); liveSaveDesp(e); } }, true);
@@ -3915,6 +3915,12 @@ if (LIVE) (function () {
   function fbReady() {
     if (LV.db) return true;
     try { if (!window.firebase) return false; if (!firebase.apps.length) firebase.initializeApp(FBCFG); LV.db = firebase.firestore(); LV.auth = firebase.auth(); return true; } catch (e) { return false; }
+  }
+  /* motivo de não dar para gravar: sem internet/SDK x sessão do Firebase perdida (mensagens distintas) */
+  function liveWhy() {
+    if (!fbReady() || navigator.onLine === false) return 'Sem conexão com o servidor. Tente novamente.';
+    if (!LV.auth.currentUser) return 'Sua sessão com o servidor expirou. Saia e entre de novo para salvar.';
+    return '';
   }
   function warnOnce(key, msg) { if (LV.warned[key]) return; LV.warned[key] = 1; toast(msg); }
   function listen(name, mapFn, target, after) {
