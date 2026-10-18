@@ -420,6 +420,9 @@ h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
 .kv { display: flex; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); font-size: 15px; }
 .kv span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .kv b { flex: none; font-weight: 700; }
+.kv.kvend { flex-direction: column; gap: 5px; }
+.kv.kvend b { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
+.kv.kvend b small { display: block; font-weight: 500; color: var(--muted, inherit); font-size: 14px; margin-top: 2px; }
 .bela-acts { display: flex; gap: 10px; align-items: center; }
 body.in-bela .nav { display: none; }
 #belaMic.on { background: var(--green); color: #fff; }
@@ -2610,7 +2613,7 @@ function validDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >
 /* ---- detalhes da reserva ---- */
 SHEETS.detalhe = function (id, from) {
   var x = findRes(id); if (!x) return; var act = x.status !== 'cancelada', saldo = Math.max(0, x.total - x.sinal);
-  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.cep && x.rua ? kvr('Endereço', esc(endTxt(x) + ' · ' + x.cidade + (x.uf ? '/' + x.uf : '') + ' · CEP ' + fmtCEP(x.cep))) : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
+  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.cep && x.rua ? '<div class="kv kvend"><span>Endereço</span><b>' + esc(endTxt(x)) + '<small>' + esc(x.cidade + (x.uf ? '/' + x.uf : '') + ' · CEP ' + fmtCEP(x.cep)) + '</small></b></div>' : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
   var b = '<div class="btns" style="margin-top:16px">', ed = can('reservas');
   if (!ed) b += backBtn(from) + '</div>'; else {
   if (act && x.pagamento === 'pendente') b += '<button class="btn block" data-act="pay:' + x.id + '" data-keep="1">Registrar pagamento</button>';
