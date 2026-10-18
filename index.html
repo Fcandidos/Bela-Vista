@@ -2610,7 +2610,7 @@ function validDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >
 /* ---- detalhes da reserva ---- */
 SHEETS.detalhe = function (id, from) {
   var x = findRes(id); if (!x) return; var act = x.status !== 'cancelada', saldo = Math.max(0, x.total - x.sinal);
-  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
+  var rows = kvr('Código', esc(x.id)) + kvr('Nome', esc(x.nome)) + (x.cpf ? kvr('CPF', fmtCPF(x.cpf)) : '') + (x.cep && x.rua ? kvr('Endereço', esc(endTxt(x) + ' · ' + x.cidade + (x.uf ? '/' + x.uf : '') + ' · CEP ' + fmtCEP(x.cep))) : '') + (x.hini && x.hfim ? kvr('Horário', hh(x.hini) + ' às ' + hh(x.hfim)) : '') + kvr('WhatsApp', esc(x.tel || '—')) + kvr('E-mail', esc(x.email || '—')) + kvr(x.datas.length > 1 ? 'Datas' : 'Data', x.datas.map(fmtDate).join(', ')) + kvr('Tipo de evento', esc(x.tipo || '—')) + kvr('Valor total', brl.format(x.total)) + kvr('Sinal informado', x.sinal > 0 ? brl.format(x.sinal) : '—') + kvr('Saldo restante', '<span class="' + (saldo ? 'warn-t' : 'ok-t') + '">' + brl.format(saldo) + '</span>') + kvr('Pagamento', badgePg(x.pagamento, true)) + (x.pags && x.pags.length ? kvr('Pagamentos recebidos', x.pags.length + ' · ' + brl.format(pagsSoma(x.pags))) + x.pags.map(function (p) { return kvr('&nbsp;&nbsp;' + fmtDate(p.data), brl.format(p.valor)); }).join('') : '') + (x.obs ? kvr('Observação', esc(x.obs)) : '') + kvr('Status', badgeSt(x.status)) + kvr('Criado em', fmtDate(x.criado || HOJE));
   var b = '<div class="btns" style="margin-top:16px">', ed = can('reservas');
   if (!ed) b += backBtn(from) + '</div>'; else {
   if (act && x.pagamento === 'pendente') b += '<button class="btn block" data-act="pay:' + x.id + '" data-keep="1">Registrar pagamento</button>';
@@ -2733,6 +2733,11 @@ SHEETS.reserva = function (editId, from, preDate) {
   showSheet('<div class="grab"></div><h2 id="sheetT">' + (ed ? 'Editar reserva' : 'Nova reserva') + '</h2>' + (preDate && !ed ? '<p class="sub" style="margin:-12px 0 16px">' + esc(diaTxt.charAt(0).toUpperCase() + diaTxt.slice(1)) + '</p>' : '') + '<form id="sf" novalidate data-edit="' + (ed ? ed.id : '') + '">' +
     '<div class="fld"><label for="f-nome">Nome do cliente *</label><input id="f-nome" type="text" maxlength="80" autocomplete="off" placeholder="Nome completo"></div>' +
     '<div class="fld"><label for="f-cpf">CPF do cliente *</label><input id="f-cpf" type="text" inputmode="numeric" data-mask="cpf" maxlength="14" autocomplete="off" placeholder="000.000.000-00"></div>' +
+    '<div class="fld"><label for="f-cep">CEP *</label><input id="f-cep" type="text" inputmode="numeric" data-mask="cep" maxlength="9" autocomplete="off" placeholder="00000-000"><p class="hint" id="cepSt" style="margin:4px 0 0"></p></div>' +
+    '<div class="fld"><label for="f-rua">Rua *</label><input id="f-rua" type="text" maxlength="100" autocomplete="off" placeholder="Preenchida pelo CEP"></div>' +
+    '<div class="two"><div class="fld"><label for="f-num">Número *</label><input id="f-num" type="text" maxlength="10" autocomplete="off" placeholder="Ex.: 120"></div><div class="fld"><label for="f-bairro">Bairro</label><input id="f-bairro" type="text" maxlength="60" autocomplete="off"></div></div>' +
+    '<div class="fld"><label for="f-compl">Complemento (opcional)</label><input id="f-compl" type="text" maxlength="60" autocomplete="off" placeholder="Ex.: Bloco 4, apto 402"></div>' +
+    '<div class="two"><div class="fld"><label for="f-cidade">Cidade *</label><input id="f-cidade" type="text" maxlength="60" autocomplete="off" placeholder="Preenchida pelo CEP"></div><div class="fld"><label for="f-uf">UF</label><input id="f-uf" type="text" maxlength="2" autocomplete="off" autocapitalize="characters" placeholder="MG"></div></div>' +
     '<div class="fld"><label for="f-tel">Telefone / WhatsApp *</label><input id="f-tel" type="tel" inputmode="tel" data-mask="tel" maxlength="22" autocomplete="off" placeholder="(34) 99999-9999"></div>' +
     '<div class="fld"><label for="f-tipo">Tipo de evento</label><select id="f-tipo">' + TIPOS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></div>' +
     '<div class="fld"><label for="f-email">E-mail do cliente</label><input id="f-email" type="email" list="emDom" maxlength="120" autocomplete="off" placeholder="cliente@email.com"><datalist id="emDom"></datalist></div>' +
@@ -2744,7 +2749,7 @@ SHEETS.reserva = function (editId, from, preDate) {
     '<div class="fld"><label for="f-obs">Observação (opcional)</label><textarea id="f-obs" maxlength="300" placeholder="Ex.: Cliente pagou em 8 parcelas de R$ 93,75; evento em 07/11."></textarea></div>' +
     '<label class="optin" for="f-optin"><input id="f-optin" type="checkbox" checked><span><b>Aceito receber mensagens no WhatsApp</b><br>Confirmações de reserva, lembretes de pagamento e avisos do evento.</span></label>' +
     '<p class="err" id="sErr" role="alert"></p><button class="btn block" type="submit">' + (ed ? 'Salvar alterações' : 'Salvar reserva') + '</button></form>');
-  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-cpf').value = fmtCPF(ed.cpf || ''); document.getElementById('f-hini').value = ed.hini || ''; document.getElementById('f-hfim').value = ed.hfim || ''; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; document.getElementById('f-obs').value = ed.obs || ''; sumUpdate(); }
+  if (ed) { document.getElementById('f-nome').value = ed.nome; document.getElementById('f-cpf').value = fmtCPF(ed.cpf || ''); document.getElementById('f-hini').value = ed.hini || ''; document.getElementById('f-hfim').value = ed.hfim || ''; document.getElementById('f-tel').value = ed.tel || ''; document.getElementById('f-tipo').value = ed.tipo; document.getElementById('f-email').value = ed.email || ''; document.getElementById('f-total').value = 'R$ ' + fmtNum(ed.total); document.getElementById('f-sinal').value = ed.sinal ? 'R$ ' + fmtNum(ed.sinal) : ''; document.getElementById('f-optin').checked = !!ed.optin; document.getElementById('f-obs').value = ed.obs || ''; setEnd(ed); sumUpdate(); }
   renderDts(); renderPgs();
   document.getElementById('sf').onsubmit = function (e) {
     e.preventDefault(); var er = document.getElementById('sErr'), nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
@@ -2839,6 +2844,38 @@ var MESES_L = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 function cpfDigits(v) { return String(v || "").replace(/\D/g, "").slice(0, 11); }
 function fmtCPF(v) { v = cpfDigits(v); return v.length <= 3 ? v : v.length <= 6 ? v.slice(0, 3) + "." + v.slice(3) : v.length <= 9 ? v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6) : v.slice(0, 3) + "." + v.slice(3, 6) + "." + v.slice(6, 9) + "-" + v.slice(9); }
 function maskCPF(el) { el.value = fmtCPF(el.value); }
+/* ---- endereço do locatário (CEP -> rua/bairro/cidade via ViaCEP) ---- */
+function cepDigits(v) { return String(v || "").replace(/\D/g, "").slice(0, 8); }
+function fmtCEP(v) { v = cepDigits(v); return v.length > 5 ? v.slice(0, 5) + "-" + v.slice(5) : v; }
+var cepSeq = 0;
+function maskCEP(el) {
+  el.value = fmtCEP(el.value); var st = document.getElementById("cepSt"), d = cepDigits(el.value), seq = ++cepSeq;
+  if (d.length < 8) { if (st) st.textContent = ""; return; }
+  if (st) st.textContent = "Buscando endereço…";
+  var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+  fetch("https://viacep.com.br/ws/" + d + "/json/", ctl ? { signal: ctl.signal } : {}).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) {
+    clearTimeout(tm); if (seq !== cepSeq) return; st = document.getElementById("cepSt"); if (!st) return;
+    if (!j || j.erro) { st.textContent = "CEP não encontrado. Digite a rua e a cidade à mão."; return; }
+    var set = function (id, v) { var e = document.getElementById(id); if (e) e.value = v || ""; };
+    set("f-rua", j.logradouro); set("f-bairro", j.bairro); set("f-cidade", j.localidade); set("f-uf", j.uf);
+    st.textContent = (j.logradouro ? "" : "Este CEP não traz a rua; digite à mão. ");
+    var n = document.getElementById(j.logradouro ? "f-num" : "f-rua"); if (n) n.focus();
+  }, function () { clearTimeout(tm); if (seq !== cepSeq) return; st = document.getElementById("cepSt"); if (st) st.textContent = "Não consegui buscar o CEP. Digite a rua e a cidade à mão."; });
+}
+function readEnd() {
+  var g = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ""; };
+  return { cep: cepDigits(g("f-cep")), rua: g("f-rua"), numero: g("f-num"), complemento: g("f-compl"), bairro: g("f-bairro"), cidade: g("f-cidade"), uf: g("f-uf").toUpperCase().slice(0, 2) };
+}
+function setEnd(x) {
+  var set = function (id, v) { var e = document.getElementById(id); if (e) e.value = v || ""; };
+  set("f-cep", fmtCEP(x.cep)); set("f-rua", x.rua); set("f-num", x.numero); set("f-compl", x.complemento); set("f-bairro", x.bairro); set("f-cidade", x.cidade); set("f-uf", x.uf);
+}
+/* obrigatório; só reservas antigas sem endereço podem ser editadas sem preenchê-lo */
+function endCheck(ed) {
+  var e = readEnd(); if (ed && !ed.cep && !e.cep && !e.rua && !e.numero && !e.cidade) return "";
+  return e.cep.length !== 8 ? "Informe o CEP do cliente." : !e.rua ? "Informe a rua." : !e.numero ? "Informe o número da casa." : !e.cidade ? "Informe a cidade." : "";
+}
+function endTxt(x) { return x.rua + ", nº " + x.numero + (x.complemento ? ", " + x.complemento : "") + (x.bairro ? ", Bairro " + x.bairro : ""); }
 function validCPF(v) {
   v = cpfDigits(v); if (v.length !== 11 || /^(\d)\1{10}$/.test(v)) return false;
   for (var t = 9; t < 11; t++) { var s = 0; for (var i = 0; i < t; i++) s += +v.charAt(i) * (t + 1 - i); var d = ((s * 10) % 11) % 10; if (d !== +v.charAt(t)) return false; }
@@ -2880,9 +2917,9 @@ function contratoBlocos(r) {
   T("sub", "ÁREA DE LAZER " + NOME);
   T("p", "Sraº " + LOC.locador + ", brasileira, casada, portador do documento RG nº " + LOC.rg + " e CPF nº" + LOC.cpf + ", proprietário do objeto em questão a ÁREA DE LAZER denominada " + NOME + ", estabelecida na " + LOC.end + ", simplesmente denominado “LOCADOR”, e de outro lado:");
   T("p", "Nome: " + r.nome);
-  T("p", "Portador(a) do RG: nº " + L + " e CPF nº " + (r.cpf ? fmtCPF(r.cpf) : L) + ",");
-  T("p", "Residente na Rua: " + L + L + ",");
-  T("p", "Cidade: " + L + ", CEP: " + L + ",");
+  T("p", "Portador(a) do CPF nº " + (r.cpf ? fmtCPF(r.cpf) : L) + ",");
+  T("p", "Residente na Rua: " + (r.cep && r.rua ? endTxt(r) : L + L) + ",");
+  T("p", "Cidade: " + (r.cep && r.cidade ? r.cidade + (r.uf ? "/" + r.uf : "") : L) + ", CEP: " + (r.cep ? fmtCEP(r.cep) : L) + ",");
   T("p", "Telefone: " + (r.tel || L) + ", doravante denominado(a) LOCATÁRIO(A).");
   T("lab", "OBJETO:");
   T("p", "Locação da Área de Lazer “Recanto Bela Vista”. Pelo presente instrumento particular, e na melhor forma de direito, as partes acima nomeadas têm entre si, certo e ajustado o presente contrato, que se regerá pelas seguintes cláusulas e condições que mutuamente aceitam, a saber:");
@@ -3031,7 +3068,7 @@ function entregaArquivo(blob, fname, okMsg) {
 SHEETS.contrato = function (id, ctx) {
   if (!needRes()) return; var r = findRes(id); if (!r) return;
   showSheet("<div class=\"grab\"></div><h2 id=\"sheetT\">Contrato de locação</h2>" + (ctx === "created" ? "<div class=\"info\"><span>" + ic("check") + "</span><span>Reserva criada! Confira o contrato abaixo e baixe o PDF para enviar à " + esc(pnome(r.nome)) + ".</span></div>" : "") +
-    (r.cpf ? "" : "<div class=\"warnbox\"><span>" + ic("alert") + "</span><span>Esta reserva não tem CPF cadastrado; o contrato sairá com uma linha para preencher à mão.</span></div>") +
+    (r.cpf && r.cep ? "" : "<div class=\"warnbox\"><span>" + ic("alert") + "</span><span>Esta reserva não tem " + (r.cpf ? "endereço" : r.cep ? "CPF" : "CPF nem endereço") + " cadastrado; o contrato sairá com uma linha para preencher à mão.</span></div>") +
     "<div class=\"ctr\" tabindex=\"0\" aria-label=\"Texto do contrato\">" + contratoHTML(r) + "</div><div class=\"btns\" style=\"margin-top:14px\"><button class=\"btn block\" id=\"ctrDl\" data-act=\"contratodl:" + esc(id) + "\" data-keep=\"1\">Baixar contrato em PDF</button>" +
     (r.tel ? "<button class=\"btn ghost\" data-act=\"wa:" + esc(id) + "\" data-keep=\"1\">WhatsApp</button>" : "") + "<button class=\"btn out\" data-close=\"1\">Fechar</button></div>");
 };
@@ -3576,6 +3613,7 @@ document.addEventListener('input', function (e) {
   else if (t.dataset && t.dataset.mask === 'moeda') { maskMoeda(t); if (t.id === 'f-total' || t.id === 'f-sinal') sumUpdate(); }
   else if (t.dataset && t.dataset.mask === 'tel') maskTel(t);
   else if (t.dataset && t.dataset.mask === 'cpf') maskCPF(t);
+  else if (t.dataset && t.dataset.mask === 'cep') maskCEP(t);
   else if (t.id === 'f-email') emailSuggest(t);
   else if (t.id === 'vz-rate') { voiceRate = +t.value; document.getElementById('vz-rate-v').textContent = voiceRate.toFixed(2) + 'x'; }
   else if (t.id === 'vz-pitch') { voicePitch = +t.value; document.getElementById('vz-pitch-v').textContent = voicePitch.toFixed(2); }
@@ -3816,6 +3854,7 @@ if (LIVE) (function () {
     var ed = f.dataset.edit ? findRes(f.dataset.edit) : null;
     var nome = document.getElementById('f-nome').value.trim(), tel = normTel(document.getElementById('f-tel').value), email = document.getElementById('f-email').value.trim(), total = parseMoeda(document.getElementById('f-total').value), sinal = parseMoeda(document.getElementById('f-sinal').value);
     var msg = nome.length < 2 ? 'Informe o nome do cliente.' : !validCPF(document.getElementById('f-cpf').value) ? 'Informe um CPF válido.' : !tel ? 'Informe um telefone válido com DDD.' : (!document.getElementById('f-hini').value || !document.getElementById('f-hfim').value) ? 'Informe o horário de início e de término do evento.' : document.getElementById('f-hini').value === document.getElementById('f-hfim').value ? 'O horário de término deve ser diferente do início.' : (email && !validEmail(email)) ? 'Informe um e-mail válido.' : !(total > 0) ? 'Informe o valor do evento.' : sinal > total ? 'O sinal não pode ser maior que o valor do evento.' : pagsSoma(sheetPags) > total ? 'A soma dos pagamentos (' + brl.format(pagsSoma(sheetPags)) + ') passa do valor do evento.' : !sheetDates.length ? 'Adicione ao menos uma data.' : '';
+    if (!msg) msg = endCheck(ed);
     if (!msg) for (var i = 0; i < sheetDates.length; i++) if (dateTaken(sheetDates[i], ed ? ed.id : '')) { msg = 'A data ' + fmtDate(sheetDates[i]) + ' já está reservada.'; break; }
     if (msg) { er.textContent = msg; return; }
     var why = liveWhy(); if (why) { er.textContent = why; return; }
@@ -3825,12 +3864,13 @@ if (LIVE) (function () {
     var cpf = cpfDigits(document.getElementById('f-cpf').value), hini = document.getElementById('f-hini').value, hfim = document.getElementById('f-hfim').value;
     if (ed) {
       var upd = { nome: nome, whatsapp: tel, email: email, tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, optin_wa: optin, obs: obs, pagamentos: pags, cpf: cpf, hora_inicio: hini, hora_fim: hfim };
+      var end = readEnd(); if (end.cep) for (var k in end) upd[k] = end[k];
       if (sinal >= total) upd.pagamento = 'pago';
       if (!fbReady() || !ed._doc) { er.textContent = 'Sem conexão com o servidor. Tente novamente.'; return; }
       btn.disabled = true; er.textContent = '';
       var to2 = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
       Promise.race([LV.db.collection('reservas').doc(ed._doc).update(upd), to2]).then(function () {
-        ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.datas = datas; ed.total = total; ed.sinal = sinal; ed.optin = optin; ed.obs = obs; ed.pags = pags; ed.cpf = cpf; ed.hini = hini; ed.hfim = hfim; if (upd.pagamento) ed.pagamento = 'pago';
+        ed.nome = nome; ed.tel = tel; ed.email = email; ed.tipo = tipo; ed.datas = datas; ed.total = total; ed.sinal = sinal; ed.optin = optin; ed.obs = obs; ed.pags = pags; ed.cpf = cpf; ed.hini = hini; ed.hfim = hfim; if (end.cep) for (var k2 in end) ed[k2] = end[k2]; if (upd.pagamento) ed.pagamento = 'pago';
         closeSheet(true); renderAll(); toast('Reserva atualizada!');
       }, function (x) {
         btn.disabled = false; var c = x && x.code || '';
@@ -3839,7 +3879,8 @@ if (LIVE) (function () {
       return;
     }
     var start = Math.max.apply(null, [0].concat(RES.map(function (r) { var m = /^VF-(\d+)/.exec(String(r._doc || r.id)); return m ? +m[1] : 0; }))) + 1;
-    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: sinal >= total ? 'pago' : 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin, obs: obs, pagamentos: pags, cpf: cpf, hora_inicio: hini, hora_fim: hfim }; };
+    var end0 = readEnd();
+    var dados = function (codigo) { return { codigo: codigo, nome: nome, whatsapp: tel, email: email, tel: '', tipo: tipo, datas: datas, data: datas[0], total: total, sinal: sinal, status: 'confirmada', pagamento: sinal >= total ? 'pago' : 'pendente', criadoEm: hoje, data_reserva: hoje, lembrete_1_mes_enviado: false, optin_wa: optin, obs: obs, pagamentos: pags, cpf: cpf, hora_inicio: hini, hora_fim: hfim, cep: end0.cep, rua: end0.rua, numero: end0.numero, complemento: end0.complemento, bairro: end0.bairro, cidade: end0.cidade, uf: end0.uf }; };
     function tryCreate(n) {
       var codigo = 'VF-' + String(n).padStart(3, '0'), ref = LV.db.collection('reservas').doc(codigo);
       return LV.db.runTransaction(function (tx) { return tx.get(ref).then(function (s) { if (s.exists) throw { code: 'dup' }; tx.set(ref, dados(codigo)); }); }).then(function () { return codigo; }, function (x) { if (x && x.code === 'dup' && n < start + 30) return tryCreate(n + 1); throw x; });
@@ -3887,7 +3928,7 @@ if (LIVE) (function () {
     var datas = (Array.isArray(d.datas) && d.datas.length ? d.datas : (d.data ? [d.data] : [])).map(iso10).filter(Boolean);
     if (!datas.length) return null;
     var pg = d.pagamento === 'pago' ? 'pago' : 'pendente', st = d.status === 'cancelada' ? 'cancelada' : (d.status === 'pendente' ? 'pendente' : 'confirmada');
-    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, obs: String(d.obs || ''), cpf: cpfDigits(d.cpf), hini: String(d.hora_inicio || ''), hfim: String(d.hora_fim || ''), pags: (Array.isArray(d.pagamentos) ? d.pagamentos : []).filter(function (p) { return p && iso10(p.data) && Number(p.valor) > 0; }).map(function (p) { return { data: iso10(p.data), valor: Number(p.valor) }; }), criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
+    return { id: String(d.codigo || id), _doc: id, nome: String(d.nome || 'Sem nome'), tipo: String(d.tipo || 'Outro'), datas: datas.slice().sort(), total: Number(d.total) || 0, sinal: Number(d.sinal) || 0, pagamento: pg, status: st, tel: String(d.whatsapp || d.tel || ''), email: String(d.email || ''), optin: d.optin_wa !== false, obs: String(d.obs || ''), cpf: cpfDigits(d.cpf), cep: cepDigits(d.cep), rua: String(d.rua || ''), numero: String(d.numero || ''), complemento: String(d.complemento || ''), bairro: String(d.bairro || ''), cidade: String(d.cidade || ''), uf: String(d.uf || ''), hini: String(d.hora_inicio || ''), hfim: String(d.hora_fim || ''), pags: (Array.isArray(d.pagamentos) ? d.pagamentos : []).filter(function (p) { return p && iso10(p.data) && Number(p.valor) > 0; }).map(function (p) { return { data: iso10(p.data), valor: Number(p.valor) }; }), criado: iso10(d.criadoEm) || iso10(d.data_reserva) || datas[0] };
   }
   function mapDesp(id, d) {
     var data = iso10(d.data); if (!data) return null;
