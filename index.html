@@ -3070,7 +3070,29 @@ SHEETS.contrato = function (id, ctx) {
   showSheet("<div class=\"grab\"></div><h2 id=\"sheetT\">Contrato de locação</h2>" + (ctx === "created" ? "<div class=\"info\"><span>" + ic("check") + "</span><span>Reserva criada! Confira o contrato abaixo e baixe o PDF para enviar à " + esc(pnome(r.nome)) + ".</span></div>" : "") +
     (r.cpf && r.cep ? "" : "<div class=\"warnbox\"><span>" + ic("alert") + "</span><span>Esta reserva não tem " + (r.cpf ? "endereço" : r.cep ? "CPF" : "CPF nem endereço") + " cadastrado; o contrato sairá com uma linha para preencher à mão.</span></div>") +
     "<div class=\"ctr\" tabindex=\"0\" aria-label=\"Texto do contrato\">" + contratoHTML(r) + "</div><div class=\"btns\" style=\"margin-top:14px\"><button class=\"btn block\" id=\"ctrDl\" data-act=\"contratodl:" + esc(id) + "\" data-keep=\"1\">Baixar contrato em PDF</button>" +
-    (r.tel ? "<button class=\"btn ghost\" data-act=\"wa:" + esc(id) + "\" data-keep=\"1\">WhatsApp</button>" : "") + "<button class=\"btn out\" data-close=\"1\">Fechar</button></div>");
+    (r.tel ? "<button class=\"btn\" id=\"ctrWa\" data-act=\"contratowa:" + esc(id) + "\" data-keep=\"1\">Enviar contrato (PDF) pelo WhatsApp</button><button class=\"btn ghost\" data-act=\"wa:" + esc(id) + "\" data-keep=\"1\">WhatsApp (só a mensagem)</button>" : "") + "<button class=\"btn out\" data-close=\"1\">Fechar</button></div>");
+  ctrPrepara(r);
+};
+/* gera o PDF já ao abrir a tela: o compartilhamento do celular só funciona logo após o toque, sem esperar a geração */
+var CTR_CACHE = { id: '', blob: null, busy: false };
+function ctrNome(r) { return "contrato-" + r.id + "-" + slug(r.nome) + ".pdf"; }
+function ctrPrepara(r) {
+  if (CTR_CACHE.id === r.id && CTR_CACHE.blob) return;
+  CTR_CACHE = { id: r.id, blob: null, busy: true };
+  contratoPdf(r, function (blob) { if (CTR_CACHE.id !== r.id) return; CTR_CACHE.blob = blob || null; CTR_CACHE.busy = false; });
+}
+ACT.contratowa = function (id) {
+  var r = findRes(id); if (!r) return;
+  if (!(CTR_CACHE.id === id && CTR_CACHE.blob)) { if (!CTR_CACHE.busy) ctrPrepara(r); return toast("Preparando o PDF… toque de novo em instantes."); }
+  var nome = ctrNome(r), file;
+  try { file = new File([CTR_CACHE.blob], nome, { type: "application/pdf" }); } catch (e) { file = null; }
+  var data = file ? { files: [file], title: "Contrato " + r.id, text: gerarMsgWA("confirmacao", r) } : null;
+  if (data && navigator.canShare && navigator.canShare(data) && navigator.share) {
+    navigator.share(data).then(function () { logRes("CONTRATO_ENVIADO"); }, function (er) { if (!er || er.name !== "AbortError") toast("Não foi possível compartilhar o PDF. Use \"Baixar contrato\" e anexe no WhatsApp."); });
+    return;
+  }
+  entregaArquivo(CTR_CACHE.blob, nome, "Este aparelho não anexa direto. PDF baixado: anexe no WhatsApp.");
+  if (r.tel) { var d = String(r.tel).replace(/\D/g, ""); if (d.length >= 10) { if (d.indexOf("55") !== 0) d = "55" + d; setTimeout(function () { window.open("https://wa.me/" + d + "?text=" + encodeURIComponent(gerarMsgWA("confirmacao", r)), "_blank"); }, 600); } }
 };
 ACT.contrato = function (id) { openSheet("contrato", id); };
 ACT.contratodl = function (id) {
@@ -3078,7 +3100,7 @@ ACT.contratodl = function (id) {
   contratoPdf(r, function (blob) {
     CTR.busy = false; if (bt) bt.disabled = false;
     if (!blob) return toast("Não foi possível gerar o PDF. Verifique a internet e tente de novo.");
-    var nome = "contrato-" + r.id + "-" + slug(r.nome) + ".pdf"; entregaArquivo(blob, nome, "Contrato gerado: " + nome); logRes("CONTRATO_PDF");
+    var nome = ctrNome(r); entregaArquivo(blob, nome, "Contrato gerado: " + nome); logRes("CONTRATO_PDF");
   });
 };
 
