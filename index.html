@@ -4009,13 +4009,15 @@ if (LIVE) (function () {
       else { saveAtt(); gerr('lErr', 'E-mail ou senha incorretos (' + att.count + '/' + LOGIN_MAX + ').'); }
       document.getElementById('lSenha').value = '';
     };
+    LV.signing = true; try { localStorage.setItem(KEY_AT, String(Date.now())); } catch (e) {}
     LV.auth.signInWithEmailAndPassword(email, senha).then(function (cred) {
       return loadProfile(cred.user.email || email).then(function (pf) {
         if (!pf && email !== ADMIN_EMAIL) { return LV.auth.signOut().then(function () { gerr('lErr', 'Usuário sem cadastro no sistema. Fale com o administrador.'); }); }
         if (pf && pf.data.status === 'inativo') { return LV.auth.signOut().then(function () { gerr('lErr', 'Usuário desativado. Fale com o administrador.'); }); }
         att = { count: 0, blockedUntil: 0 }; saveAtt(); gerr('lErr', ''); enter(email, pf, false);
       });
-    }).then(function () { if (btn) btn.disabled = false; }, function (er) {
+    }).then(function () { LV.signing = false; if (btn) btn.disabled = false; }, function (er) {
+      LV.signing = false; try { if (!AUTH.email) localStorage.removeItem(KEY_AT); } catch (e) {}
       if (btn) btn.disabled = false;
       var c = er && er.code || '';
       if (/network|unavailable|timeout/.test(c)) gerr('lErr', 'Sem conexão com o servidor. Tente novamente.');
@@ -4061,7 +4063,7 @@ if (LIVE) (function () {
     startPublic();
     if (!fbReady()) return;
     LV.auth.onAuthStateChanged(function (user) {
-      if (!user || AUTH.email) return;
+      if (!user || AUTH.email || LV.signing) return;
       var at = +localStorage.getItem(KEY_AT) || 0;
       if (!at || Date.now() - at > SESSION_MS) { LV.auth.signOut(); return; }
       var em = String(user.email || '').toLowerCase();
