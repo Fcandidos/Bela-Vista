@@ -2720,12 +2720,16 @@ SHEETS.wa = function (id, tipo, ctx) {
     '<div class="btns"><button class="btn out" type="button" data-close="1">Cancelar</button><a class="btn" id="waGo" target="_blank" rel="noopener noreferrer" data-act="walog:' + id + '" href="#">Abrir WhatsApp</a></div>');
   document.getElementById('wa-msg').value = gerarMsgWA(tipo, r); waHref();
 };
+function isMobileUA() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''); }
 function waHref() {
   var r = findRes(waCtx.id), a = document.getElementById('waGo'); if (!r || !a) return;
   var d = String(r.tel || '').replace(/\D/g, '');
   if (d.length < 10) { a.removeAttribute('href'); a.setAttribute('aria-disabled', 'true'); a.style.opacity = '.5'; a.style.pointerEvents = 'none'; return; }
   if (d.indexOf('55') !== 0) d = '55' + d;
-  a.href = 'https://wa.me/' + d + '?text=' + encodeURIComponent(document.getElementById('wa-msg').value);
+  var wm = isMobileUA(), tx = encodeURIComponent(document.getElementById('wa-msg').value);
+  /* no celular abre o app direto (whatsapp://); pelo wa.me o WhatsApp Web perdia os emojis */
+  a.href = wm ? 'whatsapp://send?phone=' + d + '&text=' + tx : 'https://wa.me/' + d + '?text=' + tx;
+  if (wm) a.removeAttribute('target'); else a.target = '_blank';
 }
 ACT.walog = function (id) { var r = findRes(id); if (!r) return; var t = document.getElementById('wa-tipo'); if (t && t.value === 'lembrete_retorno') LEMB_ENV[r.nome] = true; renderHome(); WALOG.unshift({ ts: nowTs(), who: r.nome, seg: 'WhatsApp · ' + (t ? t.options[t.selectedIndex].text : 'mensagem') }); renderWa(); toast('WhatsApp aberto com a mensagem'); setTimeout(function () { closeSheet(); }, 250); };
 
