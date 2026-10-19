@@ -2588,7 +2588,7 @@ function pnome(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
 function gerarMsgWA(tipo, r) {
   var nome = pnome(r.nome), dataFmt = r.datas && r.datas[0] ? fmtDate(r.datas[0]) : 'a confirmar', saldo = Math.max(0, r.total - r.sinal);
   var T = {
-    confirmacao: 'Olá, *' + nome + '*! 🎉\n\nSua reserva na *Bela Vista* foi confirmada com sucesso!\n\n📋 *Código:* ' + r.id + '\n📅 *Data:* ' + dataFmt + '\n🎊 *Evento:* ' + (r.tipo || 'Evento especial') + '\n💰 *Total:* R$ ' + fmtNum(r.total) + '\n\nEm caso de dúvidas, estamos à disposição. Até a festa! 🥂',
+    confirmacao: 'Olá, *' + nome + '*! 🎉\n\nSua reserva na *Bela Vista* foi confirmada com sucesso!\n\n📋 *Código:* ' + r.id + '\n📅 *Data:* ' + dataFmt + '\n🎊 *Evento:* ' + (r.tipo || 'Evento especial') + '\n💰 *Total:* R$ ' + fmtNum(r.total) + (r.sinal > 0 && saldo > 0 ? '\n✅ *Já pago:* R$ ' + fmtNum(r.sinal) + '\n⏳ *Falta pagar:* R$ ' + fmtNum(saldo) + ' (até 1 dia antes do evento)' : saldo === 0 && r.total > 0 ? '\n✅ *Pago integralmente*' : '') + '\n\nEm caso de dúvidas, estamos à disposição. Até a festa! 🥂',
     lembrete_pagamento: 'Olá, *' + nome + '*! 😊\n\nPassando para lembrar que o pagamento da sua reserva *' + r.id + '* ainda está pendente.\n\n💳 *Saldo restante:* R$ ' + fmtNum(saldo) + '\n📅 *Data do evento:* ' + dataFmt + '\n\n*Chave PIX:* ' + PIX_KEY + '\n\nQualquer dúvida, estamos aqui! 🙏',
     lembrete_evento: 'Olá, *' + nome + '*! 📅\n\nSeu evento na *Bela Vista* está chegando!\n\n🎊 *Data:* ' + dataFmt + '\n📋 *Reserva:* ' + r.id + '\n\nLembre-se de confirmar todos os detalhes com antecedência. Qualquer dúvida, é só chamar! 🏛️',
     lembrete_retorno: 'Olá, *' + nome + '*! 😊\n\nJá faz 1 mês desde a sua última reserva com a gente. Que tal agendar novamente? 🗓️\n\nEstamos com datas disponíveis e adoraríamos receber você de volta na *Bela Vista*!\n\n✨ Espaço premium • Estrutura completa • Memórias inesquecíveis\n\nFala com a gente! 🥂',
@@ -3080,13 +3080,14 @@ SHEETS.contrato = function (id, ctx) {
 var CTR_CACHE = { id: '', blob: null, busy: false };
 function ctrNome(r) { return "contrato-" + r.id + "-" + slug(r.nome) + ".pdf"; }
 function ctrPrepara(r) {
-  if (CTR_CACHE.id === r.id && CTR_CACHE.blob) return;
-  CTR_CACHE = { id: r.id, blob: null, busy: true };
-  contratoPdf(r, function (blob) { if (CTR_CACHE.id !== r.id) return; CTR_CACHE.blob = blob || null; CTR_CACHE.busy = false; });
+  var chave = r.id + '|' + r.total + '|' + (r.sinal || 0);
+  if (CTR_CACHE.id === chave && CTR_CACHE.blob) return;
+  CTR_CACHE = { id: chave, blob: null, busy: true };
+  contratoPdf(r, function (blob) { if (CTR_CACHE.id !== chave) return; CTR_CACHE.blob = blob || null; CTR_CACHE.busy = false; });
 }
 ACT.contratowa = function (id) {
   var r = findRes(id); if (!r) return;
-  if (!(CTR_CACHE.id === id && CTR_CACHE.blob)) { if (!CTR_CACHE.busy) ctrPrepara(r); return toast("Preparando o PDF… toque de novo em instantes."); }
+  if (!(CTR_CACHE.id === r.id + '|' + r.total + '|' + (r.sinal || 0) && CTR_CACHE.blob)) { if (!CTR_CACHE.busy) ctrPrepara(r); return toast("Preparando o PDF… toque de novo em instantes."); }
   var nome = ctrNome(r), file;
   try { file = new File([CTR_CACHE.blob], nome, { type: "application/pdf" }); } catch (e) { file = null; }
   var data = file ? { files: [file], title: "Contrato " + r.id, text: gerarMsgWA("confirmacao", r) } : null;
