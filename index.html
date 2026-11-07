@@ -1061,6 +1061,13 @@ textarea.area { font: inherit; font-size: 16px; padding: 12px 14px; min-height: 
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
+/* ícones 3D das categorias de despesa */
+.tile i.i3d { background: none !important; box-shadow: none; border: 0; aspect-ratio: 1 / 1; display: grid; place-items: center; padding: 0; }
+.tile i.i3d img { width: 94%; height: auto; display: block; filter: drop-shadow(0 10px 12px rgba(0,0,0,.28)); animation: i3float 4.4s ease-in-out infinite; transition: transform .18s ease; }
+.tile:nth-child(2) i.i3d img { animation-delay: -1.1s; } .tile:nth-child(3) i.i3d img { animation-delay: -2.2s; } .tile:nth-child(4) i.i3d img { animation-delay: -3.3s; }
+@keyframes i3float { 50% { transform: translateY(-4px); } }
+.tile:active i.i3d img { transform: scale(.92); }
+@media (prefers-reduced-motion: reduce) { .tile i.i3d img { animation: none; } }
 /* barra inferior encostada na base: largura total, cobre toda a parte de baixo (sem flutuar) */
 html:root:not(.zz) .nav { padding: 0; background: none; }
 html:root:not(.zz) .nav-in { max-width: none; margin: 0; border-radius: 24px 24px 0 0; border-width: 1px 0 0; padding: 4px max(8px, env(safe-area-inset-right, 0px)) max(6px, calc(env(safe-area-inset-bottom, 0px) - 16px)) max(8px, env(safe-area-inset-left, 0px)); box-shadow: 0 -14px 32px -16px rgba(10,40,25,.35); }
@@ -1770,7 +1777,7 @@ function renderHome() {
   document.getElementById('dashPend').innerHTML = pendentes.slice().sort(function (a, b) { return primeira(a) < primeira(b) ? -1 : 1; }).slice(0, 5).map(function (r) {
     return '<div class="row"><span class="logo ' + (TCOR[r.tipo] || 't-gray') + '" style="width:44px;height:44px;border-radius:14px;font-size:15px">' + ini(r.nome) + '</span><span class="mid"><b>' + esc(r.nome) + '</b><small>' + dia(r) + ' · sinal ' + brl0.format(r.sinal) + '</small></span><span class="end"><b class="warn-t">' + brl0.format(r.total - r.sinal) + '</b><small>saldo</small></span></div>';
   }).join('') || '<p class="empty">Todos os pagamentos em dia</p>';
-  document.getElementById('quickCats').innerHTML = ['agua', 'energia', 'limpeza', 'manutencao'].map(function (k) { return '<button class="tile" data-sheet="despesa" data-cat="' + k + '"><i class="' + CAT[k].t + '">' + ic(CAT[k].icon) + '</i>' + CAT[k].label + '</button>'; }).join('');
+  document.getElementById('quickCats').innerHTML = ['agua', 'energia', 'limpeza', 'manutencao'].map(function (k) { return '<button class="tile" data-sheet="despesa" data-cat="' + k + '"><i class="i3d"><img src="ico/' + k + '.png" alt="" width="228" height="230" decoding="async"></i>' + CAT[k].label + '</button>'; }).join('');
 }
 function dashDetail(vals) { document.getElementById('dashDetail').innerHTML = '<span>' + MFULL[dashSel] + '</span><b>' + brl.format(vals[dashSel]) + '</b><span class="sub">' + resPeriodo(mesPref(dashSel + 1)).length + ' reservas</span>'; }
 
