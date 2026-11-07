@@ -1060,6 +1060,13 @@ textarea.area { font: inherit; font-size: 16px; padding: 12px 14px; min-height: 
   .toast { animation: toastIn .3s ease both; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* barra inferior encostada na base: largura total, cobre toda a parte de baixo (sem flutuar) */
+html:root:not(.zz) .nav { padding: 0; background: none; }
+html:root:not(.zz) .nav-in { max-width: none; margin: 0; border-radius: 24px 24px 0 0; border-width: 1px 0 0; padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); box-shadow: 0 -14px 32px -16px rgba(10,40,25,.35); }
+html:root[data-theme="dark"]:not(.zz) .nav-in { box-shadow: 0 -12px 34px rgba(0,0,0,.6), 0 -2px 18px rgba(47,230,255,.10); }
+@media (prefers-color-scheme: dark) { html:root:not([data-theme="light"]):not(.zz) .nav-in { box-shadow: 0 -12px 34px rgba(0,0,0,.6), 0 -2px 18px rgba(47,230,255,.10); } }
+@media (min-width: 600px) and (min-height: 640px) { html:root:not(.zz) .nav-in { padding-bottom: 30px; } }
 </style>
 
 <div class="stage"><div class="phone"><div class="island" aria-hidden="true"></div><div class="screen" id="screen">
